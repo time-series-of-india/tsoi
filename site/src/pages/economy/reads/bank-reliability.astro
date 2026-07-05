@@ -1,0 +1,74 @@
+---
+// Short read: bank-side technical declines, trailing-12-month averages (robust,
+// no single bank singled out). Data: public/data/economy/reads/bank-reliability.json
+import ReadLayout from '../../../components/read/ReadLayout.astro';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+
+const data = JSON.parse(readFileSync(fileURLToPath(new URL('../../../../public/data/economy/reads/bank-reliability.json', import.meta.url)), 'utf8'));
+const { stats } = data;
+const payload = JSON.stringify(data);
+---
+
+<ReadLayout
+  slug="bank-reliability"
+  kicker="Economy · Monthly"
+  asOf={stats.asOf}
+>
+  <figure class="chartfig">
+    <div class="chart" id="read-chart" style="height:420px"></div>
+    <figcaption>Average <span class="e e-rate">technical-decline rate</span> of the busiest UPI banks, trailing 12 months to {stats.asOf}. Source: NPCI.</figcaption>
+  </figure>
+
+  <div class="prose">
+    <p>When a UPI payment fails, it is usually your side: a wrong PIN, a short balance, a daily limit
+      reached. The rarer kind is a <span class="e e-rate">technical decline</span>, where a bank’s or
+      the network’s own systems could not complete the step. Across all banks that now runs at about
+      <strong>{stats.networkAvg}%</strong> of payments, roughly one in
+      <strong>{stats.oneInNetwork}</strong>.</p>
+    <p>There is a modest spread. Over the past year, among the busiest banks the rate ranges from
+      about <strong>{stats.low}%</strong> to <strong>{stats.high}%</strong>, so your odds of a clean
+      payment are a little better at some banks than others. But even the highest is rarer than one in
+      <strong>{stats.oneInHigh}</strong>, and a single bad month can move any bank up or down, which is
+      why the chart above averages a full year rather than naming a worst.</p>
+
+    <div class="pullstat">
+      <div><span class="n e-rate">1 in {stats.oneInNetwork}</span><span class="l">payments now fail on the <em>bank’s side</em></span></div>
+      <div><span class="n">1 in {stats.oneInOld}</span><span class="l">in 2022 — the rate keeps falling</span></div>
+    </div>
+
+    <p>The bigger story is the direction. Bank-side technical declines have fallen steeply, from about
+      one in <strong>{stats.oneInOld}</strong> payments in 2022 to one in
+      <strong>{stats.oneInNetwork}</strong> now, as the banks and the central switch were hardened.
+      The part of UPI you never see has quietly become one of the most reliable pieces of it.</p>
+
+    <p class="source">Source: NPCI UPI member-bank statistics (technical declines), processed by Time
+      Series of India. <a href="/economy/dashboards/bank-performance">Explore the dashboard →</a></p>
+  </div>
+
+  <script type="application/json" id="read-data" set:html={payload}></script>
+</ReadLayout>
+
+<script>
+  import * as echarts from 'echarts';
+  import { buildPanel, readTokens } from '../../../lib/dashboards/runtime';
+  import type { PanelSpec, CtrlState } from '../../../lib/dashboards/runtime';
+
+  const data = JSON.parse(document.getElementById('read-data')!.textContent!);
+  const host = document.getElementById('read-chart');
+  if (host) {
+    const spec: PanelSpec = { id: 'bank', title: '', chart: 'bar', encoding: { x: 'bank', y: 'td_pct', horizontal: true, sort: 'desc' } };
+    const opt = () => {
+      const t = readTokens();
+      const o: any = buildPanel(spec, data.banks, { metric: 'volume_cr' } as CtrlState, t);
+      o.series = o.series.map((s: any) => ({ ...s, itemStyle: { ...(s.itemStyle || {}), color: t.palette[0] } }));
+      return o;
+    };
+    const chart = echarts.init(host);
+    const render = () => chart.setOption(opt(), true);
+    new ResizeObserver(() => chart.resize()).observe(host);
+    new MutationObserver(render).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'data-units'] });
+    render();
+    document.fonts?.ready.then(render);
+  }
+</script>

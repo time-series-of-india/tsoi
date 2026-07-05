@@ -1,0 +1,79 @@
+---
+// Site footer: editorial links only. Source agencies are NOT named here — they
+// are theme-specific (listed per theme on /data, and on each read/dashboard),
+// while this footer is global chrome. Carries the newsletter signup — this is
+// the end-of-page capture point on every standard page (beats has its own).
+import EmailSignup from '../editorial/EmailSignup.astro';
+const links = [
+  { label: 'About', href: '/about' },
+  { label: 'Data', href: '/data' },
+  { label: 'Contact', href: 'mailto:contact@timeseriesofindia.com' },
+  { label: 'GitHub', href: 'https://github.com/time-series-of-india/tsoi' },
+];
+---
+
+<footer class="footer">
+  <EmailSignup compact />
+  <nav class="footer-nav" aria-label="Footer">
+    {
+      links.map((l, i) => (
+        <>
+          {i > 0 && <span class="sep" aria-hidden="true">·</span>}
+          <a href={l.href}>{l.label}</a>
+        </>
+      ))
+    }
+  </nav>
+  <p class="footer-note">
+    Time Series of India is an open-source project charting India's public data. All data belongs to the publishing
+    agencies; charts and text may be cited with attribution.
+  </p>
+</footer>
+
+<style>
+  .footer {
+    margin-top: calc(var(--tsoi-spacing-unit) * 6);
+    padding: calc(var(--tsoi-spacing-unit) * 2) var(--tsoi-margin-desktop)
+      calc(var(--tsoi-spacing-unit) * 4);
+    border-top: var(--tsoi-rule-section) solid var(--tsoi-color-on-surface);
+    text-align: center;
+  }
+  .footer :global(.signup.compact) { margin-bottom: calc(var(--tsoi-spacing-unit) * 2.5); }
+
+  .footer-nav {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: var(--tsoi-spacing-unit);
+    font: var(--tsoi-text-label-caps);
+    letter-spacing: var(--tsoi-text-label-caps-tracking);
+    text-transform: uppercase;
+  }
+
+  .footer-nav a {
+    text-decoration: none;
+  }
+
+  .footer-nav a:hover {
+    color: var(--tsoi-color-primary);
+  }
+
+  .sep {
+    color: var(--tsoi-color-on-surface-variant);
+  }
+
+  .footer-note {
+    margin: calc(var(--tsoi-spacing-unit) * 1.5) auto 0;
+    max-width: 60ch;
+    font: var(--tsoi-text-byline);
+    letter-spacing: var(--tsoi-text-byline-tracking);
+    text-transform: uppercase;
+    color: var(--tsoi-color-on-surface-variant);
+  }
+
+  @media (max-width: 767px) {
+    .footer {
+      padding-inline: var(--tsoi-margin-mobile);
+    }
+  }
+</style>

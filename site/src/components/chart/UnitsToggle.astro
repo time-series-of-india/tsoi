@@ -1,0 +1,62 @@
+---
+// Cr/bn units toggle — flips <html data-units> (every chart re-formats live via
+// its MutationObserver) and persists the choice. Lives in chart control bars so
+// it sits beside the numbers it changes, and stays in view with the chart on
+// mobile. The first-visit default is set in BaseLayout from the browser timezone.
+---
+
+<div class="units-toggle" role="group" aria-label="Number units">
+  <button type="button" data-units-set="in" aria-label="Indian units (crore, lakh crore)">Cr</button>
+  <button type="button" data-units-set="intl" aria-label="International units (billion, trillion)">bn</button>
+</div>
+
+<style>
+  .units-toggle {
+    display: inline-flex;
+    border: 1px solid var(--tsoi-color-outline);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .units-toggle button {
+    padding: 3px 9px;
+    border: 0;
+    background: transparent;
+    font: var(--tsoi-text-byline);
+    letter-spacing: var(--tsoi-text-byline-tracking);
+    text-transform: uppercase;
+    color: var(--tsoi-color-on-surface-variant);
+    cursor: pointer;
+  }
+  .units-toggle button + button {
+    border-left: 1px solid var(--tsoi-color-outline);
+  }
+  .units-toggle button[aria-pressed='true'] {
+    background: var(--tsoi-color-primary);
+    color: #fff;
+  }
+</style>
+
+<script>
+  // Reflect the active choice and wire every units button on the page. Astro
+  // dedupes this module script even when the component appears more than once.
+  const sync = () => {
+    const intl = document.documentElement.dataset.units === 'intl';
+    for (const btn of document.querySelectorAll<HTMLButtonElement>('[data-units-set]')) {
+      btn.setAttribute('aria-pressed', String((btn.dataset.unitsSet === 'intl') === intl));
+    }
+  };
+  for (const btn of document.querySelectorAll<HTMLButtonElement>('[data-units-set]')) {
+    btn.addEventListener('click', () => {
+      const intl = btn.dataset.unitsSet === 'intl';
+      if (intl) document.documentElement.dataset.units = 'intl';
+      else delete document.documentElement.dataset.units;
+      try {
+        localStorage.setItem('tsoi-units', intl ? 'intl' : 'in');
+      } catch {
+        /* persistence unavailable — still works for this page */
+      }
+      sync();
+    });
+  }
+  sync();
+</script>

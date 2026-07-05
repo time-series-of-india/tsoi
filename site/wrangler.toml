@@ -1,0 +1,12 @@
+# Cloudflare Workers Static Assets config for the TSOI site.
+# Deploy is build-and-push (see scripts/deploy.sh): the DB is needed only at build
+# time, so nothing DB/VM runs in the cloud. `wrangler deploy` uploads dist/ to the
+# global edge; _headers (in dist/) drives the per-path Cache-Control.
+name = "tsoi"
+compatibility_date = "2026-07-01"
+
+[assets]
+directory = "dist"
+# not_found_handling defaults to serving 404.html for unmatched routes (Astro
+# emits a branded 404). SPA fallback is intentionally NOT enabled — this is a
+# static multi-page site.

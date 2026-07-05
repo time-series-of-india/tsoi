@@ -1,0 +1,113 @@
+---
+// Short read: the remitter vs beneficiary bank asymmetry (slope). Data:
+// public/data/economy/reads/where-money-lands.json (scripts/build-reads-data.mjs).
+import ReadLayout from '../../../components/read/ReadLayout.astro';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+
+const data = JSON.parse(readFileSync(fileURLToPath(new URL('../../../../public/data/economy/reads/where-money-lands.json', import.meta.url)), 'utf8'));
+const { stats } = data;
+const payload = JSON.stringify(data);
+---
+
+<ReadLayout
+  slug="where-money-lands"
+  kicker="Economy · Monthly"
+  asOf={stats.asOf}
+  units={true}
+>
+  <figure class="chartfig wide">
+    <div class="chart" id="read-chart" style="height:440px"></div>
+    <figcaption>Each bank&rsquo;s rank when money is <span class="e e2">paid from it</span> vs when money is <span class="e e1">paid into it</span>, {stats.asOf}. Among the busiest banks. Source: NPCI.</figcaption>
+  </figure>
+
+  <div class="prose">
+    <p>You would expect the busiest banks for sending and receiving UPI to be much the same. Most
+      large banks have plenty of customers on both sides. The chart above joins each bank&rsquo;s rank
+      when paying to its rank when receiving, and instead of running flat, the lines cross the whole
+      field.</p>
+    <p><span class="e e2">State Bank of India</span> leads the paying side, on the strength of having
+      the most account holders. But on the receiving side it slips to <strong>#{stats.sbiRecvRank}</strong>.
+      In its place sits <span class="e e1">Yes Bank</span>, which barely originates payments at all,
+      <strong>#{stats.yesPayRank}</strong> when paying, yet receives more UPI than any other bank,
+      about <strong>{stats.yesRatio} times</strong> as much as it sends.</p>
+
+    <div class="pullstat">
+      <div><span class="n e1">{stats.yesRatio}&times;</span><span class="l">more UPI lands at <em>Yes Bank</em> than leaves it</span></div>
+      <div><span class="n e2">#{stats.sbiPayRank} &rarr; #{stats.sbiRecvRank}</span><span class="l"><em>SBI</em>&rsquo;s rank, paying to receiving</span></div>
+    </div>
+
+    <p>The reason is the layer beneath the apps. Most received payments are not people paying people;
+      they are people paying shops, and the big merchant apps route those collections through a short
+      list of sponsor banks, <span class="e e1">Yes Bank</span> chief among them, because it powers
+      PhonePe&rsquo;s merchant QR codes. So &ldquo;where the money lands&rdquo; tracks app plumbing,
+      not where people bank, and the &ldquo;beneficiary bank&rdquo; here is the bank that sponsors the
+      code, which later passes the money on to the merchant.</p>
+
+    <p class="source">Sources: NPCI UPI member-bank statistics, processed by Time Series of India;
+      <a href="https://economictimes.indiatimes.com/tech/technology/four-banks-bag-bulk-of-upi-beneficiary-payments/articleshow/122234250.cms">beneficiary concentration</a>.
+      <a href="/economy/dashboards/bank-performance">Explore the dashboard →</a></p>
+  </div>
+
+  <script type="application/json" id="read-data" set:html={payload}></script>
+</ReadLayout>
+
+<script>
+  import * as echarts from 'echarts';
+  import { readTokens, fmt } from '../../../lib/dashboards/runtime';
+  import type { Row, Tokens } from '../../../lib/dashboards/runtime';
+
+  // Slope: each bank's rank when PAYING vs RECEIVING. Yes Bank (orange) and SBI
+  // (teal) highlighted; the rest recede. Labels via fmt so they track cr/bn.
+  function slopeOption(rows: Row[], t: Tokens, narrow = false) {
+    const n = rows.length;
+    const gut = narrow ? 92 : 122;       // tighter gutters on phones widen the column gap
+    const nf = narrow ? 10 : 11, vf = narrow ? 9 : 10;
+    const rankBy = (f: string) => {
+      const m = new Map<string, number>();
+      [...rows].sort((a, b) => (Number(b[f]) || 0) - (Number(a[f]) || 0)).forEach((d, i) => m.set(String(d.bank), i + 1));
+      return m;
+    };
+    const lR = rankBy('remitter_mn'), rR = rankBy('beneficiary_mn');
+    const HL: Record<string, string> = { 'Yes Bank': t.palette[0], SBI: t.palette[1] };
+    const head = { color: t.subtle, fontFamily: t.mono, fontSize: narrow ? 10 : 11, fontWeight: 600 as const };
+    const series = rows.map((d) => {
+      const k = String(d.bank);
+      const a = lR.get(k)!, b = rR.get(k)!;
+      const on = k in HL;
+      const color = on ? HL[k] : t.subtle;
+      return {
+        name: k, type: 'line' as const, symbol: 'circle', symbolSize: on ? (narrow ? 8 : 10) : (narrow ? 5 : 7),
+        data: [
+          { value: a, label: { position: 'left' as const, formatter: `{n|${k}}\n{v|${fmt('volume_cr', Number(d.remitter_mn) / 10)}}` } },
+          { value: b, label: { position: 'right' as const, formatter: `{n|${k}}\n{v|${fmt('volume_cr', Number(d.beneficiary_mn) / 10)}}` } },
+        ],
+        label: { show: true, rich: {
+          n: { color: on ? t.text : t.subtle, fontFamily: t.mono, fontSize: nf, lineHeight: nf + 3, fontWeight: (on ? 700 : 400) as const },
+          v: { color: t.subtle, fontFamily: t.mono, fontSize: vf, lineHeight: vf + 3 },
+        } },
+        lineStyle: { width: on ? 3 : 1.5, color }, itemStyle: { color }, z: on ? 4 : 1,
+      };
+    });
+    return {
+      backgroundColor: 'transparent', textStyle: { fontFamily: t.mono, color: t.subtle },
+      title: [{ text: 'PAID FROM', left: 14, top: 4, textStyle: head }, { text: 'PAID INTO', right: 14, top: 4, textStyle: head }],
+      grid: { left: gut, right: gut, top: 36, bottom: 14 },
+      tooltip: { trigger: 'item' as const, formatter: (o: any) => `<strong>${o.seriesName}</strong>` },
+      xAxis: { type: 'category' as const, data: ['from', 'into'], boundaryGap: true, show: false },
+      yAxis: { type: 'value' as const, inverse: true, min: 0.5, max: n + 0.5, show: false },
+      series,
+    };
+  }
+
+  const data = JSON.parse(document.getElementById('read-data')!.textContent!);
+  const host = document.getElementById('read-chart');
+  if (host) {
+    const chart = echarts.init(host);
+    const render = () => chart.setOption(slopeOption(data.bankFlow, readTokens(), typeof window !== 'undefined' && window.innerWidth < 560), true);
+    new ResizeObserver(() => chart.resize()).observe(host);
+    new MutationObserver(render).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'data-units'] });
+    render();
+    document.fonts?.ready.then(render);
+  }
+</script>

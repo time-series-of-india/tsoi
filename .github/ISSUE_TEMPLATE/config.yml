@@ -1,0 +1,7 @@
+# Keep blank issues on — CONTRIBUTING invites dataset requests, bug reports, and
+# general questions as regular issues, alongside the structured data-error form.
+blank_issues_enabled: true
+contact_links:
+  - name: Contribution guide
+    url: https://github.com/time-series-of-india/tsoi/blob/main/CONTRIBUTING.md
+    about: What's open to contribute (data, ETL, code, bug fixes) and the PR checklist.

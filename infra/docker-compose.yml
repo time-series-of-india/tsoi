@@ -1,0 +1,20 @@
+# Build-time data store for the ETL → static-JSON pipeline.
+#
+# The published site is a static Cloudflare Workers deployment and does NOT use
+# this at runtime. TimescaleDB is only needed locally to run the ETL loaders and
+# the site/scripts/build-*.mjs generators. See CLAUDE.md.
+services:
+  timescale:
+    image: timescale/timescaledb:latest-pg15
+    volumes:
+      - ./db/timescale_data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required — copy .env.example to .env and set a value}
+      POSTGRES_DB: npci
+    ports:
+      # Loopback only — host-side ETL connects to localhost:5432; never expose Postgres publicly.
+      - 127.0.0.1:5432:5432
+
+volumes:
+  timescale_data:

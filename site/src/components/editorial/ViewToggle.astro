@@ -1,0 +1,55 @@
+---
+// The Beats ⇄ Reads ⇄ Dashboards switch shared by the Economy list views.
+// Single source so the three surfaces stay in lockstep. Stays a horizontal
+// segmented control at every width (equal-width segments on phones), rather
+// than collapsing into three stacked full-width bars.
+interface Props { active: 'beats' | 'reads' | 'dashboards' }
+const { active } = Astro.props;
+const items = [
+  { key: 'beats', label: 'Beats', href: '/economy/beats' },
+  { key: 'reads', label: 'Reads', href: '/economy' },
+  { key: 'dashboards', label: 'Dashboards', href: '/economy/dashboards' },
+] as const;
+---
+
+<div class="view-toggle" role="group" aria-label="View">
+  {items.map((it) => (
+    <a
+      href={it.href}
+      class:list={['vt', { active: active === it.key }]}
+      aria-current={active === it.key ? 'page' : undefined}
+    >
+      {it.label}
+    </a>
+  ))}
+</div>
+
+<style>
+  .view-toggle {
+    display: inline-flex;
+    border: 1px solid var(--tsoi-color-outline);
+    border-radius: 2px;
+    overflow: hidden;
+    margin-bottom: calc(var(--tsoi-spacing-unit) * 3);
+  }
+  .vt {
+    font: var(--tsoi-text-byline);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 7px 16px;
+    text-decoration: none;
+    white-space: nowrap;
+    background: var(--tsoi-color-background);
+    color: var(--tsoi-color-on-surface-variant);
+    transition: background 0.15s, color 0.15s;
+  }
+  .vt + .vt { border-left: 1px solid var(--tsoi-color-outline); }
+  .vt:hover:not(.active) { color: var(--tsoi-color-on-surface); background: var(--tsoi-color-surface-container-high); }
+  .vt.active { background: var(--tsoi-color-primary); color: #fff; }
+
+  @media (max-width: 600px) {
+    /* full-width segmented bar, not a stack — keeps the switch one tap-row tall */
+    .view-toggle { display: flex; width: 100%; }
+    .vt { flex: 1; text-align: center; padding: 10px 8px; }
+  }
+</style>

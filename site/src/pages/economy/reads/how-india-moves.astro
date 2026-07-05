@@ -1,0 +1,104 @@
+---
+// Short read: payment mix by count vs value (two donuts). Data:
+// public/data/economy/reads/how-india-moves.json (scripts/build-reads-data.mjs).
+import ReadLayout from '../../../components/read/ReadLayout.astro';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+
+const data = JSON.parse(readFileSync(fileURLToPath(new URL('../../../../public/data/economy/reads/how-india-moves.json', import.meta.url)), 'utf8'));
+const { stats } = data;
+const rtgsLakh = (stats.rtgsTicket / 1e5).toFixed(0);
+const payload = JSON.stringify(data);
+---
+
+<ReadLayout
+  slug="how-india-moves"
+  kicker="Economy · Monthly"
+  asOf={stats.asOf}
+  units={true}
+>
+  <figure class="chartfig wide">
+    <div class="donuts">
+      <div class="donut"><p class="dlabel">By number of payments</p><div class="chart" id="donut-count" style="height:300px"></div></div>
+      <div class="donut"><p class="dlabel">By value</p><div class="chart" id="donut-value" style="height:300px"></div></div>
+    </div>
+    <figcaption>Share of India’s digital payment transactions, {stats.asOf}. Source: RBI payment system data.</figcaption>
+  </figure>
+
+  <div class="prose">
+    <p>Every digital payment counts once in the headline numbers, but they are wildly different sizes.
+      Counted one transaction at a time, UPI is about <strong>{stats.upiVolShare}%</strong> of all
+      digital payments. Nothing else clears a few percent. By this measure India has, overwhelmingly,
+      one payment system.</p>
+    <p>By value it inverts. <strong>RTGS</strong>, the banks’ real-time settlement rail for large
+      transfers, moves about <strong>{stats.rtgsValShare}%</strong> of the rupees on just
+      <strong>{stats.rtgsVolShare}%</strong> of the payments. NEFT is second. UPI, first by count, is
+      only about <strong>{stats.upiValShare}%</strong> of the money.</p>
+
+    <div class="pullstat invert">
+      <div>
+        <span class="who">UPI</span>
+        <span class="row"><b>{stats.upiVolShare}%</b> of payments</span>
+        <span class="row"><b>{stats.upiValShare}%</b> of value</span>
+      </div>
+      <div>
+        <span class="who">RTGS</span>
+        <span class="row"><b>{stats.rtgsVolShare}%</b> of payments</span>
+        <span class="row"><b>{stats.rtgsValShare}%</b> of value</span>
+      </div>
+    </div>
+
+    <p>The ticket size explains the whole picture. An average UPI payment is about
+      <strong>₹{stats.upiTicket.toLocaleString('en-IN')}</strong>; an average RTGS transfer, about
+      <strong>₹{rtgsLakh} lakh</strong>. &ldquo;Payments&rdquo; is several systems sharing one word: a
+      high-frequency tap for daily life, and heavy pipes that move the nation’s large money. The UPI
+      number you usually hear measures the first and barely touches the second.</p>
+
+    <p class="source">Source: RBI payment system statistics, processed by Time Series of India.
+      <a href="/economy/dashboards/overview">Explore the dashboard →</a></p>
+  </div>
+
+  <script type="application/json" id="read-data" set:html={payload}></script>
+</ReadLayout>
+
+<script>
+  import * as echarts from 'echarts';
+  import { buildPanel, readTokens } from '../../../lib/dashboards/runtime';
+  import { legendIsolation } from '../../../lib/dashboards/legend';
+  import type { PanelSpec, CtrlState } from '../../../lib/dashboards/runtime';
+
+  const data = JSON.parse(document.getElementById('read-data')!.textContent!);
+  const mounts = [
+    { id: 'donut-count', y: 'volume_cr' },
+    { id: 'donut-value', y: 'value_lcr' },
+  ].map((m) => {
+    const el = document.getElementById(m.id);
+    return el ? { el, spec: { id: m.id, title: '', chart: 'donut', encoding: { x: 'product', y: m.y, limit: 6 } } as PanelSpec } : null;
+  }).filter(Boolean) as { el: HTMLElement; spec: PanelSpec }[];
+
+  const charts = mounts.map((m) => ({ el: m.el, spec: m.spec, inst: echarts.init(m.el) }));
+  const renderOne = (c: typeof charts[number]) =>
+    c.inst.setOption(buildPanel(c.spec, data.mixRows, { metric: 'volume_cr' } as CtrlState, readTokens()), true);
+  // Match the dashboard: clicking a legend entry isolates that slice, clicking it
+  // again restores all (instead of ECharts' default hide-the-clicked-slice toggle).
+  const resets = charts.map((c) => legendIsolation(c.inst, () => renderOne(c)));
+  const render = () => { charts.forEach(renderOne); resets.forEach((r) => r()); };
+  charts.forEach((c) => new ResizeObserver(() => c.inst.resize()).observe(c.el));
+  new MutationObserver(render).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'data-units'] });
+  render();
+  document.fonts?.ready.then(render);
+</script>
+
+<style>
+  /* inversion pull-stat: one labelled row per metric, no confusing "/" */
+  .invert > div { gap: 4px; }
+  .invert .who { font: var(--tsoi-text-label-caps); text-transform: uppercase; letter-spacing: 0.06em; color: var(--tsoi-color-on-surface-variant); margin-bottom: 2px; }
+  .invert .row { font: var(--tsoi-text-body); font-size: 15px; color: var(--tsoi-color-on-surface-variant); }
+  .invert .row b { font-family: var(--tsoi-font-mono); font-weight: 500; font-size: 19px; color: var(--tsoi-color-primary); margin-right: 4px; }
+
+  .donuts { display: flex; gap: var(--tsoi-spacing-unit); border: 1px solid var(--tsoi-color-outline-variant); border-radius: var(--tsoi-radius-lg); background: var(--tsoi-color-surface-container-low); padding: calc(var(--tsoi-spacing-unit) * 2); }
+  .donut { flex: 1; min-width: 0; }
+  .dlabel { margin: 0 0 var(--tsoi-spacing-unit); text-align: center; font: var(--tsoi-text-byline); text-transform: uppercase; letter-spacing: 0.06em; color: var(--tsoi-color-on-surface-variant); }
+  .donut .chart { width: 100%; }
+  @media (max-width: 560px) { .donuts { flex-direction: column; } }
+</style>

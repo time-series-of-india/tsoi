@@ -1,0 +1,176 @@
+---
+// Broadsheet masthead: byline meta row (edition date + URL + global toggles),
+// centred Playfair 900 wordmark, italic tagline, 3px saffron bottom border.
+// (The former masthead-bottom "Data: RBI · NPCI" bar was removed — sources are
+// theme-specific and live on /data and on the content itself.)
+// The units (cr/bn) and theme toggles live here as global, set-once prefs;
+// the reader text-size control stays in the read header where it's used.
+import UnitsToggle from '../chart/UnitsToggle.astro';
+interface Props {
+  /** Homepage renders the wordmark as the page h1; everywhere else it is brand chrome. */
+  homeH1?: boolean;
+}
+
+const { homeH1 = false } = Astro.props;
+
+// Link to the section root when inside a section, otherwise the home beats deck.
+const path = Astro.url.pathname;
+const wordmarkHref = path.startsWith('/economy') ? '/economy' : '/';
+
+// Edition date is the build date — a static site's "edition" is its last rebuild.
+const editionDate = new Date().toLocaleDateString('en-GB', {
+  weekday: 'long',
+  day: 'numeric',
+  month: 'long',
+  year: 'numeric',
+});
+---
+
+<header class="masthead">
+  <div class="meta-row">
+    <span class="edition">{editionDate}<span class="edition-url"> · timeseriesofindia.com</span></span>
+    <div class="meta-actions">
+      <UnitsToggle />
+      <button
+      type="button"
+      class="theme-toggle"
+      data-tsoi-theme-toggle
+      aria-label="Toggle dark mode"
+    >
+      <svg
+        class="icon-moon"
+        viewBox="0 0 16 16"
+        width="14"
+        height="14"
+        fill="currentColor"
+        aria-hidden="true"
+      >
+        <path d="M11 1a7 7 0 1 0 4 12.5A8 8 0 0 1 11 1z"></path>
+      </svg>
+      <svg
+        class="icon-sun"
+        viewBox="0 0 16 16"
+        width="14"
+        height="14"
+        fill="currentColor"
+        aria-hidden="true"
+      >
+        <circle cx="8" cy="8" r="3.5"></circle>
+        <path
+          d="M8 0v2.5M8 13.5V16M0 8h2.5M13.5 8H16M2.3 2.3l1.8 1.8M11.9 11.9l1.8 1.8M2.3 13.7l1.8-1.8M11.9 4.1l1.8-1.8"
+          stroke="currentColor"
+          stroke-width="1.4"></path>
+      </svg>
+    </button>
+    </div>
+  </div>
+  {
+    homeH1 ? (
+      <h1 class="wordmark">
+        <a href={wordmarkHref}>Time Series of India</a>
+      </h1>
+    ) : (
+      <p class="wordmark">
+        <a href={wordmarkHref}>Time Series of India</a>
+      </p>
+    )
+  }
+</header>
+
+<style>
+  .masthead {
+    padding: 18px var(--tsoi-margin-desktop) 14px;
+    border-bottom: 3px solid var(--tsoi-color-primary);
+    text-align: center;
+  }
+
+  .meta-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font: var(--tsoi-text-byline);
+    letter-spacing: var(--tsoi-text-byline-tracking);
+    text-transform: uppercase;
+    color: var(--tsoi-color-on-surface-variant);
+  }
+
+  .meta-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .theme-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    border: 0;
+    border-radius: var(--tsoi-radius-full);
+    background: transparent;
+    color: var(--tsoi-color-on-surface-variant);
+    cursor: pointer;
+  }
+
+  .icon-sun {
+    display: none;
+  }
+
+  :global(html[data-theme='dark']) .icon-moon {
+    display: none;
+  }
+
+  :global(html[data-theme='dark']) .icon-sun {
+    display: block;
+  }
+
+  .wordmark {
+    margin: calc(var(--tsoi-spacing-unit) * 1.5) 0 0;
+    font: var(--tsoi-text-masthead);
+    letter-spacing: var(--tsoi-text-masthead-tracking);
+  }
+
+  .wordmark a {
+    text-decoration: none;
+    color: var(--tsoi-color-on-surface);
+  }
+
+  @media (max-width: 767px) {
+    /* drop the URL so the meta row (date + units + theme) stays one line */
+    .edition-url {
+      display: none;
+    }
+
+    .masthead {
+      padding-inline: var(--tsoi-margin-mobile);
+    }
+
+    .wordmark {
+      font: var(--tsoi-text-masthead-mobile);
+      letter-spacing: var(--tsoi-text-masthead-mobile-tracking);
+    }
+  }
+</style>
+
+<script>
+  // Theme toggle: flips data-theme on <html> and persists to localStorage
+  // (read back by the inline bootstrap script in BaseLayout <head>).
+  for (const btn of document.querySelectorAll('[data-tsoi-theme-toggle]')) {
+    btn.addEventListener('click', () => {
+      const html = document.documentElement;
+      const dark = html.dataset.theme === 'dark';
+      if (dark) {
+        delete html.dataset.theme;
+      } else {
+        html.dataset.theme = 'dark';
+      }
+      try {
+        localStorage.setItem('tsoi-theme', dark ? 'light' : 'dark');
+      } catch {
+        /* persistence unavailable — toggle still works for this page */
+      }
+    });
+  }
+</script>

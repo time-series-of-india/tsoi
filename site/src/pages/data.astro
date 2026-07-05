@@ -1,0 +1,106 @@
+---
+// "Data" page: a per-theme directory of source agencies, plus how to report an
+// error. Deliberately no pipeline mechanics or cadence tables — freshness is
+// stamped on the content itself ("data through {month}"). New themes append a
+// section here as they land. Linked from Footer.
+import StoryPage from '../layouts/StoryPage.astro';
+import SectionHeader from '../components/editorial/SectionHeader.astro';
+
+const themes = [
+  {
+    label: 'Economy',
+    agencies: [
+      {
+        name: 'Reserve Bank of India (RBI)',
+        href: 'https://www.rbi.org.in/Scripts/Statistics.aspx',
+        role: 'Settlement and payment-system statistics: UPI, NEFT, RTGS, cards and settlement systems, published as monthly Excel releases.',
+      },
+      {
+        name: 'National Payments Corporation of India (NPCI)',
+        href: 'https://www.npci.org.in/statistics',
+        role: 'Product-level statistics for the rails NPCI operates: UPI and IMPS broken down by bank, app, state and merchant category.',
+      },
+    ],
+  },
+];
+---
+
+<StoryPage
+  title="Data — Time Series of India"
+  description="Where TSOI's data comes from: the official source agencies behind each theme, and how to report an error."
+>
+  <SectionHeader label="Data" />
+  <article class="prose">
+    <p>
+      Every series on TSOI is built from an official statistical release, and every read and
+      dashboard shows how recent its data is. The sources, by theme:
+    </p>
+    {
+      themes.map((t) => (
+        <>
+          <h3>{t.label}</h3>
+          <ul>
+            {t.agencies.map((a) => (
+              <li>
+                <a
+                  href={a.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label={`Open ${a.name} statistics page (opens in new tab)`}
+                >
+                  {a.name}
+                </a>
+                — {a.role}
+              </li>
+            ))}
+          </ul>
+        </>
+      ))
+    }
+    <p class="future">More themes — and their sources — will be listed here as they launch.</p>
+
+    <h3>Spotted an error?</h3>
+    <p>
+      If a chart disagrees with the official release, please
+      <a href="https://github.com/time-series-of-india/tsoi/issues">open an issue on GitHub</a>
+      with a link to the page and the release you checked against. Corrections ship with the next
+      rebuild.
+    </p>
+  </article>
+</StoryPage>
+
+<style>
+  .prose {
+    max-width: 70ch;
+    margin-top: calc(var(--tsoi-spacing-unit) * 2);
+  }
+
+  .prose h3 {
+    margin: calc(var(--tsoi-spacing-unit) * 3) 0 0;
+    font: var(--tsoi-text-headline-md);
+    letter-spacing: var(--tsoi-text-headline-md-tracking);
+  }
+
+  .prose p,
+  .prose ul {
+    margin: var(--tsoi-spacing-unit) 0 0;
+    font: var(--tsoi-text-deck);
+    letter-spacing: var(--tsoi-text-deck-tracking);
+  }
+
+  .prose ul {
+    padding-left: 1.3em;
+  }
+
+  .prose li {
+    margin-top: var(--tsoi-spacing-unit);
+  }
+
+  .prose a {
+    color: var(--tsoi-color-primary);
+  }
+
+  .future {
+    color: var(--tsoi-color-on-surface-variant);
+  }
+</style>

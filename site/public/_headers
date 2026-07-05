@@ -1,0 +1,44 @@
+# Cloudflare static-asset cache policy. Three classes by mutability:
+#
+#   _astro/*  — Astro fingerprints these (name changes on content change) → immutable.
+#   data/*    — content-hashed by scripts/hash-data.mjs (name changes on content
+#               change) → immutable. INVARIANT: nothing is fetched at runtime by an
+#               UN-hashed /data/ URL; the short reads inline their JSON at build time.
+#               If that ever changes, an un-hashed runtime fetch would serve stale
+#               data under this rule — hash it (add to RUNTIME_FILES in hash-data.mjs).
+#   og/, thumbs/ — regenerated each deploy, referenced by stable name → short TTL.
+#   /*        — HTML: always revalidate so a new deploy's fresh URLs are picked up.
+#
+# IMPORTANT — Workers Static Assets COMBINES every matching rule's headers (there is
+# NO most-specific-wins). A request to /data/x.json matches both /data/* and the /*
+# catch-all, so without intervention its Cache-Control becomes the two values joined
+# by a comma ("max-age=0, must-revalidate, max-age=31536000, immutable") — the
+# max-age=0 wins and immutable is defeated. So every specific rule first UNSETS the
+# inherited Cache-Control with `! Cache-Control`, then sets its own. Verified with
+# `curl -I` post-deploy. Docs: developers.cloudflare.com/workers/static-assets/headers
+
+/_astro/*
+  ! Cache-Control
+  Cache-Control: public, max-age=31536000, immutable
+
+/data/*
+  ! Cache-Control
+  Cache-Control: public, max-age=31536000, immutable
+
+# Maps are fetched at runtime under a STABLE name (not hashed) — boundary geojson
+# that essentially never changes. Not immutable (a correction must be able to
+# propagate); a day's cache with background revalidation is the safe middle.
+/maps/*
+  ! Cache-Control
+  Cache-Control: public, max-age=86400, stale-while-revalidate=604800
+
+/og/*
+  ! Cache-Control
+  Cache-Control: public, max-age=3600, must-revalidate
+
+/thumbs/*
+  ! Cache-Control
+  Cache-Control: public, max-age=3600, must-revalidate
+
+/*
+  Cache-Control: public, max-age=0, must-revalidate

@@ -1,0 +1,62 @@
+---
+// Branded 404. Astro emits this as /404.html; nginx serves it via error_page
+// (see infra/nginx/conf.d/default.conf) and Astro's dev/preview servers pick
+// it up automatically.
+import StoryPage from '../layouts/StoryPage.astro';
+import SectionHeader from '../components/editorial/SectionHeader.astro';
+---
+
+<StoryPage
+  title="Page not found — Time Series of India"
+  description="This page doesn't exist. Browse India's payment data — beats, reads and dashboards — from the home page."
+>
+  <SectionHeader label="404" />
+  <div class="nf">
+    <h1 class="nf-title">This page isn&rsquo;t in the series.</h1>
+    <p class="nf-deck">
+      The address may be mistyped, or the page has moved. Everything on the site is reachable
+      from these three surfaces:
+    </p>
+    <ul class="nf-links">
+      <li><a href="/">Beats</a> — the story of Indian payments, card by card</li>
+      <li><a href="/economy">Reads</a> — charted essays on how India moves money</li>
+      <li><a href="/economy/dashboards/">Dashboards</a> — the full interactive data</li>
+    </ul>
+  </div>
+</StoryPage>
+
+<style>
+  .nf {
+    max-width: 70ch;
+    margin-top: calc(var(--tsoi-spacing-unit) * 3);
+  }
+
+  .nf-title {
+    margin: 0;
+    font: var(--tsoi-text-headline-lg);
+    letter-spacing: var(--tsoi-text-headline-lg-tracking);
+  }
+
+  .nf-deck {
+    margin: var(--tsoi-spacing-unit) 0 0;
+    font: var(--tsoi-text-deck);
+    letter-spacing: var(--tsoi-text-deck-tracking);
+    color: var(--tsoi-color-on-surface-variant);
+  }
+
+  .nf-links {
+    margin: calc(var(--tsoi-spacing-unit) * 2) 0 0;
+    padding-left: 1.3em;
+  }
+
+  .nf-links li {
+    margin-top: calc(var(--tsoi-spacing-unit) / 2);
+    font: var(--tsoi-text-deck);
+    letter-spacing: var(--tsoi-text-deck-tracking);
+  }
+
+  .nf-links a {
+    color: var(--tsoi-color-primary);
+    font-weight: 600;
+  }
+</style>

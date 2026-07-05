@@ -1,0 +1,48 @@
+---
+// Newspaper section header: caps label, hairline extending right, optional
+// update date at the far right, 2px on-surface rule beneath.
+interface Props {
+  label: string;
+  date?: string;
+}
+
+const { label, date } = Astro.props;
+---
+
+<div class="section-header">
+  <h2 class="label">{label}</h2>
+  <span class="hairline" aria-hidden="true"></span>
+  {date && <span class="date">{date}</span>}
+</div>
+
+<style>
+  .section-header {
+    display: flex;
+    align-items: baseline;
+    gap: var(--tsoi-column-gutter);
+    padding-bottom: calc(var(--tsoi-spacing-unit) / 2);
+    border-bottom: var(--tsoi-rule-section) solid var(--tsoi-color-on-surface);
+  }
+
+  .label {
+    margin: 0;
+    font: var(--tsoi-text-headline-sm);
+    letter-spacing: var(--tsoi-text-headline-sm-tracking);
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  .hairline {
+    flex: 1;
+    align-self: center;
+    border-top: var(--tsoi-rule-column) solid var(--tsoi-color-outline);
+  }
+
+  .date {
+    font: var(--tsoi-text-byline);
+    letter-spacing: var(--tsoi-text-byline-tracking);
+    text-transform: uppercase;
+    color: var(--tsoi-color-on-surface-variant);
+    white-space: nowrap;
+  }
+</style>

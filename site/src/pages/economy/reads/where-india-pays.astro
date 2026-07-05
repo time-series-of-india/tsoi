@@ -1,0 +1,85 @@
+---
+// Short read: UPI by state (compliant choropleth). Data: state-wise.json.
+// Map: public/maps/india_states.json (J&K/Ladakh/Arunachal per india-official-geojson).
+import ReadLayout from '../../../components/read/ReadLayout.astro';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+
+const raw = JSON.parse(readFileSync(fileURLToPath(new URL('../../../../public/data/economy/state-wise.json', import.meta.url)), 'utf8'));
+const rows = raw.rows ?? raw;
+const months = [...new Set(rows.map((r: any) => r.month))].sort();
+const lm = months[months.length - 1];
+const latest = rows.filter((r: any) => r.month === lm);
+const tot = latest.reduce((a: number, r: any) => a + (r.volume_cr || 0), 0);
+const sorted = [...latest].sort((a, b) => b.volume_cr - a.volume_cr);
+const MONTHS = ['', 'January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+const title2 = (s: string) => s.split(' ').map((w) => w[0] + w.slice(1).toLowerCase()).join(' ');
+const stats = {
+  asOf: `${MONTHS[+lm.split('-')[1]]} ${lm.split('-')[0]}`,
+  top: title2(sorted[0].state), topShare: Math.round(100 * sorted[0].volume_cr / tot),
+  top5: Math.round(100 * sorted.slice(0, 5).reduce((a, r) => a + r.volume_cr, 0) / tot),
+  top10: Math.round(100 * sorted.slice(0, 10).reduce((a, r) => a + r.volume_cr, 0) / tot),
+};
+const payload = JSON.stringify({ rows: latest });
+---
+
+<ReadLayout
+  slug="where-india-pays"
+  kicker="Economy · Monthly"
+  asOf={stats.asOf}
+  units={true}
+>
+  <figure class="chartfig wide">
+    <div class="chart" id="read-chart" style="height:480px"></div>
+    <figcaption>UPI transactions by state, {stats.asOf}. Boundaries: <a href="https://github.com/AbhinavSwami28/india-official-geojson">india-official-geojson</a> (MIT), per the Government of India position. Data: NPCI.</figcaption>
+  </figure>
+
+  <div class="prose">
+    <p>UPI is everywhere, but not evenly. The map shows where the payments actually originate, and a
+      handful of states do most of the work. <strong>{stats.top}</strong> alone accounts for about
+      <strong>{stats.topShare}%</strong> of all UPI volume. The top five states together make up
+      roughly <strong>{stats.top5}%</strong>, and the top ten about <strong>{stats.top10}%</strong>.</p>
+    <p>The leaders cluster in the west and south, India’s richer, more urban, more banked regions:
+      Maharashtra, Karnataka, Telangana, Tamil Nadu. The big exception is Uttar Pradesh, which ranks
+      high on sheer population even though each person there pays less often than in the southern
+      states.</p>
+
+    <div class="pullstat">
+      <div><span class="n">{stats.top5}%</span><span class="l">of UPI comes from the <em>top five</em> states</span></div>
+      <div><span class="n">{stats.topShare}%</span><span class="l">from <em>{stats.top}</em> alone</span></div>
+    </div>
+
+    <p>One caveat worth keeping in mind: this is total volume, which naturally tracks population and
+      income. Measured per person the map would shift, with small, urban states and union territories
+      punching above their weight and the poorer, more rural states trailing. Those trailing states
+      are where UPI’s next leg of growth has to come from.</p>
+
+    <p class="source">Source: NPCI state-wise UPI statistics, processed by Time Series of India.
+      Map boundaries via <a href="https://github.com/AbhinavSwami28/india-official-geojson">india-official-geojson</a> (MIT).
+      <a href="/economy/dashboards/state-wise">Explore the dashboard →</a></p>
+  </div>
+
+  <script type="application/json" id="read-data" set:html={payload}></script>
+</ReadLayout>
+
+<script>
+  import * as echarts from 'echarts';
+  import { buildPanel, readTokens } from '../../../lib/dashboards/runtime';
+  import type { PanelSpec, CtrlState } from '../../../lib/dashboards/runtime';
+
+  const data = JSON.parse(document.getElementById('read-data')!.textContent!);
+  const host = document.getElementById('read-chart');
+  if (host) {
+    (async () => {
+      const geo = await fetch('/maps/india_states.json').then((r) => r.json());
+      echarts.registerMap('india', geo);
+      const spec: PanelSpec = { id: 'states', title: '', chart: 'choropleth', map: 'india', encoding: { region: 'state', y: 'volume_cr' } };
+      const chart = echarts.init(host);
+      const render = () => chart.setOption(buildPanel(spec, data.rows, { metric: 'volume_cr' } as CtrlState, readTokens()), true);
+      new ResizeObserver(() => chart.resize()).observe(host);
+      new MutationObserver(render).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'data-units'] });
+      render();
+      document.fonts?.ready.then(render);
+    })();
+  }
+</script>

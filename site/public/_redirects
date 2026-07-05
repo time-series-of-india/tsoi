@@ -1,0 +1,8 @@
+# Proper server-side 301s (Cloudflare) — replaces Astro's static meta-refresh
+# pages so social scrapers and search engines follow them. Destinations carry the
+# trailing slash to match the canonical URLs (avoids an extra 307 hop).
+/                          /economy/beats/   301
+/economy/beats/payments    /economy/beats/   301
+/economy/beats/payments/   /economy/beats/   301
+/economy/reads             /economy/         301
+/economy/reads/            /economy/         301

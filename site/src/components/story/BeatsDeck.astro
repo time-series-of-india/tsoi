@@ -1,0 +1,371 @@
+---
+// Beats renderer: an ordered deck of insight cards. Mobile = full-height
+// scroll-snap swipe; desktop = a vertical sequence with the
+// text beside the chart. Each beat's chart is built lazily (on scroll-into-view)
+// through the dashboard runtime (buildPanel) from the deck's tiny dataset.
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import ShareButtons from '../editorial/ShareButtons.astro';
+import type { BeatDeck } from '../../lib/beats';
+
+interface Props { deck: BeatDeck; home?: boolean }
+const { deck, home = false } = Astro.props;
+const cardCount = deck.beats.length + 2; // intro + beats + outro
+// As the home page the deck is indexable with the site title; otherwise it's a
+// noindex sub-page. Branding is held back until the outro either way.
+const pageTitle = home ? "Time Series of India — India's public data, charted and explained" : `${deck.title} — TSOI`;
+const pageDesc = home
+  ? "An open-source project charting India's public data — payment systems, banks and states, from official RBI and NPCI releases."
+  : deck.deck;
+---
+
+<BaseLayout title={pageTitle} description={pageDesc} noindex={!home}>
+  <a class="back" id="skip-link" href="/economy">{home ? 'Skip to Reads →' : '‹ Economy'}</a>
+  <ShareButtons title={deck.title} variant="fab" />
+  <button type="button" class="theme-fab" data-tsoi-theme-toggle aria-label="Toggle dark mode">
+    <svg class="icon-moon" viewBox="0 0 16 16" width="14" height="14" fill="currentColor" aria-hidden="true"><path d="M11 1a7 7 0 1 0 4 12.5A8 8 0 0 1 11 1z"></path></svg>
+    <svg class="icon-sun" viewBox="0 0 16 16" width="14" height="14" fill="currentColor" aria-hidden="true"><circle cx="8" cy="8" r="3.5"></circle><path d="M8 0v2.5M8 13.5V16M0 8h2.5M13.5 8H16M2.3 2.3l1.8 1.8M11.9 11.9l1.8 1.8M2.3 13.7l1.8-1.8M11.9 4.1l1.8-1.8" stroke="currentColor" stroke-width="1.4"></path></svg>
+  </button>
+  <div class="dots" aria-hidden="true">
+    {Array.from({ length: cardCount }).map((_, i) => <span class={`dot${i === 0 ? ' active' : ''}`} data-dot={i}></span>)}
+  </div>
+
+  <main class="deck" id="deck">
+    <section class="beat intro" data-card="0">
+      <div class="beat-text">
+        <p class="kicker">Economy · Beats</p>
+        <h1 class="title">{deck.title}</h1>
+        <p class="standfirst">{deck.deck}</p>
+        <span class="rule" aria-hidden="true"></span>
+        <p class="hint">Scroll to begin ↓</p>
+      </div>
+    </section>
+
+    {deck.beats.map((b, i) => (
+      <section class="beat" data-card={i + 1}>
+        <div class="beat-text">
+          <p class="kicker">{b.kicker}</p>
+          <h2 class="headline">{b.headline}</h2>
+          <p class="body" set:html={b.body}></p>
+        </div>
+        <div class="beat-chart" id={`beat-${b.id}`} data-chart={b.panel.chart}></div>
+      </section>
+    ))}
+
+    <section class="beat outro" data-card={deck.beats.length + 1}>
+      <div class="beat-text">
+        <p class="kicker">The end</p>
+        <h2 class="brand">Time Series of India</h2>
+        <p class="standfirst">India’s public data, charted and explained. That’s the deck — keep going: the reads add the context, the dashboards let you dig in yourself.</p>
+        <div class="ctas">
+          <a class="cta" href="/economy">Explore the Reads →</a>
+          <a class="cta ghost" href="/economy/dashboards">Open the dashboards →</a>
+        </div>
+      </div>
+      <div class="outro-flow" aria-hidden="true">
+        <svg class="flow-svg" viewBox="0 0 400 360" fill="none">
+          <!-- the intro's hub, mirrored: here the dots disperse outward (sending
+               you on to the reads & dashboards) -->
+          <line class="rail" x1="8" y1="70" x2="200" y2="182" />
+          <line class="rail" x1="8" y1="182" x2="200" y2="182" />
+          <line class="rail" x1="8" y1="294" x2="200" y2="182" />
+          <line class="rail" x1="200" y1="182" x2="392" y2="96" />
+          <line class="rail" x1="200" y1="182" x2="392" y2="182" />
+          <line class="rail" x1="200" y1="182" x2="392" y2="268" />
+          <circle class="node" cx="8" cy="70" r="3.5" />
+          <circle class="node" cx="8" cy="182" r="3.5" />
+          <circle class="node" cx="8" cy="294" r="3.5" />
+          <circle class="node" cx="392" cy="96" r="3.5" />
+          <circle class="node" cx="392" cy="182" r="3.5" />
+          <circle class="node" cx="392" cy="268" r="3.5" />
+          <circle class="hub-ring" cx="200" cy="182" r="9" />
+          <circle class="hub-core" cx="200" cy="182" r="3.6" />
+          <circle class="dot" r="4"><animateMotion path="M 200 182 L 8 70" dur="8s" begin="0s" repeatCount="indefinite" /></circle>
+          <circle class="dot" r="4"><animateMotion path="M 200 182 L 8 182" dur="7.6s" begin="-2s" repeatCount="indefinite" /></circle>
+          <circle class="dot" r="4"><animateMotion path="M 200 182 L 8 294" dur="8.2s" begin="-3.5s" repeatCount="indefinite" /></circle>
+          <circle class="dot" r="3.4"><animateMotion path="M 200 182 L 392 96" dur="7.8s" begin="-1.2s" repeatCount="indefinite" /></circle>
+          <circle class="dot" r="3.4"><animateMotion path="M 200 182 L 392 182" dur="8.4s" begin="-4.6s" repeatCount="indefinite" /></circle>
+          <circle class="dot" r="3.4"><animateMotion path="M 200 182 L 392 268" dur="8s" begin="-5.5s" repeatCount="indefinite" /></circle>
+        </svg>
+      </div>
+    </section>
+  </main>
+
+  <script type="application/json" id="deck-data" set:html={JSON.stringify(deck)} />
+</BaseLayout>
+
+<style>
+  .back {
+    position: fixed; top: 12px; left: 14px; z-index: 10;
+    font: var(--tsoi-text-byline); letter-spacing: var(--tsoi-text-byline-tracking); text-transform: uppercase;
+    text-decoration: none; color: var(--tsoi-color-on-surface);
+    background: var(--tsoi-color-surface); border: 1px solid var(--tsoi-color-outline);
+    padding: 5px 10px; border-radius: 2px;
+  }
+  /* theme toggle, fixed top-right (beats has no masthead, so this is the only
+     way to switch theme without leaving the deck) */
+  .theme-fab {
+    position: fixed; top: 12px; right: 14px; z-index: 10;
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; padding: 0; cursor: pointer;
+    border: 1px solid var(--tsoi-color-outline); border-radius: 2px;
+    background: var(--tsoi-color-surface); color: var(--tsoi-color-on-surface);
+  }
+  .theme-fab .icon-sun { display: none; }
+  :global(html[data-theme='dark']) .theme-fab .icon-moon { display: none; }
+  :global(html[data-theme='dark']) .theme-fab .icon-sun { display: block; }
+
+  .dots { position: fixed; right: 14px; top: 50%; transform: translateY(-50%); z-index: 10; display: flex; flex-direction: column; gap: 8px; }
+  .dot { width: 7px; height: 7px; border-radius: var(--tsoi-radius-full); background: var(--tsoi-color-outline); transition: transform 0.2s, background 0.2s; }
+  .dot.active { background: var(--tsoi-color-primary); transform: scale(1.35); }
+
+  /* height is driven by the JS `--app-height` (a grow-only pixel value tracking
+     innerHeight); 100svh is the pre-JS fallback. See the script for why not dvh. */
+  .deck { height: var(--app-height, 100svh); overflow-y: scroll; scroll-snap-type: y mandatory; scroll-behavior: smooth; }
+  .beat {
+    /* scroll-snap-stop: always stops a fast flick at the next card instead of
+       letting momentum skip two ahead (one card per swipe). */
+    min-height: var(--app-height, 100svh); scroll-snap-align: start; scroll-snap-stop: always; box-sizing: border-box;
+    display: flex; flex-direction: column; justify-content: center;
+    gap: calc(var(--tsoi-spacing-unit) * 2);
+    padding: 72px clamp(20px, 6vw, 72px) 56px;
+  }
+  .beat + .beat { border-top: var(--tsoi-rule-column) solid var(--tsoi-color-outline); }
+
+  .beat-text { max-width: 56ch; }
+  .kicker { margin: 0 0 var(--tsoi-spacing-unit); font: var(--tsoi-text-byline); letter-spacing: var(--tsoi-text-byline-tracking); text-transform: uppercase; color: var(--tsoi-color-primary); }
+  .title { margin: 0; font: var(--tsoi-text-headline-lg); letter-spacing: var(--tsoi-text-headline-lg-tracking); }
+  .headline { margin: 0; font: var(--tsoi-text-headline-md); letter-spacing: var(--tsoi-text-headline-md-tracking); }
+  .brand { margin: 0; font: var(--tsoi-text-headline-xl); letter-spacing: var(--tsoi-text-headline-xl-tracking); color: var(--tsoi-color-on-surface); }
+  .standfirst, .body { margin: calc(var(--tsoi-spacing-unit) * 1.5) 0 0; font: var(--tsoi-text-deck); color: var(--tsoi-color-on-surface-variant); max-width: 52ch; }
+  .hint { margin-top: calc(var(--tsoi-spacing-unit) * 3); font: var(--tsoi-text-byline); text-transform: uppercase; letter-spacing: var(--tsoi-text-byline-tracking); color: var(--tsoi-color-on-surface-variant); }
+
+  .beat-chart { width: 100%; flex: 1 1 auto; min-height: 260px; }
+  .intro .beat-text, .outro .beat-text { max-width: 60ch; }
+
+  /* intro cover: a tight, vertically-centred editorial title block — no
+     illustration. A short accent rule separates the standfirst from the scroll
+     cue. Whitespace is intentional here, not wasted. */
+  .intro { justify-content: center; }
+  .intro .rule {
+    display: block; width: 40px; height: 2px; background: var(--tsoi-color-primary);
+    margin: calc(var(--tsoi-spacing-unit) * 3) 0 0;
+  }
+  .intro .hint { margin-top: calc(var(--tsoi-spacing-unit) * 2); }
+
+  /* outro keeps the ambient hub backdrop: the dots disperse outward as a send-off
+     behind the closing brand block. (Intro is deliberately type-only — the halo
+     lives on the outro only.) */
+  .outro { position: relative; }
+  .outro .beat-text { position: relative; z-index: 1; }
+  .outro-flow { position: absolute; inset: 0; z-index: 0; display: grid; place-items: center; opacity: 0.15; pointer-events: none; }
+  /* dark surfaces swallow the outline-grey rails; the backdrop needs more
+     presence there before it reads at all (don't push light past ~0.18 — the
+     drifting dots start competing with the standfirst text) */
+  :global(html[data-theme='dark']) .outro-flow { opacity: 0.28; }
+  .outro-flow .flow-svg { width: min(760px, 100%); height: auto; max-height: 76vh; transform: translateY(-6%); overflow: visible; }
+
+  /* ---- "converging hub" visual: rails fan into a central hub, then radiate out;
+     dots flow through. The rails draw themselves in, the hub pops, then the dots
+     loop. (Backup variants: docs/beats-intro-flow-rails.md.) ---- */
+  .outro-flow .rail {
+    stroke: var(--tsoi-color-outline); stroke-width: 1.4; stroke-linecap: round;
+    stroke-dasharray: 360; stroke-dashoffset: 360; animation: flow-draw 1.2s ease forwards;
+  }
+  .outro-flow .rail:nth-of-type(1) { animation-delay: 0s; }
+  .outro-flow .rail:nth-of-type(2) { animation-delay: 0.1s; }
+  .outro-flow .rail:nth-of-type(3) { animation-delay: 0.2s; }
+  .outro-flow .rail:nth-of-type(4) { animation-delay: 0.7s; }
+  .outro-flow .rail:nth-of-type(5) { animation-delay: 0.8s; }
+  .outro-flow .rail:nth-of-type(6) { animation-delay: 0.9s; }
+  .outro-flow .node { fill: var(--tsoi-color-background); stroke: var(--tsoi-color-outline); stroke-width: 1.4; }
+  .outro-flow .hub-ring {
+    stroke: var(--tsoi-color-primary); stroke-width: 1.6; fill: none; opacity: 0;
+    transform-box: fill-box; transform-origin: center; animation: flow-pop 0.7s ease 0.55s forwards;
+  }
+  .outro-flow .hub-core { fill: var(--tsoi-color-primary); opacity: 0; animation: flow-fade 0.6s ease 0.55s forwards; }
+  /* scope to the flow SVG: the bare `.dot` selector would otherwise also match
+     the fixed progress dots (.dots .dot) and cast a blurry drop-shadow on them. */
+  .outro-flow .flow-svg .dot {
+    fill: var(--tsoi-color-primary);
+    filter: drop-shadow(0 0 4px color-mix(in srgb, var(--tsoi-color-primary) 55%, transparent));
+  }
+  @keyframes flow-draw { to { stroke-dashoffset: 0; } }
+  @keyframes flow-fade { to { opacity: 1; } }
+  @keyframes flow-pop {
+    0% { opacity: 0; transform: scale(0.4); }
+    70% { opacity: 1; transform: scale(1.18); }
+    100% { opacity: 1; transform: scale(1); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .outro-flow .rail { animation: none; stroke-dashoffset: 0; }
+    .outro-flow .hub-ring, .outro-flow .hub-core { animation: none; opacity: 1; transform: none; }
+  }
+
+  .ctas { display: flex; gap: var(--tsoi-spacing-unit); flex-wrap: wrap; margin-top: calc(var(--tsoi-spacing-unit) * 2.5); }
+  .cta { font: var(--tsoi-text-label-caps); letter-spacing: 0.04em; text-transform: uppercase; text-decoration: none; padding: 10px 16px; border-radius: 2px; background: var(--tsoi-color-primary); color: #fff; }
+  @media (max-width: 600px) { .ctas { flex-direction: column; align-items: stretch; } .cta { text-align: center; padding: 12px 16px; } }
+  .cta.ghost { background: var(--tsoi-color-background); color: var(--tsoi-color-on-surface); border: 1px solid var(--tsoi-color-outline); }
+
+  @media (min-width: 880px) {
+    /* Desktop keeps the same one-card-per-swipe scroll-snap as mobile (the base
+       .deck/.beat rules), but lays each beat out as two columns: chart beside
+       the text. */
+    .beat { max-width: 1200px; margin-inline: auto; width: 100%; box-sizing: border-box;
+      flex-direction: row; align-items: center; gap: clamp(28px, 5vw, 72px); }
+    .beat-text { flex: 0 0 38%; }
+    .beat-chart { flex: 1 1 auto; height: min(58vh, 540px); min-height: 320px; }
+    /* intro is a single-column, vertically-centred editorial cover (distinct
+       from the two-column content beats): a clean title block, no illustration. */
+    .intro { flex-direction: column; align-items: center; justify-content: center; text-align: left; }
+    .outro { flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+    .outro .ctas { justify-content: center; }
+    .intro .beat-chart, .outro .beat-chart { display: none; }
+  }
+</style>
+
+<script>
+  import * as echarts from 'echarts';
+  import { buildPanel, readTokens } from '../../lib/dashboards/runtime';
+  import type { Row } from '../../lib/dashboards/runtime';
+  import type { BeatDeck } from '../../lib/beats';
+
+  // Freeze the outro's flowing dots (SMIL) when reduced motion is requested;
+  // the CSS rail/hub animations disable themselves via media query.
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    document.querySelectorAll('.flow-svg').forEach((s) => (s as SVGSVGElement).pauseAnimations());
+  }
+
+  // Mobile address-bar height fix. `100svh` leaves the last/settled card short of
+  // the screen once the address bar collapses (a sliver of the neighbouring card
+  // shows); `100dvh` fixes that but resizes the scroll container every frame as
+  // the bar animates — which stutters swiping and breaks the back-swipe. Instead
+  // pin a static pixel height from innerHeight that only ever GROWS: it updates
+  // on discrete resize/orientation events (not per frame, not on scroll) and
+  // never shrinks mid-gesture, so a snapped card fills the screen without
+  // disturbing the swipe. Falls back to 100svh if JS is off.
+  {
+    const root = document.documentElement;
+    let appH = 0;
+    const grow = () => {
+      const h = window.innerHeight;
+      if (h > appH) { appH = h; root.style.setProperty('--app-height', h + 'px'); }
+    };
+    const reset = () => { appH = 0; grow(); }; // orientation flips reset the ceiling
+    grow();
+    let raf = 0;
+    addEventListener('resize', () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(grow); });
+    addEventListener('orientationchange', reset);
+  }
+
+  // Theme toggle (beats has no masthead): flip data-theme on <html> and persist;
+  // the chart MutationObserver below re-renders for the new palette.
+  for (const btn of document.querySelectorAll('[data-tsoi-theme-toggle]')) {
+    btn.addEventListener('click', () => {
+      const html = document.documentElement;
+      const dark = html.dataset.theme === 'dark';
+      if (dark) delete html.dataset.theme;
+      else html.dataset.theme = 'dark';
+      try { localStorage.setItem('tsoi-theme', dark ? 'light' : 'dark'); } catch { /* ignore */ }
+    });
+  }
+
+  const dataEl = document.getElementById('deck-data');
+  if (dataEl) {
+    const deck: BeatDeck = JSON.parse(dataEl.textContent!);
+    (async () => {
+      const data = (await fetch(deck.dataset).then((r) => r.json())) as Record<string, Row[]>;
+      const charts: Record<string, echarts.ECharts> = {};
+      // Beats are narrative cards, not tools: the legend is a key, not a control.
+      // Freeze legend selection so a tap can't strand a series with no way back.
+      const optFor = (b: BeatDeck['beats'][number]) => {
+        const opt: any = buildPanel(b.panel as any, data[b.dataKey], {}, readTokens());
+        (Array.isArray(opt.legend) ? opt.legend : opt.legend ? [opt.legend] : []).forEach(
+          (l: any) => { l.selectedMode = false; }
+        );
+        return opt;
+      };
+      // Tap-to-highlight is a toggle. On a touch device a tap fires ECharts'
+      // hover emphasis (focus the line, fade the rest) but never a matching
+      // mouse-out, so one row stays stranded in focus with no way back. Tapping
+      // the focused line again, or tapping blank space, clears it and brings
+      // every row back.
+      const active: Record<string, string | null> = {};
+      const ensure = (b: BeatDeck['beats'][number]) => {
+        if (charts[b.id]) return;
+        const el = document.getElementById(`beat-${b.id}`);
+        if (!el) return;
+        const c = echarts.init(el);
+        charts[b.id] = c;
+        // Stage the card: the text is already there to read, and the chart's
+        // axes/grid/gridlines render immediately so the right column is never a
+        // blank gap. Only the bars/lines grow in, and the grow-in must FINISH
+        // inside the moment the eye is still taking in the new card — motion
+        // that continues once the reader has started the standfirst yanks the
+        // eye away mid-sentence (motion onset is an involuntary attention cue).
+        // Hence short delay, sub-second duration. Reduced motion skips it.
+        const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+        c.setOption(
+          reduceMotion
+            ? { ...optFor(b), animation: false }
+            : { ...optFor(b), animationDuration: 650, animationDelay: 150, animationEasing: 'cubicOut' },
+          true,
+        );
+        // A ResizeObserver fires once immediately on observe() — landing mid
+        // entrance-animation, where resize() would snap the chart to its final
+        // state and kill the grow-in. Skip that first fire; honour real resizes.
+        let firstResize = true;
+        new ResizeObserver(() => {
+          if (firstResize) { firstResize = false; return; }
+          c.resize();
+        }).observe(el);
+        c.on('click', (p: any) => {
+          if (p.seriesName && active[b.id] === p.seriesName) {
+            c.dispatchAction({ type: 'downplay' });
+            active[b.id] = null;
+          } else {
+            active[b.id] = p.seriesName ?? null;
+          }
+        });
+        c.getZr().on('click', (e: any) => {
+          if (e.target) return; // a series handled it above
+          c.dispatchAction({ type: 'downplay' });
+          active[b.id] = null;
+        });
+      };
+      // Theme/units changes are updates, not introductions — redraw quickly
+      // (almost no animation) rather than replaying the slow grow-in.
+      const rerender = () => {
+        for (const b of deck.beats) {
+          charts[b.id]?.setOption({ ...optFor(b), animationDuration: 280 }, true); // setOption(…, true) clears emphasis
+          active[b.id] = null;
+        }
+      };
+
+      const dots = [...document.querySelectorAll<HTMLElement>('.dot')];
+      const deckEl = document.getElementById('deck')!;
+      const io = new IntersectionObserver(
+        (entries) => {
+          for (const e of entries) {
+            if (!e.isIntersecting) continue;
+            const idx = +(e.target as HTMLElement).dataset.card!;
+            dots.forEach((d, i) => d.classList.toggle('active', i === idx));
+            const beat = deck.beats[idx - 1]; // card 0 = intro
+            if (beat) ensure(beat);
+          }
+        },
+        { root: deckEl, threshold: 0.5 }
+      );
+      deckEl.querySelectorAll('.beat').forEach((c) => io.observe(c));
+
+      new MutationObserver(rerender).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'data-units'] });
+      document.fonts?.ready.then(rerender);
+    })();
+  }
+
+  // E or Escape → follow the skip/back link without a mouse.
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'e' && e.key !== 'E' && e.key !== 'Escape') return;
+    if ((e.target as HTMLElement).matches('input,textarea,select,[contenteditable]')) return;
+    (document.getElementById('skip-link') as HTMLAnchorElement)?.click();
+  });
+</script>

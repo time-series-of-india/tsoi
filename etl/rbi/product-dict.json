@@ -1,0 +1,74 @@
+{
+  "RTGS": {
+    "category": "PAYMENT TRANSACTIONS",
+    "sub-category": "RBI Operated"
+  },
+  "NEFT": {
+    "category": "PAYMENT TRANSACTIONS",
+    "sub-category": "RBI Operated"
+  },
+  "AePS": {
+    "category": "PAYMENT TRANSACTIONS",
+    "sub-category": "NPCI Operated"
+  },
+  "UPI": {
+    "category": "PAYMENT TRANSACTIONS",
+    "sub-category": "NPCI Operated"
+  },
+  "IMPS": {
+    "category": "PAYMENT TRANSACTIONS",
+    "sub-category": "NPCI Operated"
+  },
+  "NACH Credit": {
+    "category": "PAYMENT TRANSACTIONS",
+    "sub-category": "NPCI Operated"
+  },
+  "NACH Debit": {
+    "category": "PAYMENT TRANSACTIONS",
+    "sub-category": "NPCI Operated"
+  },
+  "NETC": {
+    "category": "PAYMENT TRANSACTIONS",
+    "sub-category": "NPCI Operated"
+  },
+  "BBPS": {
+    "category": "PAYMENT TRANSACTIONS",
+    "sub-category": "NPCI Operated"
+  },
+  "CTS": {
+    "category": "PAYMENT TRANSACTIONS",
+    "sub-category": "NPCI Operated"
+  },
+  "Credit Card": {
+    "category": "PAYMENT TRANSACTIONS",
+    "sub-category": "Card Network Operated"
+  },
+  "Debit Card": {
+    "category": "PAYMENT TRANSACTIONS",
+    "sub-category": "Card Network Operated"
+  },
+  "Prepaid Payment Instruments (PPIs) Card": {
+    "category": "PAYMENT TRANSACTIONS",
+    "sub-category": "Card Network Operated"
+  },
+  "NFS (through ATMs)": {
+    "category": "CASH WITHDRAWAL",
+    "sub-category": "NPCI Operated"
+  },
+  "AePS (through micro-ATMs / BCs)": {
+    "category": "CASH WITHDRAWAL",
+    "sub-category": "NPCI Operated"
+  },
+  "Government Securities Clearing": {
+    "category": "Settlement Systems",
+    "sub-category": "CCIL Operated"
+  },
+  "Forex Clearing": {
+    "category": "Settlement Systems",
+    "sub-category": "CCIL Operated"
+  },
+  "Rupee Derivatives (for all deals matched during the day)": {
+    "category": "Settlement Systems",
+    "sub-category": "CCIL Operated"
+  }
+}

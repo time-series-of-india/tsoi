@@ -1,0 +1,122 @@
+---
+// Newsletter signup — Buttondown, no third-party widget, no tracking. The plain
+// <form> POSTs to Buttondown's embed endpoint and works with no JS (opens the
+// Buttondown confirm page); a tiny enhancement upgrades it to a fetch so the
+// reader gets inline success without leaving the page. Honeypot for spam.
+//
+// Double opt-in is Buttondown's default for embed subscribes, hence the
+// "check your inbox to confirm" success copy.
+interface Props {
+  compact?: boolean;   // footer: single tight row, no heading
+  heading?: string;
+  blurb?: string;
+}
+const {
+  compact = false,
+  heading = 'Get new reads in your inbox',
+  blurb = 'New charts and longform, occasionally. No spam, no tracking — unsubscribe anytime.',
+} = Astro.props;
+const ACTION = 'https://buttondown.com/api/emails/embed-subscribe/timeseriesofindia';
+---
+
+<section class="signup" class:list={{ compact }} data-signup>
+  {!compact && (
+    <div class="signup-copy">
+      <p class="signup-h">{heading}</p>
+      <p class="signup-sub">{blurb}</p>
+    </div>
+  )}
+  <form class="signup-form" action={ACTION} method="post" target="_blank">
+    {compact && <span class="signup-label">Newsletter</span>}
+    <input type="email" name="email" required placeholder="you@example.com" autocomplete="email" aria-label="Email address" />
+    {/* honeypot — real people never fill this; bots do */}
+    <input type="text" name="hp" class="hp" tabindex="-1" autocomplete="off" aria-hidden="true" />
+    <button type="submit">Subscribe</button>
+  </form>
+  <p class="signup-msg" role="status" aria-live="polite" hidden></p>
+</section>
+
+<style>
+  .signup { display: flex; flex-direction: column; gap: calc(var(--tsoi-spacing-unit) * 1.5); }
+  .signup:not(.compact) {
+    margin-top: calc(var(--tsoi-spacing-unit) * 3);
+    padding: calc(var(--tsoi-spacing-unit) * 2.5);
+    border: 1px solid var(--tsoi-color-outline);
+    background: var(--tsoi-color-surface-container-low);
+  }
+  .signup-h { margin: 0; font: var(--tsoi-text-headline-sm); letter-spacing: -0.01em; color: var(--tsoi-color-on-surface); }
+  .signup-sub { margin: 4px 0 0; font: var(--tsoi-text-body); font-size: 15px; color: var(--tsoi-color-on-surface-variant); }
+
+  .signup-form { display: flex; gap: var(--tsoi-spacing-unit); flex-wrap: wrap; }
+  .signup input[type='email'] {
+    flex: 1 1 200px; min-width: 0;
+    font: var(--tsoi-text-metric-sm); color: var(--tsoi-color-on-surface);
+    background: var(--tsoi-color-background); border: 1px solid var(--tsoi-color-outline);
+    padding: 8px 10px; border-radius: 2px;
+  }
+  .signup input[type='email']:focus-visible { outline: 2px solid var(--tsoi-color-primary); outline-offset: 1px; }
+  .signup button {
+    flex: 0 0 auto; cursor: pointer;
+    font: var(--tsoi-text-byline); text-transform: uppercase; letter-spacing: 0.08em;
+    color: #fff; background: var(--tsoi-color-primary); border: 1px solid var(--tsoi-color-primary);
+    padding: 8px 16px; border-radius: 2px;
+  }
+  .signup button:hover { filter: brightness(1.06); }
+  .signup button:disabled { opacity: 0.6; cursor: default; }
+  /* honeypot: visually and from a11y tree removed, but present in the DOM */
+  .hp { position: absolute; left: -9999px; width: 1px; height: 1px; opacity: 0; }
+
+  .signup-msg { margin: 0; font: var(--tsoi-text-byline); }
+  .signup-msg[data-kind='ok'] { color: var(--tsoi-color-primary); }
+  .signup-msg[data-kind='err'] { color: var(--tsoi-color-error, #b3261e); }
+
+  /* compact footer variant: label + field + button on one centred row */
+  .signup.compact { flex-direction: row; align-items: center; justify-content: center; flex-wrap: wrap; gap: var(--tsoi-spacing-unit); }
+  .signup.compact .signup-form { flex: 0 1 auto; flex-wrap: nowrap; align-items: center; }
+  .signup.compact .signup-label { flex: 0 0 auto; font: var(--tsoi-text-byline); text-transform: uppercase; letter-spacing: 0.08em; color: var(--tsoi-color-on-surface-variant); }
+  .signup.compact input[type='email'] { flex: 0 1 220px; }
+  .signup.compact button { flex: 0 0 auto; }
+  .signup.compact .signup-msg { flex-basis: 100%; text-align: center; }
+  /* phones: let the field + button stack under the label */
+  @media (max-width: 480px) {
+    .signup.compact .signup-form { flex-wrap: wrap; justify-content: center; }
+    .signup.compact input[type='email'] { flex: 1 1 200px; }
+  }
+</style>
+
+<script>
+  const ACTION = 'https://buttondown.com/api/emails/embed-subscribe/timeseriesofindia';
+  const valid = (e: string) => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e);
+
+  document.querySelectorAll<HTMLElement>('[data-signup]').forEach((box) => {
+    const form = box.querySelector<HTMLFormElement>('form')!;
+    const input = box.querySelector<HTMLInputElement>('input[type="email"]')!;
+    const hp = box.querySelector<HTMLInputElement>('.hp')!;
+    const msg = box.querySelector<HTMLElement>('.signup-msg')!;
+    const btn = form.querySelector<HTMLButtonElement>('button')!;
+    const say = (text: string, kind: 'ok' | 'err') => { msg.textContent = text; msg.dataset.kind = kind; msg.hidden = false; };
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (hp.value) return;                                   // bot filled the honeypot
+      const email = input.value.trim();
+      if (!valid(email)) { say('Please enter a valid email address.', 'err'); input.focus(); return; }
+      btn.disabled = true;
+      try {
+        // no-cors: the subscribe is recorded; the opaque response can't be read,
+        // so we confirm optimistically (client-side validation catches bad input).
+        await fetch(ACTION, {
+          method: 'POST',
+          mode: 'no-cors',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: new URLSearchParams({ email }).toString(),
+        });
+        form.hidden = true;
+        say('Thanks — check your inbox to confirm.', 'ok');
+      } catch {
+        btn.disabled = false;
+        say('Something went wrong. Please try again in a moment.', 'err');
+      }
+    });
+  });
+</script>

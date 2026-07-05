@@ -1,0 +1,72 @@
+---
+// Muted placeholder for an unbuilt theme section: tonal surface-dim fill,
+// line-art chart sketch, no links, no hover state.
+interface Props {
+  name: string;
+}
+
+const { name } = Astro.props;
+---
+
+<div class="coming-soon-card">
+  <svg
+    class="sketch"
+    viewBox="0 0 120 48"
+    width="120"
+    height="48"
+    role="img"
+    aria-label={`Hand-drawn sketch of an unbuilt chart, standing in for the future ${name} section`}
+  >
+    <path
+      d="M8 40 L8 8 M8 40 L112 40"
+      stroke="currentColor"
+      stroke-width="1.5"
+      fill="none"
+      stroke-linecap="round"></path>
+    <path
+      d="M16 34 L34 26 L52 30 L70 18 L88 22 L106 12"
+      stroke="currentColor"
+      stroke-width="1.5"
+      fill="none"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      stroke-dasharray="4 3"></path>
+  </svg>
+  <p class="name">{name}</p>
+  <p class="deck">We're building this.</p>
+  <p class="soon-label">Coming soon</p>
+</div>
+
+<style>
+  .coming-soon-card {
+    background: var(--tsoi-color-surface-dim);
+    padding: calc(var(--tsoi-spacing-unit) * 3) var(--tsoi-column-gutter);
+    text-align: center;
+  }
+
+  .sketch {
+    color: var(--tsoi-color-on-surface-variant);
+  }
+
+  .name {
+    margin: var(--tsoi-spacing-unit) 0 0;
+    font: var(--tsoi-text-headline-md);
+    letter-spacing: var(--tsoi-text-headline-md-tracking);
+  }
+
+  .deck {
+    margin: calc(var(--tsoi-spacing-unit) / 2) 0 0;
+    font: var(--tsoi-text-deck);
+    letter-spacing: var(--tsoi-text-deck-tracking);
+    font-style: italic;
+    color: var(--tsoi-color-on-surface-variant);
+  }
+
+  .soon-label {
+    margin: var(--tsoi-spacing-unit) 0 0;
+    font: var(--tsoi-text-label-caps);
+    letter-spacing: var(--tsoi-text-label-caps-tracking);
+    text-transform: uppercase;
+    color: var(--tsoi-color-on-surface-variant);
+  }
+</style>

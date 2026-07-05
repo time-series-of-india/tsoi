@@ -1,0 +1,111 @@
+---
+// Base HTML shell for every TSOI page: head metadata, fonts, theme bootstrap.
+// source_agency / source_url / last_updated are accepted here so story pages
+// (Epic 3) can populate the schema.org Dataset JSON-LD via the `ld-json` slot;
+// this layout itself renders no provenance UI.
+import '../styles/global.css';
+
+interface Props {
+  title: string;
+  description: string;
+  og_type?: 'website' | 'article';
+  og_image?: string; // per-content social card; falls back to /og-default.png
+  noindex?: boolean;
+  source_agency?: string;
+  source_url?: string;
+  last_updated?: string;
+}
+
+const { title, description, og_type = 'website', og_image = '/og-default.png', noindex = false } = Astro.props;
+const canonical = new URL(Astro.url.pathname, Astro.site);
+const ogImageUrl = new URL(og_image, Astro.site);
+---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" href="/favicon.ico" sizes="32x32" />
+    <link rel="canonical" href={canonical} />
+    {noindex && <meta name="robots" content="noindex, nofollow" />}
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:type" content={og_type} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:image" content={ogImageUrl} />
+    <meta property="og:site_name" content="Time Series of India" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:image" content={ogImageUrl} />
+    <link
+      rel="preload"
+      href="/fonts/playfair-display-latin-900-normal.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+    <link
+      rel="preload"
+      href="/fonts/playfair-display-latin-700-normal.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+    <link
+      rel="preload"
+      href="/fonts/dm-sans-latin-400-normal.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+    <link
+      rel="preload"
+      href="/fonts/dm-mono-latin-400-normal.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+    <script is:inline>
+      // Mark JS available before first paint, so CSS can hold scroll-triggered
+      // reveal animations at their blank start state (no flash of the finished
+      // diagram) while no-JS keeps them shown.
+      document.documentElement.classList.add('js');
+      // Apply persisted theme + reading text-size before first paint (no flash).
+      try {
+        if (localStorage.getItem('tsoi-theme') === 'dark') {
+          document.documentElement.dataset.theme = 'dark';
+        }
+        const rs = localStorage.getItem('tsoi-reading-scale');
+        if (rs) document.documentElement.style.setProperty('--tsoi-reading-scale', rs);
+        // Units: an explicit stored choice always wins. On a first visit, pick a
+        // sensible default from the browser timezone — India → crore, else
+        // billion — without persisting it (so it stays adaptive until the reader
+        // actually chooses). Only 'intl' needs flagging; 'in' is the CSS default.
+        let units = localStorage.getItem('tsoi-units');
+        if (!units) {
+          const tz = (Intl.DateTimeFormat().resolvedOptions().timeZone || '');
+          units = /Kolkata|Calcutta/.test(tz) ? 'in' : 'intl';
+        }
+        if (units === 'intl') document.documentElement.dataset.units = 'intl';
+      } catch {
+        /* localStorage unavailable (private mode etc.) — use defaults */
+      }
+    </script>
+    <script>
+      // Prose figures (beat bodies, stat callouts) re-format with the unit
+      // toggle, the same way charts do. Runs after parse and on every toggle.
+      import { applyProseUnits } from '../lib/units-prose';
+      applyProseUnits();
+      new MutationObserver(() => applyProseUnits()).observe(document.documentElement, {
+        attributes: true,
+        attributeFilter: ['data-units'],
+      });
+    </script>
+    <slot name="ld-json" />
+  </head>
+  <body>
+    <slot />
+  </body>
+</html>

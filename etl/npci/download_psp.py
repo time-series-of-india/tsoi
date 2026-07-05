@@ -1,0 +1,52 @@
+#!/usr/bin/env python3
+"""Download UPI top-15 payer and payee PSP statistics from NPCI."""
+import json
+import time
+from pathlib import Path
+
+from fetcher import fetch_all, iter_months, load_cached
+
+YEARS = [2022, 2023, 2024, 2025, 2026]
+TYPES = ["payer", "payee"]
+
+out_dir = Path(__file__).parent / "raw_psp"
+out_dir.mkdir(exist_ok=True)
+
+all_records, skipped = [], []
+
+for year, month in iter_months(YEARS):
+    for type_name in TYPES:
+        fname = out_dir / f"{year}_{month}_{type_name}.json"
+        if fname.exists():
+            print(f"  skip: {fname.name}")
+            all_records.extend(load_cached(fname))
+            continue
+
+        params = {
+            "product_name": "UPI",
+            "tab_name": "top-15-psps",
+            "type_name": type_name,
+            "year": year,
+            "month": month,
+        }
+        try:
+            results = fetch_all(params, page_size=15)
+            if not results:
+                print(f"  no data: {year} {month} {type_name}")
+                skipped.append((year, month, type_name))
+                continue
+            with open(fname, "w") as f:
+                json.dump(results, f)
+            all_records.extend(results)
+            print(f"  saved: {fname.name} ({len(results)} rows)")
+        except Exception as e:
+            print(f"  error: {year} {month} {type_name} — {e}")
+            skipped.append((year, month, type_name))
+        time.sleep(0.3)
+
+combined = Path(__file__).parent / "all_psp.json"
+with open(combined, "w") as f:
+    json.dump(all_records, f, indent=2)
+print(f"\nDone. {len(all_records)} records -> {combined}")
+if skipped:
+    print(f"Skipped: {skipped}")

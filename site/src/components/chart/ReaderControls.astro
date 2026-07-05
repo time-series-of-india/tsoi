@@ -1,0 +1,48 @@
+---
+// Reader text-size stepper for long-form reading surfaces (story pages). Steps
+// the --tsoi-reading-scale CSS var (which reading text uses) and persists it to
+// localStorage; BaseLayout applies the persisted value before first paint.
+---
+
+<div class="reader" role="group" aria-label="Text size">
+  <span class="reader-label">Text</span>
+  <button type="button" data-step="-1" aria-label="Decrease text size">A−</button>
+  <button type="button" data-step="1" aria-label="Increase text size">A+</button>
+</div>
+
+<style>
+  .reader { display: inline-flex; align-items: center; gap: var(--tsoi-spacing-unit); }
+  .reader-label { font: var(--tsoi-text-byline); text-transform: uppercase; letter-spacing: var(--tsoi-text-byline-tracking); color: var(--tsoi-color-on-surface-variant); }
+  .reader button {
+    font: var(--tsoi-text-metric-sm); line-height: 1; cursor: pointer;
+    min-width: 28px; padding: 4px 6px; border: 1px solid var(--tsoi-color-outline); border-radius: 2px;
+    background: var(--tsoi-color-background); color: var(--tsoi-color-on-surface);
+  }
+  .reader button:disabled { opacity: 0.4; cursor: default; }
+  .reader button[data-step='-1'] { font-size: 11px; }
+  .reader button[data-step='1'] { font-size: 15px; }
+</style>
+
+<script>
+  const STEPS = [0.85, 1, 1.15, 1.3, 1.45];
+  const root = document.documentElement;
+  const btns = [...document.querySelectorAll<HTMLButtonElement>('.reader button')];
+
+  const nearest = () => {
+    const v = parseFloat(getComputedStyle(root).getPropertyValue('--tsoi-reading-scale')) || 1;
+    let best = 1;
+    STEPS.forEach((s, i) => { if (Math.abs(s - v) < Math.abs(STEPS[best] - v)) best = i; });
+    return best;
+  };
+  const sync = (i: number) => btns.forEach((b) => {
+    b.disabled = (b.dataset.step === '-1' && i === 0) || (b.dataset.step === '1' && i === STEPS.length - 1);
+  });
+  const apply = (i: number) => {
+    i = Math.max(0, Math.min(STEPS.length - 1, i));
+    root.style.setProperty('--tsoi-reading-scale', String(STEPS[i]));
+    try { localStorage.setItem('tsoi-reading-scale', String(STEPS[i])); } catch {}
+    sync(i);
+  };
+  btns.forEach((b) => b.addEventListener('click', () => apply(nearest() + Number(b.dataset.step))));
+  sync(nearest());
+</script>

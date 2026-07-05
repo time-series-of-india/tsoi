@@ -1,0 +1,8 @@
+---
+import BeatsDeck from '../../components/story/BeatsDeck.astro';
+import { getDeck } from '../../lib/beats';
+
+const deck = getDeck('payments');
+---
+
+<BeatsDeck deck={deck} home />

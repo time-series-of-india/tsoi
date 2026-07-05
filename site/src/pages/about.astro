@@ -1,0 +1,84 @@
+---
+// Static About page: mission (translate official releases into charted insight),
+// the atlas ambition (any India-specific public dataset), a first-person maker
+// note, then a compressed sources/reuse/disclaimer block. Linked from Footer.
+import StoryPage from '../layouts/StoryPage.astro';
+import SectionHeader from '../components/editorial/SectionHeader.astro';
+---
+
+<StoryPage
+  title="About — Time Series of India"
+  description="Why Time Series of India exists: turning India's official public data — raw Excel releases and reports — into clear, insightful charts and explainers."
+>
+  <SectionHeader label="About" />
+  <article class="prose">
+    <h3>What this is</h3>
+    <p>
+      India publishes some of the world's richest public data, but most of it lives inside Excel
+      attachments and ministry portals, filed the way departments work, not the way questions are
+      asked. Time Series of India does the translation once, in public:
+      official releases become clear charts and short explainers — swipeable beats, written
+      reads, interactive dashboards — every number traceable to the release it came from.
+    </p>
+
+    <h3>One theme at a time</h3>
+    <p>
+      The economy section — how India moves money, from RBI and NPCI statistics — is the first
+      theme. The same method works on any India-specific public dataset:
+      environment, infrastructure, demographics, governance. New themes will land as good
+      datasources are found and explored. If you know a public dataset that deserves this treatment,
+      <a href="https://github.com/time-series-of-india/tsoi/issues">suggest it on GitHub</a> —
+      finding them is half the fun of this project.
+    </p>
+    <p>
+      The code behind the site — parsers, pipeline, charts — is
+      <a href="https://github.com/time-series-of-india/tsoi">open source</a>.
+    </p>
+
+
+    <h3>Sources, reuse &amp; disclaimer</h3>
+    <p>
+      Every figure derives from a publicly released official dataset, and each read and dashboard
+      names its source — see <a href="/data">the data page</a> for the full list per theme. Data
+      is © its publishing agency (currently the Reserve Bank of India and NPCI) and reproduced
+      with acknowledgement; where our figures and a source disagree, the source is correct. Map
+      boundaries are illustrative only and are not an authority on any boundary — refer to the
+      Survey of India. You're welcome to cite TSOI's charts and writing with attribution and a
+      link; for reuse of the underlying statistics beyond informational, non-commercial purposes,
+      check the source agency's own terms.
+    </p>
+    <p>
+      Time Series of India is provided for informational and educational purposes only. It is
+      independent and <strong>not affiliated with, endorsed by, or representing</strong> the
+      Reserve Bank of India, the National Payments Corporation of India, or the Government of
+      India. Figures may differ from the primary source; verify against the original before
+      relying on them. The site is provided “as is,” without warranties of any kind, and its
+      maintainers accept no liability for decisions made on the basis of it. Trademarks (UPI,
+      IMPS, RuPay, and bank or app names) belong to their respective owners and are used only to
+      identify the services they name.
+    </p>
+  </article>
+</StoryPage>
+
+<style>
+  .prose {
+    max-width: 70ch;
+    margin-top: calc(var(--tsoi-spacing-unit) * 2);
+  }
+
+  .prose h3 {
+    margin: calc(var(--tsoi-spacing-unit) * 3) 0 0;
+    font: var(--tsoi-text-headline-md);
+    letter-spacing: var(--tsoi-text-headline-md-tracking);
+  }
+
+  .prose p {
+    margin: var(--tsoi-spacing-unit) 0 0;
+    font: var(--tsoi-text-deck);
+    letter-spacing: var(--tsoi-text-deck-tracking);
+  }
+
+  .prose a {
+    color: var(--tsoi-color-primary);
+  }
+</style>

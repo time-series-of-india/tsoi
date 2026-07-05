@@ -1,0 +1,101 @@
+---
+// Shared shell for short-form Reads: story chrome + a back link + kicker/
+// headline/deck + a text-size toolbar, then a slot for the read body (chart
+// figures + colour-coded prose). Content styles are emitted :global under .read
+// so slotted page markup is styled consistently across every read.
+// Units (cr/bn) + theme are global, set-once prefs that live in the masthead;
+// only the reader text-size control sits here in the read header.
+import StoryPage from '../../layouts/StoryPage.astro';
+import ReaderControls from '../chart/ReaderControls.astro';
+import ScrollProgress from './ScrollProgress.astro';
+import ShareButtons from '../editorial/ShareButtons.astro';
+import { READS } from '../../lib/reads-index';
+import { readingMinutes } from '../../lib/reading-time';
+
+interface Props {
+  slug?: string;            // look up title/deck/crumb from the reads registry
+  kicker: string;
+  title?: string;           // optional overrides (registry is the default source)
+  deck?: string;
+  crumb?: string;
+  asOf?: string;
+  description?: string;
+  units?: boolean;          // accepted for back-compat; units now live in the masthead
+}
+const props = Astro.props;
+const entry = props.slug ? READS.find((r) => r.slug === props.slug) : undefined;
+const kicker = props.kicker;
+const title = props.title ?? entry?.title ?? '';
+const deck = props.deck ?? entry?.deck ?? '';
+const { asOf, description } = props;
+// Per-read social card (scripts/build-og-cards.mjs); falls back in StoryPage.
+const ogImage = props.slug ? `/og/reads/${props.slug}.png` : undefined;
+---
+
+<StoryPage title={title} description={description ?? deck} og_type="article" og_image={ogImage}>
+  <ScrollProgress />
+  <article class="read">
+    <a class="back" href="/economy">&lsaquo; All reads</a>
+    <header class="head">
+      <p class="kicker">{kicker}{props.slug ? ` · ${readingMinutes(props.slug)} min read` : ''}{asOf ? ` · data through ${asOf}` : ''}</p>
+      <h1>{title}</h1>
+      <p class="deck">{deck}</p>
+      <div class="toolbar"><ReaderControls /></div>
+    </header>
+    <slot />
+    <ShareButtons title={title} />
+  </article>
+</StoryPage>
+
+<style>
+  .read { max-width: 680px; margin-inline: auto; }
+  .back { display: inline-flex; align-items: center; gap: 5px; font: var(--tsoi-text-byline); font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--tsoi-color-primary); text-decoration: none; padding: 4px 0; margin-bottom: calc(var(--tsoi-spacing-unit) * 2); }
+  .back:hover { text-decoration: underline; }
+  .head { margin-bottom: calc(var(--tsoi-spacing-unit) * 3); }
+  .kicker { margin: 0 0 var(--tsoi-spacing-unit); font: var(--tsoi-text-byline); letter-spacing: 0.08em; text-transform: uppercase; color: var(--tsoi-color-primary); }
+  .head h1 { margin: 0; font: var(--tsoi-text-headline-lg); letter-spacing: var(--tsoi-text-headline-lg-tracking); }
+  .deck { margin: var(--tsoi-spacing-unit) 0 0; font: var(--tsoi-text-deck); font-size: 17px; color: var(--tsoi-color-on-surface-variant); }
+  .toolbar { display: flex; align-items: center; gap: calc(var(--tsoi-spacing-unit) * 2); flex-wrap: wrap; margin-top: calc(var(--tsoi-spacing-unit) * 2); }
+  /* keep the read headline subordinate to the masthead on phones */
+  @media (max-width: 600px) {
+    .head h1 { font-size: 20px; line-height: 1.25; }
+    .deck { font-size: 15px; }
+  }
+</style>
+
+<style is:global>
+  /* entity colour system — set a --ent, used by prose keywords and chart series */
+  .read .e-merch { --ent: var(--tsoi-color-chart-1); }
+  .read .e-p2p   { --ent: var(--tsoi-color-chart-2); }
+  .read .e-app   { --ent: var(--tsoi-color-chart-4); }
+  .read .e-psp   { --ent: var(--tsoi-color-chart-2); }
+  .read .e-npci  { --ent: var(--tsoi-color-chart-1); }
+  .read .e-rem   { --ent: var(--tsoi-color-chart-3); }
+  .read .e-ben   { --ent: var(--tsoi-color-chart-6); }
+  .read .e-fail  { --ent: var(--tsoi-color-chart-5); }
+  .read .e-rate  { --ent: var(--tsoi-color-chart-1); } /* single-series default: orange */
+  /* generic palette aliases for color-coding 2-3 protagonists to chart series */
+  .read .e1 { --ent: var(--tsoi-color-chart-1); }
+  .read .e2 { --ent: var(--tsoi-color-chart-2); }
+  .read .e3 { --ent: var(--tsoi-color-chart-3); }
+  .read .e4 { --ent: var(--tsoi-color-chart-4); }
+  .read .e5 { --ent: var(--tsoi-color-chart-5); }
+  .read .e6 { --ent: var(--tsoi-color-chart-6); }
+  .read .e { color: var(--ent); font-weight: 600; border-bottom: 2px solid color-mix(in srgb, var(--ent) 35%, transparent); }
+
+  .read .prose p { font: var(--tsoi-text-body); font-size: calc(17px * var(--tsoi-reading-scale, 1)); line-height: 1.7; margin: 0 0 calc(var(--tsoi-spacing-unit) * 2.5); }
+  .read .prose .source { font: var(--tsoi-text-byline); color: var(--tsoi-color-on-surface-variant); }
+  .read .prose .source a { color: var(--tsoi-color-primary); text-decoration: none; }
+
+  .read figure { margin: 0 0 calc(var(--tsoi-spacing-unit) * 3); }
+  .read figcaption { font: var(--tsoi-text-byline); color: var(--tsoi-color-on-surface-variant); margin-top: var(--tsoi-spacing-unit); line-height: 1.5; }
+  .read .chartfig .chart { width: 100%; border: 1px solid var(--tsoi-color-outline-variant); border-radius: var(--tsoi-radius-lg); background: var(--tsoi-color-surface-container-low); }
+  /* charts that need more width than the text column (e.g. a bump with name gutters) */
+  .read .chartfig.wide { width: min(860px, 94vw); margin-inline: calc((100% - min(860px, 94vw)) / 2); }
+
+  .read .pullstat { display: flex; gap: calc(var(--tsoi-spacing-unit) * 3); flex-wrap: wrap; margin: 0 0 calc(var(--tsoi-spacing-unit) * 3); padding: calc(var(--tsoi-spacing-unit) * 2); border-block: 1px solid var(--tsoi-color-outline); }
+  .read .pullstat > div { display: flex; flex-direction: column; gap: 2px; }
+  .read .pullstat .n { font: var(--tsoi-text-metric-xl); color: var(--ent, var(--tsoi-color-primary)); }
+  .read .pullstat .l { font: var(--tsoi-text-body); color: var(--tsoi-color-on-surface-variant); max-width: 26ch; }
+  .read .pullstat .l em { font-style: italic; color: var(--tsoi-color-on-surface); }
+</style>

@@ -1,0 +1,59 @@
+# --- Python ---
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+venv/
+.venv/
+env/
+*.egg-info/
+
+# --- Node / site build ---
+node_modules/
+site/dist/
+site/.astro/
+
+# --- Build-time database data ---
+infra/db/timescale_data/
+infra/db/data/
+
+# --- Source data & ETL intermediates (not committed — see CONTRIBUTING) ---
+# Raw RBI/NPCI downloads and every generated/fetched ETL artifact stay local.
+data/
+etl/**/*.json
+etl/**/*.csv
+# product-dict.json is committed config, not a generated artifact — keep it tracked.
+!etl/rbi/product-dict.json
+# Generated static datasets the site emits at build time.
+site/public/data/
+*.log
+
+# --- Environment / secrets ---
+.env
+*.env
+.env.*
+.env.local
+.env.*.local
+
+# --- Local-only: internal tooling, planning docs, agent config (not public deliverables) ---
+docs/
+_bmad/
+_bmad-output/
+panels/
+notes.md
+TODO.md
+.claude/
+opencode.json
+**/.od-skills/
+# Legacy/internal ops (Grafana dashboards, nginx, image renderer) kept out of the public repo.
+infra/grafana/
+infra/grafana_custom/
+infra/dashboard/
+infra/e-charts/
+infra/nginx/
+infra/timescaledb/
+
+# --- Misc ---
+.DS_Store
+Thumbs.db
+tsoi-shots/

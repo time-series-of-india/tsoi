@@ -1,0 +1,83 @@
+---
+// Short read: the app duopoly + the rank race. Data:
+// public/data/economy/reads/duel.json (scripts/build-reads-data.mjs).
+import ReadLayout from '../../../components/read/ReadLayout.astro';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+
+const data = JSON.parse(readFileSync(fileURLToPath(new URL('../../../../public/data/economy/reads/duel.json', import.meta.url)), 'utf8'));
+const { stats } = data;
+const payload = JSON.stringify(data);
+---
+
+<ReadLayout
+  slug="duel"
+  kicker="Economy · Monthly"
+  asOf={stats.asOf}
+>
+  <figure class="chartfig wide">
+    <div class="chart" id="read-chart" style="height:440px"></div>
+    <figcaption>Rank of the leading UPI apps by yearly transaction volume. Source: NPCI.</figcaption>
+  </figure>
+
+  <div class="prose">
+    <p>Two apps, PhonePe and Google Pay, take about
+      <strong>{stats.top2}%</strong> of every UPI payment between them, and have for years. That is
+      well past the ceiling the regulator set in 2020 to curb dominance: a cap of 30% of UPI volume
+      per app. The deadline to comply has now been pushed three times, most recently to the end of
+      <strong>2026</strong>.</p>
+    <p>The contest is all underneath. The chart ranks the leading apps year by year, and beneath the
+      settled top two the order reshuffles. A newcomer, super.money,
+      backed by Flipkart, entered in 2024 and climbed into the top five within a year on the back of
+      guaranteed cashback, the same playbook the incumbents once used to get big.</p>
+
+    <div class="pullstat">
+      <div><span class="n">{stats.top2}%</span><span class="l">of UPI run through just <em>two</em> apps</span></div>
+      <div><span class="n">2027</span><span class="l">when the 30% cap is finally meant to bite</span></div>
+    </div>
+
+    <p>The concentration is why the cap exists. When four-fifths of a country&rsquo;s payments run
+      through two apps, an outage at one is a national event, and a single company gains enormous
+      sway over how people pay. Whether the cap ever binds, or is deferred a fourth time, is one of
+      the open questions hanging over UPI.</p>
+
+    <p class="source">Sources: NPCI UPI app statistics, processed by Time Series of India;
+      <a href="https://www.businesstoday.in/tech-today/news/story/npci-extends-30-upi-market-share-cap-deadline-on-3rd-party-apps-to-december-2026-459171-2024-12-31">market-share cap</a>,
+      <a href="https://www.business-standard.com/companies/news/flipkart-walmart-supermoney-fresh-investment-upi-app-125092300349_1.html">super.money</a>.
+      <a href="/economy/dashboards/upi-ecosystem">Explore the dashboard →</a></p>
+  </div>
+
+  <script type="application/json" id="read-data" set:html={payload}></script>
+</ReadLayout>
+
+<script>
+  import * as echarts from 'echarts';
+  import { buildPanel, readTokens } from '../../../lib/dashboards/runtime';
+  import type { PanelSpec, CtrlState } from '../../../lib/dashboards/runtime';
+
+  const data = JSON.parse(document.getElementById('read-data')!.textContent!);
+  const host = document.getElementById('read-chart');
+  if (host) {
+    const spec: PanelSpec = { id: 'duel', title: '', chart: 'bump', encoding: { x: 'period', series: 'app', y: 'volume_mn' } };
+    const opt = () => {
+      const o: any = buildPanel(spec, data.appRace, { metric: 'volume_cr' } as CtrlState, readTokens());
+      // mobile: drop the per-entry left labels (keep only the final rank+name on the
+      // right) and tighten gutters, so the labels don't overlap on a narrow plot.
+      if (typeof window !== 'undefined' && window.innerWidth < 560) {
+        o.grid = { ...o.grid, left: 44, right: 96 };
+        o.series.forEach((s: any) => {
+          const last = s.data.length - 1;
+          s.data.forEach((d: any, i: number) => { if (i !== last && d && d.label) d.label = { show: false }; });
+          if (s.label?.rich) { s.label.rich.n.fontSize = 10; s.label.rich.r.fontSize = 10; }
+        });
+      }
+      return o;
+    };
+    const chart = echarts.init(host);
+    const render = () => chart.setOption(opt(), true);
+    new ResizeObserver(() => chart.resize()).observe(host);
+    new MutationObserver(render).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'data-units'] });
+    render();
+    document.fonts?.ready.then(render);
+  }
+</script>

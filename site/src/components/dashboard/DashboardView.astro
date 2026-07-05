@@ -1,0 +1,619 @@
+---
+// Generic spec-driven dashboard renderer. Global control bar + an optional
+// stat strip + a grid of chart panels. The client island fetches the dataset,
+// builds each panel via the runtime registry, populates cascading select
+// options, and wires controls — globals re-render everything, per-panel
+// controls re-render only their own panel.
+import type { DashboardSpec, Control } from '../../lib/dashboards/runtime';
+
+interface Props { spec: DashboardSpec }
+const { spec } = Astro.props;
+
+const statPanels = spec.panels.filter((p) => p.chart === 'stat');
+const chartPanels = spec.panels.filter((p) => p.chart !== 'stat');
+
+function ctlAttrs(c: Control, scope: string) {
+  return { 'data-ctl': c.id, 'data-scope': scope };
+}
+---
+
+<div class="dash">
+  {spec.globals && spec.globals.length > 0 && (
+    <div class="global-bar">
+      {spec.globals.map((c) => (
+        <div class="ctl">
+          <span class="ctl-label">{c.label}</span>
+          {c.type === 'select' ? (
+            <select {...ctlAttrs(c, 'global')}>
+              {(c.options ?? []).map((o) => (
+                <option value={o.value} selected={o.value === c.default}>{o.label}</option>
+              ))}
+            </select>
+          ) : c.type === 'multiselect' ? (
+            <div class="ms" {...ctlAttrs(c, 'global')}>
+              <button type="button" class="ms-btn"><span class="ms-summary">—</span><span class="ms-caret" aria-hidden="true">▾</span></button>
+              <div class="ms-menu" hidden>
+                <input type="text" class="ms-search" placeholder="Search…" autocomplete="off" />
+                <div class="ms-actions">
+                  <button type="button" class="ms-all">Select all</button>
+                  <button type="button" class="ms-clear">Clear all</button>
+                </div>
+                <div class="ms-opts">
+                  {(c.options ?? []).map((o) => (
+                    <label class="ms-opt"><input type="checkbox" value={o.value} checked={Array.isArray(c.default) && c.default.includes(o.value)} />{o.label}</label>
+                  ))}
+                </div>
+              </div>
+            </div>
+          ) : c.type === 'daterange' ? (
+            <div class="dr" {...ctlAttrs(c, 'global')}>
+              <button type="button" class="dr-btn"><span class="dr-summary">—</span><span class="dr-caret" aria-hidden="true">▾</span></button>
+              <div class="dr-menu" hidden>
+                <div class="dr-quick">
+                  {(c.quick ?? []).map((o) => (
+                    <button type="button" class="dr-q" data-value={o.value}>{o.label}</button>
+                  ))}
+                </div>
+                <div class="dr-custom">
+                  <label class="dr-field"><span>From</span><select class="dr-from"></select></label>
+                  <label class="dr-field"><span>To</span><select class="dr-to"></select></label>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div class="seg" {...ctlAttrs(c, 'global')}>
+              {(c.options ?? []).map((o) => (
+                <button type="button" data-value={o.value} class={o.value === c.default ? 'active' : ''}>{o.label}</button>
+              ))}
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  )}
+
+  {statPanels.length > 0 && (
+    <div class="stat-strip">
+      {statPanels.map((p) => (
+        <div class="stat" id={`panel-${p.id}`}>
+          <span class="stat-value">—</span>
+          <span class="stat-label">{p.title}</span>
+        </div>
+      ))}
+    </div>
+  )}
+
+  <div class="panels">
+    {chartPanels.map((p) => (
+      <section class:list={['panel', { wide: p.wide }]}>
+        <div class="panel-bar">
+          <span class="dot" aria-hidden="true"></span>
+          <span class="panel-title">{p.title}</span>
+          <div class="panel-right">
+            {p.controls && p.controls.length > 0 && (
+              <div class="panel-ctls">
+                {p.controls.map((c) => (
+                  <div class="seg" {...ctlAttrs(c, p.id)}>
+                    {(c.options ?? []).map((o) => (
+                      <button type="button" data-value={o.value} class={o.value === c.default ? 'active' : ''}>{o.label}</button>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            )}
+            <button type="button" class="panel-max" aria-label="Maximize panel">⤢</button>
+          </div>
+        </div>
+        <div class="chart" id={`panel-${p.id}`} data-chart={p.chart}></div>
+      </section>
+    ))}
+  </div>
+</div>
+
+<script type="application/json" id="dash-spec" set:html={JSON.stringify(spec)} />
+
+<style>
+  .dash { display: flex; flex-direction: column; gap: calc(var(--tsoi-spacing-unit) * 2); }
+  .global-bar {
+    display: flex; align-items: center; gap: calc(var(--tsoi-spacing-unit) * 2); flex-wrap: wrap;
+    padding: var(--tsoi-spacing-unit) calc(var(--tsoi-spacing-unit) * 1.5);
+    border: var(--tsoi-rule-column) solid var(--tsoi-color-outline);
+    background: var(--tsoi-color-surface-container-high);
+  }
+  .ctl { display: flex; align-items: center; gap: calc(var(--tsoi-spacing-unit) / 2); }
+  .ctl-label { font: var(--tsoi-text-byline); text-transform: uppercase; color: var(--tsoi-color-on-surface-variant); }
+  /* Units sits to the far right of the control bar, away from the data filters. */
+  .ctl-units { margin-left: auto; }
+  /* On phones, stack every control on its own full-width row (label left,
+     control right) instead of wrapping two-per-line. The control bar sticks to
+     the top so units (and the filters) stay reachable while scrolling panels. */
+  @media (max-width: 600px) {
+    .global-bar { flex-direction: column; align-items: stretch; gap: var(--tsoi-spacing-unit); position: sticky; top: 0; z-index: 5; }
+    .ctl { width: 100%; justify-content: space-between; }
+    .ctl-units { margin-left: 0; }
+  }
+
+  .stat-strip { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: calc(var(--tsoi-spacing-unit) * 2); }
+  @media (max-width: 600px) { .stat-strip { grid-template-columns: 1fr; gap: var(--tsoi-spacing-unit); } }
+  .stat { border: var(--tsoi-rule-column) solid var(--tsoi-color-outline); background: var(--tsoi-color-surface); padding: calc(var(--tsoi-spacing-unit) * 1.5); display: flex; flex-direction: column; gap: calc(var(--tsoi-spacing-unit) / 2); }
+  .stat-value { font: var(--tsoi-text-metric-xl); color: var(--tsoi-color-on-surface); }
+  .stat-label { font: var(--tsoi-text-byline); text-transform: uppercase; letter-spacing: 0.04em; color: var(--tsoi-color-on-surface-variant); }
+
+  .panels { display: grid; grid-template-columns: 1fr; gap: calc(var(--tsoi-spacing-unit) * 2); }
+  @media (min-width: 880px) { .panels { grid-template-columns: 1fr 1fr; } .panel.wide { grid-column: 1 / -1; } }
+
+  .panel { border: var(--tsoi-rule-column) solid var(--tsoi-color-outline); background: var(--tsoi-color-surface); }
+  .panel-bar {
+    display: flex; align-items: center; gap: var(--tsoi-spacing-unit); flex-wrap: wrap;
+    padding: var(--tsoi-spacing-unit);
+    border-bottom: var(--tsoi-rule-column) solid var(--tsoi-color-outline);
+  }
+  .panel-title { font: var(--tsoi-text-label-caps); letter-spacing: 0.04em; text-transform: uppercase; color: var(--tsoi-color-on-surface); }
+  .dot { width: 6px; height: 6px; border-radius: var(--tsoi-radius-full); background: var(--tsoi-color-chart-1); flex-shrink: 0; }
+  .panel-right { margin-left: auto; display: flex; align-items: center; gap: var(--tsoi-spacing-unit); }
+  .panel-ctls { display: flex; gap: var(--tsoi-spacing-unit); }
+  .panel-max {
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    width: 22px; height: 22px; padding: 0; border: 0; border-radius: 2px; cursor: pointer;
+    background: transparent; color: var(--tsoi-color-on-surface-variant); font-size: 13px; line-height: 1;
+  }
+  .panel-max:hover { background: var(--tsoi-color-surface-container-high); color: var(--tsoi-color-on-surface); }
+  .panel.maximized {
+    position: fixed; inset: 0; z-index: 40;
+    display: flex; flex-direction: column;
+  }
+  .panel.maximized .chart { flex: 1; height: auto; }
+
+  select {
+    font: var(--tsoi-text-metric-sm); color: var(--tsoi-color-on-surface);
+    background: var(--tsoi-color-background); border: 1px solid var(--tsoi-color-outline);
+    padding: 4px 8px; border-radius: 2px; max-width: 200px;
+  }
+  .ms { position: relative; }
+  .ms-btn {
+    display: inline-flex; align-items: center; gap: 6px; cursor: pointer;
+    font: var(--tsoi-text-metric-sm); color: var(--tsoi-color-on-surface);
+    background: var(--tsoi-color-background); border: 1px solid var(--tsoi-color-outline);
+    padding: 4px 8px; border-radius: 2px; max-width: 220px;
+  }
+  .ms-summary { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ms-caret { color: var(--tsoi-color-on-surface-variant); }
+  .ms-menu {
+    position: absolute; z-index: 20; top: calc(100% + 4px); left: 0;
+    min-width: 240px; max-width: calc(100vw - 28px);
+    background: var(--tsoi-color-surface); border: 1px solid var(--tsoi-color-outline);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
+  }
+  .ms-search {
+    display: block; width: 100%; box-sizing: border-box;
+    padding: 6px 8px; border: 0; border-bottom: 1px solid var(--tsoi-color-outline);
+    font: var(--tsoi-text-metric-sm); color: var(--tsoi-color-on-surface);
+    background: var(--tsoi-color-background); outline: none;
+  }
+  .ms-search::placeholder { color: var(--tsoi-color-on-surface-variant); }
+  .ms-actions { display: flex; border-bottom: 1px solid var(--tsoi-color-outline); }
+  .ms-all, .ms-clear {
+    flex: 1; text-align: center; padding: 5px 8px;
+    border: 0; cursor: pointer;
+    font: var(--tsoi-text-byline); text-transform: uppercase; letter-spacing: 0.04em;
+    color: var(--tsoi-color-primary); background: transparent;
+  }
+  .ms-clear { border-left: 1px solid var(--tsoi-color-outline); }
+  .ms-all:hover, .ms-clear:hover { background: var(--tsoi-color-surface-container-high); }
+  .ms-opts { max-height: 240px; overflow-y: auto; overflow-x: auto; padding: 4px; }
+  /* .ms-opt has display:flex from the rule below; [hidden] needs higher specificity to hide it. */
+  .ms-menu :global(.ms-opt[hidden]) { display: none; }
+  /* options are (re)generated at runtime via innerHTML, so they carry no scoped
+     attribute — target them :global, bounded under the scoped .ms-menu. */
+  .ms-menu :global(.ms-opt) {
+    display: flex; align-items: center; gap: 8px; padding: 5px 7px; cursor: pointer;
+    font: var(--tsoi-text-metric-sm); color: var(--tsoi-color-on-surface); white-space: nowrap;
+  }
+  .ms-menu :global(.ms-opt:hover) { background: var(--tsoi-color-surface-container-high); }
+  .ms-menu :global(.ms-opt input) { accent-color: var(--tsoi-color-primary); flex-shrink: 0; }
+
+  /* Date-range popover — Grafana-style: quick presets + custom From/To months. */
+  .dr { position: relative; }
+  .dr-btn {
+    display: inline-flex; align-items: center; gap: 6px; cursor: pointer;
+    font: var(--tsoi-text-metric-sm); color: var(--tsoi-color-on-surface);
+    background: var(--tsoi-color-background); border: 1px solid var(--tsoi-color-outline);
+    padding: 4px 8px; border-radius: 2px; max-width: 220px;
+  }
+  .dr-summary { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .dr-caret { color: var(--tsoi-color-on-surface-variant); }
+  /* Range is the rightmost control, so anchor the popover to the button's right
+     edge (opens leftward) to stay on-screen on full-width dashboards. */
+  .dr-menu {
+    position: absolute; z-index: 20; top: calc(100% + 4px); right: 0;
+    min-width: 240px; max-width: calc(100vw - 28px);
+    background: var(--tsoi-color-surface); border: 1px solid var(--tsoi-color-outline);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
+  }
+  .dr-quick { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px; border-bottom: 1px solid var(--tsoi-color-outline); }
+  .dr-q {
+    font: var(--tsoi-text-byline); text-transform: uppercase; letter-spacing: 0.04em;
+    padding: 4px 9px; border: 1px solid var(--tsoi-color-outline); border-radius: 2px; cursor: pointer;
+    background: var(--tsoi-color-background); color: var(--tsoi-color-on-surface-variant);
+  }
+  .dr-q:hover { background: var(--tsoi-color-surface-container-high); color: var(--tsoi-color-on-surface); }
+  .dr-q.active { background: var(--tsoi-color-primary); color: #fff; border-color: var(--tsoi-color-primary); }
+  .dr-custom { display: flex; flex-direction: column; gap: 8px; padding: 8px; }
+  .dr-field { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .dr-field span { font: var(--tsoi-text-byline); text-transform: uppercase; letter-spacing: 0.04em; color: var(--tsoi-color-on-surface-variant); }
+  .dr-field select { flex: 1; max-width: 160px; }
+
+  .seg { display: inline-flex; border: 1px solid var(--tsoi-color-outline); border-radius: 2px; overflow: hidden; }
+  .seg button {
+    font: var(--tsoi-text-byline); text-transform: uppercase; letter-spacing: 0.04em;
+    padding: 5px 10px; border: 0; cursor: pointer;
+    background: var(--tsoi-color-background); color: var(--tsoi-color-on-surface-variant);
+  }
+  .seg button + button { border-left: 1px solid var(--tsoi-color-outline); }
+  .seg button.active { background: var(--tsoi-color-primary); color: #fff; }
+
+  .chart { width: 100%; height: 360px; }
+  .chart[data-chart='choropleth'] { height: 520px; }
+  .panel.wide .chart { height: 420px; }
+  @media (max-width: 600px) { .chart { height: 320px; } .chart[data-chart='choropleth'] { height: 440px; } }
+</style>
+
+<script>
+  import * as echarts from 'echarts';
+  import { buildPanel, computeStat, monthLabel, one, resolveRange } from '../../lib/dashboards/runtime';
+  import { legendIsolation } from '../../lib/dashboards/legend';
+  import type { DashboardSpec, Control, Row, Tokens, CtrlState } from '../../lib/dashboards/runtime';
+
+  const specEl = document.getElementById('dash-spec');
+  if (specEl) {
+    const spec: DashboardSpec = JSON.parse(specEl.textContent!);
+
+    const tokens = (): Tokens => {
+      const s = getComputedStyle(document.documentElement);
+      const v = (n: string) => s.getPropertyValue(n).trim();
+      return {
+        text: v('--tsoi-color-on-surface'), subtle: v('--tsoi-color-on-surface-variant'),
+        line: v('--tsoi-color-outline'), surfaceDim: v('--tsoi-color-surface-dim'),
+        mono: v('--tsoi-font-mono'), c1: v('--tsoi-color-chart-1'), c6: v('--tsoi-color-chart-6'),
+        palette: [1, 2, 3, 4, 5, 6].map((n) => v(`--tsoi-color-chart-${n}`)),
+      };
+    };
+
+    const ctrl: CtrlState = {};
+    const allControls: Control[] = [...(spec.globals ?? []), ...spec.panels.flatMap((p) => p.controls ?? [])];
+    for (const c of allControls) ctrl[c.id] = c.default;
+
+    (async () => {
+      const { rows } = (await fetch(spec.dataset).then((r) => r.json())) as { rows: Row[] };
+      if (spec.panels.some((p) => p.chart === 'choropleth')) {
+        const geo = await fetch('/maps/india_states.json').then((r) => r.json());
+        echarts.registerMap('india', geo);
+      }
+
+      // --- cascading control options (parents first), client-side ---
+      const fieldControls = (spec.globals ?? []).filter((c) => (c.type === 'select' || c.type === 'multiselect') && c.field);
+      const depField = (id: string) => fieldControls.find((s) => s.id === id)?.field ?? id;
+      const scopedRows = (c: Control) => {
+        let r = rows;
+        for (const dep of c.dependsOn ?? []) r = r.filter((row) => String(row[depField(dep)]) === one(ctrl[dep]));
+        return r;
+      };
+      const scoped = (c: Control) => [...new Set(scopedRows(c).map((row) => String(row[c.field!])))].sort();
+      const labelOf = (c: Control, o: string) => c.labels?.[o] ?? (c.field === 'month' ? monthLabel(o) : o);
+      function populate(c: Control) {
+        const el = document.querySelector<HTMLSelectElement>(`select[data-ctl="${c.id}"]`);
+        if (!el || !c.field) return;
+        const opts = scoped(c);
+        if (!opts.includes(one(ctrl[c.id]))) ctrl[c.id] = opts[0];
+        el.innerHTML = opts.map((o) => `<option value="${o}"${o === one(ctrl[c.id]) ? ' selected' : ''}>${labelOf(c, o)}</option>`).join('');
+      }
+      function updateSummary(el: HTMLElement, c: Control) {
+        const arr = Array.isArray(ctrl[c.id]) ? (ctrl[c.id] as string[]) : [];
+        const total = el.querySelectorAll('input[type="checkbox"]').length;
+        el.querySelector('.ms-summary')!.textContent =
+          total && arr.length === total ? `All (${total})` : arr.length <= 2 ? arr.map((v) => labelOf(c, v)).join(', ') : `${arr.length} of ${total}`;
+      }
+      function populateMulti(c: Control) {
+        const el = document.querySelector<HTMLElement>(`.ms[data-ctl="${c.id}"]`);
+        if (!el || !c.field) return;
+        const r = scopedRows(c);
+        const opts = [...new Set(r.map((row) => String(row[c.field!])))].sort();
+        const prev = Array.isArray(ctrl[c.id]) ? (ctrl[c.id] as string[]) : [];
+        let sel = prev.filter((v) => opts.includes(v));
+        if (sel.length === 0) {
+          // entering a new scope: preselect the top-N by measure (clean default),
+          // else everything. Avoids dumping all 13 instruments into one pie/legend.
+          if (c.defaultTop) {
+            const by = c.rankBy ?? 'volume_cr';
+            const tot: Record<string, number> = {};
+            for (const row of r) { const k = String(row[c.field!]); tot[k] = (tot[k] ?? 0) + (Number(row[by]) || 0); }
+            sel = opts.slice().sort((a, b) => (tot[b] ?? 0) - (tot[a] ?? 0)).slice(0, c.defaultTop);
+          } else sel = opts.slice();
+        }
+        ctrl[c.id] = sel;
+        el.querySelector('.ms-opts')!.innerHTML = opts
+          .map((o) => `<label class="ms-opt"><input type="checkbox" value="${o}"${sel.includes(o) ? ' checked' : ''}/>${labelOf(c, o)}</label>`)
+          .join('');
+        const search = el.querySelector<HTMLInputElement>('.ms-search');
+        if (search) search.value = '';
+        updateSummary(el, c);
+      }
+      const repopulate = (c: Control) => (c.type === 'multiselect' ? populateMulti : populate)(c);
+
+      // --- URL state (shareable views) ---------------------------------------
+      // Pass 1: resolve spec defaults against the live data (no URL) so we can
+      // later tell which controls a shared link actually changed — only those
+      // go in the URL, keeping default views param-free.
+      for (const c of fieldControls) repopulate(c);
+      const defaults: CtrlState = JSON.parse(JSON.stringify(ctrl));
+
+      // Hydrate from ?id=value… BEFORE re-populating, so the cascade validates
+      // seeded values against the data. Scalars first (a multiselect's parent
+      // select must be seeded before its options are scoped), then multiselects
+      // in dependency order.
+      const params = new URLSearchParams(location.search);
+      const decodeMulti = (c: Control, raw: string): string[] => {
+        const opts = scoped(c);
+        if (raw === '*') return opts;                                  // all
+        if (raw.startsWith('~')) {                                     // all-but
+          const ex = new Set(raw.slice(1).split(',').filter(Boolean));
+          return opts.filter((o) => !ex.has(o));
+        }
+        const want = new Set(raw.split(',').filter(Boolean));          // explicit set
+        return opts.filter((o) => want.has(o));
+      };
+      for (const c of allControls) {
+        if (c.type === 'multiselect') continue;
+        const v = params.get(c.id);
+        if (v != null) ctrl[c.id] = v;
+      }
+      for (const c of fieldControls) {
+        if (c.type !== 'multiselect') continue;
+        const raw = params.get(c.id);
+        if (raw != null) { const arr = decodeMulti(c, raw); if (arr.length) ctrl[c.id] = arr; }
+      }
+      // Pass 2: re-render option lists / selections with the hydrated state.
+      for (const c of fieldControls) repopulate(c);
+      // Reflect hydrated scalar state in the widgets: field selects + multiselects
+      // self-sync via populate/populateMulti above and the daterange syncs in its
+      // own wiring, but plain selects and segmented toggles set their active state
+      // from the spec default in markup, so nudge those to match ctrl.
+      for (const c of allControls) {
+        const val = one(ctrl[c.id]);
+        const sel = document.querySelector<HTMLSelectElement>(`select[data-ctl="${c.id}"]`);
+        if (sel) { sel.value = val; continue; }
+        const seg = document.querySelector<HTMLElement>(`.seg[data-ctl="${c.id}"]`);
+        seg?.querySelectorAll<HTMLElement>('button').forEach((btn) => btn.classList.toggle('active', btn.dataset.value === val));
+      }
+
+      // Serialize ctrl → URL on every change. Only non-default controls are
+      // emitted; large multiselects encode as '*' (all) or '~a,b' (all-but) so
+      // links stay short even at 130+ options. replaceState keeps history clean.
+      const sameSet = (a: string[], b: string[]) =>
+        a.length === b.length && [...a].sort().join('\n') === [...b].sort().join('\n');
+      const encodeMulti = (c: Control, arr: string[]): string => {
+        const opts = scoped(c);
+        const sel = new Set(arr);
+        if (opts.length > 0 && opts.every((o) => sel.has(o))) return '*';
+        const excluded = opts.filter((o) => !sel.has(o));
+        return excluded.length < arr.length ? '~' + excluded.join(',') : arr.join(',');
+      };
+      const writeUrl = () => {
+        const p = new URLSearchParams();
+        for (const c of allControls) {
+          const cur = ctrl[c.id], def = defaults[c.id];
+          if (c.type === 'multiselect') {
+            const arr = Array.isArray(cur) ? cur : [];
+            if (!sameSet(arr, Array.isArray(def) ? def : [])) p.set(c.id, encodeMulti(c, arr));
+          } else if (String(one(cur)) !== String(one(def))) {
+            p.set(c.id, String(one(cur)));
+          }
+        }
+        const qs = p.toString();
+        history.replaceState(null, '', qs ? `${location.pathname}?${qs}` : location.pathname);
+      };
+
+      // --- charts + stat tiles ---
+      const charts: Record<string, echarts.ECharts> = {};
+      for (const p of spec.panels) {
+        if (p.chart === 'stat') continue;
+        charts[p.id] = echarts.init(document.getElementById(`panel-${p.id}`)!);
+      }
+
+      // Click-to-isolate legend (shared helper): click to isolate one
+      // series, click again to restore all. legendResets[id]() clears the
+      // isolation state when a panel re-renders for some other reason.
+      const legendResets: Record<string, () => void> = {};
+      for (const [id, chart] of Object.entries(charts)) {
+        legendResets[id] = legendIsolation(chart, () => renderPanel(id));
+      }
+
+      const renderPanel = (id: string) => {
+        const p = spec.panels.find((x) => x.id === id)!;
+        if (p.chart === 'stat') {
+          const { value } = computeStat(p, rows, ctrl);
+          const tile = document.getElementById(`panel-${id}`);
+          if (tile) tile.querySelector('.stat-value')!.textContent = value;
+        } else {
+          charts[id].setOption(buildPanel(p, rows, ctrl, tokens()), true);
+          legendResets[id]?.();
+        }
+      };
+      const renderAll = () => spec.panels.forEach((p) => renderPanel(p.id));
+
+      // --- date-range widget helpers (months come from the dataset itself) ---
+      const monthOf = (row: Row) => String(row.date ?? row.month).slice(0, 7);
+      const allMonths = [...new Set(rows.map(monthOf))].sort();
+      const rangeSummary = (c: Control, token: string) => {
+        const q = (c.quick ?? []).find((o) => o.value === token);
+        if (q) return q.value === '0' ? 'All time' : /^\d+$/.test(q.value) ? `Last ${q.label}` : q.label;
+        const win = resolveRange(token, allMonths);
+        return win ? `${monthLabel(win.from)} – ${monthLabel(win.to)}` : 'All time';
+      };
+      const syncRange = (el: HTMLElement, c: Control) => {
+        const token = one(ctrl[c.id]);
+        const win = resolveRange(token, allMonths) ?? { from: allMonths[0], to: allMonths.at(-1)! };
+        el.querySelector<HTMLSelectElement>('.dr-from')!.value = win.from;
+        el.querySelector<HTMLSelectElement>('.dr-to')!.value = win.to;
+        el.querySelector('.dr-summary')!.textContent = rangeSummary(c, token);
+        el.querySelectorAll<HTMLElement>('.dr-q').forEach((b) => b.classList.toggle('active', b.dataset.value === token));
+      };
+      const populateRange = (el: HTMLElement, c: Control) => {
+        const opts = allMonths.map((m) => `<option value="${m}">${monthLabel(m)}</option>`).join('');
+        el.querySelector('.dr-from')!.innerHTML = opts;
+        el.querySelector('.dr-to')!.innerHTML = opts;
+        syncRange(el, c);
+      };
+
+      document.querySelectorAll<HTMLElement>('[data-ctl]').forEach((el) => {
+        const id = el.dataset.ctl!;
+        const scope = el.dataset.scope!;
+        const apply = () => {
+          // cascading: repopulate any field control that depends on this one
+          for (const c of fieldControls) if ((c.dependsOn ?? []).includes(id)) repopulate(c);
+          scope === 'global' ? renderAll() : renderPanel(scope);
+          writeUrl();
+        };
+        if (el.tagName === 'SELECT') {
+          el.addEventListener('change', (e) => { ctrl[id] = (e.target as HTMLSelectElement).value; apply(); });
+        } else if (el.classList.contains('ms')) {
+          const c = (spec.globals ?? []).find((x) => x.id === id)!;
+          const btn = el.querySelector<HTMLButtonElement>('.ms-btn')!;
+          const menu = el.querySelector<HTMLElement>('.ms-menu')!;
+          const search = el.querySelector<HTMLInputElement>('.ms-search')!;
+          const selectAll = el.querySelector<HTMLButtonElement>('.ms-all')!;
+
+          const visibleInputs = () => [...menu.querySelectorAll<HTMLInputElement>('.ms-opt:not([hidden]) input')];
+          const clearAll = el.querySelector<HTMLButtonElement>('.ms-clear')!;
+          const closeMenu = () => {
+            menu.hidden = true;
+            search.value = '';
+            menu.querySelectorAll<HTMLElement>('.ms-opt').forEach((o) => { o.hidden = false; });
+          };
+          btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (menu.hidden) { menu.hidden = false; } else closeMenu();
+          });
+          document.addEventListener('click', (e) => { if (!el.contains(e.target as Node)) closeMenu(); });
+
+          search.addEventListener('click', (e) => e.stopPropagation());
+          search.addEventListener('input', () => {
+            const q = search.value.toLowerCase();
+            menu.querySelectorAll<HTMLElement>('.ms-opt').forEach((opt) => {
+              opt.hidden = q.length > 0 && !opt.textContent!.toLowerCase().includes(q);
+            });
+          });
+
+          selectAll.addEventListener('click', (e) => {
+            e.stopPropagation();
+            visibleInputs().forEach((i) => { i.checked = true; });
+            ctrl[id] = [...menu.querySelectorAll<HTMLInputElement>('input:checked')].map((i) => i.value);
+            updateSummary(el, c);
+            apply();
+          });
+
+          clearAll.addEventListener('click', (e) => {
+            e.stopPropagation();
+            menu.querySelectorAll<HTMLInputElement>('input[type="checkbox"]').forEach((i) => { i.checked = false; });
+            ctrl[id] = [];
+            updateSummary(el, c);
+            apply();
+          });
+
+          menu.addEventListener('change', (e) => {
+            const checked = [...menu.querySelectorAll<HTMLInputElement>('input:checked')].map((i) => i.value);
+            if (checked.length === 0) { (e.target as HTMLInputElement).checked = true; return; } // keep ≥1
+            ctrl[id] = checked;
+            updateSummary(el, c);
+            apply();
+          });
+        } else if (el.classList.contains('dr')) {
+          const c = (spec.globals ?? []).find((x) => x.id === id)!;
+          const btn = el.querySelector<HTMLButtonElement>('.dr-btn')!;
+          const menu = el.querySelector<HTMLElement>('.dr-menu')!;
+          const from = el.querySelector<HTMLSelectElement>('.dr-from')!;
+          const to = el.querySelector<HTMLSelectElement>('.dr-to')!;
+          populateRange(el, c);
+          const close = () => { menu.hidden = true; };
+
+          btn.addEventListener('click', (e) => { e.stopPropagation(); menu.hidden = !menu.hidden; });
+          document.addEventListener('click', (e) => { if (!el.contains(e.target as Node)) close(); });
+
+          el.querySelectorAll<HTMLButtonElement>('.dr-q').forEach((b) =>
+            b.addEventListener('click', (e) => {
+              e.stopPropagation();
+              ctrl[id] = b.dataset.value!;
+              syncRange(el, c);
+              close();
+              apply();
+            }));
+
+          // Custom From/To: keep from <= to by nudging the other end, store an
+          // absolute 'F~T' token (which clears any active quick preset).
+          const setCustom = () => { ctrl[id] = `${from.value}~${to.value}`; syncRange(el, c); apply(); };
+          from.addEventListener('change', () => { if (from.value > to.value) to.value = from.value; setCustom(); });
+          to.addEventListener('change', () => { if (to.value < from.value) from.value = to.value; setCustom(); });
+        } else {
+          el.querySelectorAll<HTMLButtonElement>('button').forEach((b) =>
+            b.addEventListener('click', () => {
+              ctrl[id] = b.dataset.value!;
+              el.querySelectorAll('button').forEach((x) => x.classList.remove('active'));
+              b.classList.add('active');
+              apply();
+            })
+          );
+        }
+      });
+
+      const ro = new ResizeObserver(() => Object.values(charts).forEach((c) => c.resize()));
+      spec.panels.forEach((p) => { if (p.chart !== 'stat') ro.observe(document.getElementById(`panel-${p.id}`)!); });
+
+      // Panel maximize — full-viewport overlay, Escape or backdrop click to close.
+      const backdrop = Object.assign(document.createElement('div'), { hidden: true });
+      Object.assign(backdrop.style, { position: 'fixed', inset: '0', zIndex: '39', background: 'rgba(0,0,0,0.55)' });
+      document.body.appendChild(backdrop);
+
+      const globalBar = document.querySelector<HTMLElement>('.global-bar');
+      const dash = document.querySelector<HTMLElement>('.dash');
+      const panelsGrid = document.querySelector<HTMLElement>('.panels');
+
+      let maximizedPanel: HTMLElement | null = null;
+      const openMax = (panel: HTMLElement) => {
+        maximizedPanel = panel;
+        panel.classList.add('maximized');
+        backdrop.hidden = false;
+        const btn = panel.querySelector<HTMLButtonElement>('.panel-max')!;
+        btn.textContent = '✕'; btn.setAttribute('aria-label', 'Close');
+        if (globalBar) panel.insertBefore(globalBar, panel.querySelector('.panel-bar'));
+        const chartId = panel.querySelector<HTMLElement>('.chart')!.id.replace('panel-', '');
+        requestAnimationFrame(() => charts[chartId]?.resize());
+      };
+      const closeMax = () => {
+        if (!maximizedPanel) return;
+        maximizedPanel.classList.remove('maximized');
+        backdrop.hidden = true;
+        const btn = maximizedPanel.querySelector<HTMLButtonElement>('.panel-max')!;
+        btn.textContent = '⤢'; btn.setAttribute('aria-label', 'Maximize panel');
+        if (globalBar && dash && panelsGrid) dash.insertBefore(globalBar, panelsGrid);
+        const chartId = maximizedPanel.querySelector<HTMLElement>('.chart')!.id.replace('panel-', '');
+        requestAnimationFrame(() => charts[chartId]?.resize());
+        maximizedPanel = null;
+      };
+      document.querySelectorAll<HTMLButtonElement>('.panel-max').forEach((btn) =>
+        btn.addEventListener('click', () => {
+          const panel = btn.closest<HTMLElement>('.panel')!;
+          panel.classList.contains('maximized') ? closeMax() : openMax(panel);
+        })
+      );
+      backdrop.addEventListener('click', closeMax);
+      document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeMax(); });
+      new MutationObserver(renderAll).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'data-units'] });
+
+      renderAll();
+      // Re-render once the mono webfont (DM Mono) has loaded: ECharts measures
+      // axis labels at init with the narrower fallback and under-reserves space
+      // (clipping long horizontal-bar names) until it can re-measure with the real font.
+      document.fonts?.ready.then(renderAll);
+    })();
+  }
+</script>

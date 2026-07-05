@@ -1,0 +1,38 @@
+---
+// Standard editorial page: BaseLayout + masthead/nav/footer chrome, with the
+// page content inside the broadsheet grid container.
+import BaseLayout from './BaseLayout.astro';
+import Masthead from '../components/layout/Masthead.astro';
+import SectionNav from '../components/layout/SectionNav.astro';
+import Footer from '../components/layout/Footer.astro';
+
+interface Props {
+  title: string;
+  description: string;
+  og_type?: 'website' | 'article';
+  og_image?: string;
+  noindex?: boolean;
+  source_agency?: string;
+  source_url?: string;
+  last_updated?: string;
+}
+
+const props = Astro.props;
+---
+
+<BaseLayout {...props}>
+  <slot name="ld-json" slot="ld-json" />
+  <Masthead />
+  <SectionNav />
+  <main class="tsoi-container story-main">
+    <slot />
+  </main>
+  <Footer />
+</BaseLayout>
+
+<style>
+  .story-main {
+    padding-top: calc(var(--tsoi-spacing-unit) * 3);
+    padding-bottom: calc(var(--tsoi-spacing-unit) * 6);
+  }
+</style>

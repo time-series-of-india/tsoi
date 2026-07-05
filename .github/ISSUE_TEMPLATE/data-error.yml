@@ -1,0 +1,40 @@
+name: Report a data error
+description: Flag an incorrect figure or claim on the site. A source link is required — no code or account setup needed.
+title: "[data error] "
+labels: ["data-error"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping keep the numbers right. The one hard requirement: every
+        correction needs a **checkable source**, so we can verify and fix it.
+  - type: input
+    id: location
+    attributes:
+      label: Where is it?
+      description: The page and the specific chart or figure. A URL is ideal.
+      placeholder: "e.g. https://timeseriesofindia.com/economy/reads/upi-architecture — the \"UPI monthly volume\" stat"
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: What's wrong?
+      description: What does the site currently show, and what should it be?
+      placeholder: "The site shows X; it should be Y."
+    validations:
+      required: true
+  - type: input
+    id: source
+    attributes:
+      label: Source (required)
+      description: A link to the official RBI / NPCI release (or other reliable source) that supports the correction.
+      placeholder: "https://…  (the RBI/NPCI statistics page or document)"
+    validations:
+      required: true
+  - type: markdown
+    attributes:
+      value: |
+        Corrections without a checkable source can't be actioned — see
+        [`CONTRIBUTING.md`](../blob/main/CONTRIBUTING.md). Single maintainer, no SLA:
+        reports are triaged when time allows.

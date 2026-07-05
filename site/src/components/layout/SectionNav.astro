@@ -1,0 +1,73 @@
+---
+// Horizontal section navigation below the masthead. Economy is live; the rest
+// link to a per-section "coming soon" page (kept muted). Active section is
+// derived from the current path.
+const sections = [
+  { label: 'Economy', slug: 'economy', live: true },
+  { label: 'Environment', slug: 'environment' },
+  { label: 'Infrastructure', slug: 'infrastructure' },
+  { label: 'Demographics', slug: 'demographics' },
+  { label: 'Governance', slug: 'governance' },
+];
+const seg = Astro.url.pathname.split('/')[1] || 'economy'; // homepage = Economy
+---
+
+<nav class="section-nav" aria-label="Sections">
+  <ul>
+    {
+      sections.map((s) => (
+        <li>
+          <a
+            class:list={['item', { active: seg === s.slug, soon: !s.live }]}
+            href={`/${s.slug}`}
+            aria-current={seg === s.slug ? 'true' : undefined}
+            title={s.live ? undefined : 'Coming soon'}
+          >
+            {s.label}
+          </a>
+        </li>
+      ))
+    }
+  </ul>
+</nav>
+
+<style>
+  .section-nav {
+    border-bottom: var(--tsoi-rule-column) solid var(--tsoi-color-outline);
+  }
+
+  ul {
+    display: flex;
+    justify-content: center;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    /* Mobile requirement baked in: scroll horizontally, never wrap. */
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+
+  .item {
+    display: inline-block;
+    padding: 7px 14px;
+    font: var(--tsoi-text-label-caps);
+    letter-spacing: var(--tsoi-text-label-caps-tracking);
+    text-transform: uppercase;
+    text-decoration: none;
+  }
+
+  .active {
+    color: var(--tsoi-color-primary);
+  }
+
+  .soon {
+    color: var(--tsoi-color-on-surface-variant);
+  }
+  .item:hover { color: var(--tsoi-color-primary); }
+
+  @media (max-width: 767px) {
+    ul {
+      justify-content: flex-start;
+    }
+  }
+</style>

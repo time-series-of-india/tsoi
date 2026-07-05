@@ -1,0 +1,102 @@
+---
+// In-column story: no container, no background, no shadow — type hierarchy
+// and rules do all the work. Adjacent cards in the same column are separated
+// by a 1px outline rule. Body copy goes in the default slot.
+interface Props {
+  tag: string;
+  title: string;
+  /** Headline size signals story importance: xl = lead, sm = strip. */
+  size?: 'xl' | 'lg' | 'md' | 'sm';
+  byline?: string;
+  deck?: string;
+  href?: string;
+}
+
+const { tag, title, size = 'md', byline, deck, href } = Astro.props;
+---
+
+<article class="story-card">
+  <p class="tag">{tag}</p>
+  <h3 class={`headline size-${size}`}>
+    {href ? <a href={href}>{title}</a> : title}
+  </h3>
+  {byline && <p class="byline">{byline}</p>}
+  {deck && <p class="deck">{deck}</p>}
+  <div class="body">
+    <slot />
+  </div>
+</article>
+
+<style>
+  .story-card + .story-card {
+    border-top: var(--tsoi-rule-column) solid var(--tsoi-color-outline);
+    padding-top: var(--tsoi-column-gutter);
+    margin-top: var(--tsoi-column-gutter);
+  }
+
+  .tag {
+    margin: 0 0 calc(var(--tsoi-spacing-unit) / 2);
+    font: var(--tsoi-text-label-caps);
+    letter-spacing: var(--tsoi-text-label-caps-tracking);
+    text-transform: uppercase;
+    color: var(--tsoi-color-primary);
+  }
+
+  .headline {
+    margin: 0;
+  }
+
+  /* The whole headline area is the click target. */
+  .headline a {
+    display: block;
+    text-decoration: none;
+    color: var(--tsoi-color-on-surface);
+  }
+
+  .headline a:hover {
+    color: var(--tsoi-color-primary);
+  }
+
+  .size-xl {
+    font: var(--tsoi-text-headline-xl);
+    letter-spacing: var(--tsoi-text-headline-xl-tracking);
+  }
+
+  .size-lg {
+    font: var(--tsoi-text-headline-lg);
+    letter-spacing: var(--tsoi-text-headline-lg-tracking);
+  }
+
+  .size-md {
+    font: var(--tsoi-text-headline-md);
+    letter-spacing: var(--tsoi-text-headline-md-tracking);
+  }
+
+  .size-sm {
+    font: var(--tsoi-text-headline-sm);
+    letter-spacing: var(--tsoi-text-headline-sm-tracking);
+  }
+
+  .byline {
+    margin: calc(var(--tsoi-spacing-unit) / 2) 0 0;
+    font: var(--tsoi-text-byline);
+    letter-spacing: var(--tsoi-text-byline-tracking);
+    text-transform: uppercase;
+    color: var(--tsoi-color-on-surface-variant);
+  }
+
+  .deck {
+    margin: var(--tsoi-spacing-unit) 0 0;
+    font: var(--tsoi-text-deck);
+    letter-spacing: var(--tsoi-text-deck-tracking);
+  }
+
+  .body {
+    font: var(--tsoi-text-body);
+    letter-spacing: var(--tsoi-text-body-tracking);
+  }
+
+  .body :global(p) {
+    margin: var(--tsoi-spacing-unit) 0 0;
+  }
+</style>
