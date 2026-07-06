@@ -37,6 +37,9 @@ site/public/data/
 
 # --- Local-only: internal tooling, planning docs, agent config (not public deliverables) ---
 docs/
+# EDITORIAL.md: maintainer-authored editorial standard, held back from the public
+# repo pending review — kept local-only so it can't be committed by accident.
+EDITORIAL.md
 _bmad/
 _bmad-output/
 panels/
