@@ -34,7 +34,10 @@ export function getStaticPaths() {
 const { label, blurb } = Astro.props;
 ---
 
-<StoryPage title={`${label} — Time Series of India`} description={blurb}>
+{/* noindex: these are wordless stubs — keep thin placeholder pages out of
+    search until the sections carry real content (also filtered from the
+    sitemap in astro.config.mjs). */}
+<StoryPage title={`${label} — Time Series of India`} description={blurb} noindex>
   <SectionHeader label={label} />
   <div class="soon">
     <svg class="placeholder" viewBox="0 0 600 240" role="img" aria-label={`${label} — coming soon`}>

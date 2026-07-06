@@ -1,1 +1,10 @@
-{}
+{
+  "/data/economy/bank-performance.json": "/data/economy/bank-performance.e929a6ec.json",
+  "/data/economy/beats.json": "/data/economy/beats.78c965ad.json",
+  "/data/economy/mcc.json": "/data/economy/mcc.9094ee2b.json",
+  "/data/economy/product-view.json": "/data/economy/product-view.6d4ef9c1.json",
+  "/data/economy/read-upi-architecture.json": "/data/economy/read-upi-architecture.f232958d.json",
+  "/data/economy/reads/shops-vs-people.json": "/data/economy/reads/shops-vs-people.c2781895.json",
+  "/data/economy/state-wise.json": "/data/economy/state-wise.784700cf.json",
+  "/data/economy/upi-ecosystem.json": "/data/economy/upi-ecosystem.40203528.json"
+}

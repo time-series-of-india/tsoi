@@ -6,16 +6,24 @@ import sitemap from '@astrojs/sitemap';
 export default defineConfig({
   output: 'static',
   site: 'https://timeseriesofindia.com',
-  // Sitemap of the indexable pages only — the dashboards and beats deck are
-  // noindex (interactive tools / experimental), so keep them out of search.
+  // Sitemap of the indexable pages only: dashboards are noindex (interactive
+  // tools / experimental), and the theme stubs ([theme].astro "coming soon"
+  // pages) are noindex until they carry real content.
   integrations: [
-    sitemap({ filter: (page) => !page.includes('/dashboards') }),
+    sitemap({
+      filter: (page) =>
+        !page.includes('/dashboards') &&
+        !/\/(environment|infrastructure|demographics|governance)\/$/.test(page),
+    }),
   ],
-  // The Beats deck is now the home page; redirect the old deck URL.
-  // /economy/reads has no index page (reads list lives on /economy); send
-  // trimmed read URLs there instead of a 404.
+  // Static fallback redirects (meta-refresh pages). In production Cloudflare's
+  // public/_redirects serves proper 301s for the same paths and wins; these
+  // keep `astro dev`/`preview` behaving the same. Destinations match the
+  // _redirects targets exactly so neither path double-hops.
+  // '/' also redirects to /economy/beats (src/pages/index.astro) until a second
+  // section ships and '/' becomes a real section-picker landing page.
   redirects: {
-    '/economy/beats/payments': '/',
+    '/economy/beats/payments': '/economy/beats',
     '/economy/reads': '/economy',
   },
   // Dev-only: proxy the Grafana /g/ sub-path to the local Grafana so kiosk

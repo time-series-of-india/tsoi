@@ -19,6 +19,11 @@ interface Props {
 const { title, description, og_type = 'website', og_image = '/og-default.png', noindex = false } = Astro.props;
 const canonical = new URL(Astro.url.pathname, Astro.site);
 const ogImageUrl = new URL(og_image, Astro.site);
+// Cloudflare Web Analytics (cookieless, no personal data — consistent with the
+// "no tracking" stance). The beacon only renders when a token is present at
+// build time: create the site under Analytics & Logs → Web Analytics in the
+// Cloudflare dashboard and put its token in .env as CF_BEACON_TOKEN.
+const beaconToken = import.meta.env.CF_BEACON_TOKEN || process.env.CF_BEACON_TOKEN || '';
 ---
 
 <html lang="en">
@@ -40,6 +45,7 @@ const ogImageUrl = new URL(og_image, Astro.site);
     <meta property="og:site_name" content="Time Series of India" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:image" content={ogImageUrl} />
+    <link rel="alternate" type="application/rss+xml" title="Time Series of India — Reads" href="/rss.xml" />
     <link
       rel="preload"
       href="/fonts/playfair-display-latin-900-normal.woff2"
@@ -105,6 +111,14 @@ const ogImageUrl = new URL(og_image, Astro.site);
       });
     </script>
     <slot name="ld-json" />
+    {beaconToken && (
+      <script
+        is:inline
+        defer
+        src="https://static.cloudflareinsights.com/beacon.min.js"
+        data-cf-beacon={JSON.stringify({ token: beaconToken })}
+      />
+    )}
   </head>
   <body>
     <slot />

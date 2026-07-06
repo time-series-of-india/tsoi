@@ -40,5 +40,19 @@
   ! Cache-Control
   Cache-Control: public, max-age=3600, must-revalidate
 
+# Security headers ride the catch-all so they apply everywhere (rules COMBINE,
+# see note above — the specific cache rules only unset Cache-Control, so these
+# survive on /data/* etc.). CSP notes:
+#   - script-src needs 'unsafe-inline': Astro emits is:inline bootstrap scripts
+#     (theme/units) into every page; a static site can't nonce them.
+#   - buttondown.com: newsletter form POST (no-JS path) + fetch (enhanced path).
+#   - cloudflareinsights.com: the optional Web Analytics beacon (script from
+#     static.cloudflareinsights.com, data POSTed to cloudflareinsights.com).
+#   - img-src data:: ECharts/inline SVG data URIs.
 /*
   Cache-Control: public, max-age=0, must-revalidate
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  X-Frame-Options: SAMEORIGIN
+  Permissions-Policy: camera=(), microphone=(), geolocation=()
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self' https://cloudflareinsights.com https://buttondown.com; form-action 'self' https://buttondown.com; frame-ancestors 'self'; base-uri 'self'; object-src 'none'
