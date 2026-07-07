@@ -12,10 +12,12 @@
   font-family: 'Playfair Display';
   font-style: normal;
   font-weight: 700;
-  /* optional: with the face preloaded it's used immediately; if it isn't ready
-     the fallback stays for that load with no late swap — kills the FOUT flash
-     where a heavier serif (Georgia) showed before Playfair loaded. */
-  font-display: optional;
+  /* fallback: ~100ms invisible block period, then up to ~3s where Playfair can
+     still swap in once it arrives. RUM data (2026-07-07) showed median FCP
+     (~217ms) already past optional's ~100ms window with no later swap, so most
+     real visits were silently stuck on the Georgia fallback; P95 TTFB (~114ms)
+     comfortably fits inside fallback's 3s swap window instead. */
+  font-display: fallback;
   src: url('/fonts/playfair-display-latin-700-normal.woff2') format('woff2');
 }
 
@@ -23,7 +25,7 @@
   font-family: 'Playfair Display';
   font-style: normal;
   font-weight: 900;
-  font-display: optional;
+  font-display: fallback;
   src: url('/fonts/playfair-display-latin-900-normal.woff2') format('woff2');
 }
 
