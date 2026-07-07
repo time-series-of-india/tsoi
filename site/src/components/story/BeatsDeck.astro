@@ -132,7 +132,7 @@ const pageDesc = home
   .beat + .beat { border-top: var(--tsoi-rule-column) solid var(--tsoi-color-outline); }
 
   .beat-text { max-width: 56ch; }
-  .kicker { margin: 0 0 var(--tsoi-spacing-unit); font: var(--tsoi-text-byline); letter-spacing: var(--tsoi-text-byline-tracking); text-transform: uppercase; color: var(--tsoi-color-primary); }
+  .kicker { margin: 0 0 var(--tsoi-spacing-unit); font: var(--tsoi-text-byline); font-weight: 500; letter-spacing: var(--tsoi-text-byline-tracking); text-transform: uppercase; color: var(--tsoi-color-primary); }
   .title { margin: 0; font: var(--tsoi-text-headline-lg); letter-spacing: var(--tsoi-text-headline-lg-tracking); }
   .headline { margin: 0; font: var(--tsoi-text-headline-md); letter-spacing: var(--tsoi-text-headline-md-tracking); }
   .brand { margin: 0; font: var(--tsoi-text-headline-xl); letter-spacing: var(--tsoi-text-headline-xl-tracking); color: var(--tsoi-color-on-surface); }
@@ -206,6 +206,17 @@ const pageDesc = home
   @media (max-width: 600px) { .ctas { flex-direction: column; align-items: stretch; } .cta { text-align: center; padding: 12px 16px; } }
   .cta.ghost { background: var(--tsoi-color-background); color: var(--tsoi-color-on-surface); border: 1px solid var(--tsoi-color-outline); }
 
+  /* Desktop deck renders a subtle notch larger than the base px scale — the
+     broadsheet cover type ran small on wide screens. `zoom` reproduces a browser
+     zoom — verified in Chromium + Firefox to neither oscillate the width media
+     query nor add horizontal scroll. Under zoom `100svh` grows by the same
+     factor, so the full-height scroll-snap cards would overspill; the deck's
+     height JS divides `--app-height` by the computed zoom to compensate (see the
+     script). Tune the factor here. */
+  @media (min-width: 1200px) {
+    :global(html) { zoom: 1.1; }
+  }
+
   @media (min-width: 880px) {
     /* Desktop keeps the same one-card-per-swipe scroll-snap as mobile (the base
        .deck/.beat rules), but lays each beat out as two columns: chart beside
@@ -247,7 +258,11 @@ const pageDesc = home
     const root = document.documentElement;
     let appH = 0;
     const grow = () => {
-      const h = window.innerHeight;
+      // Under the desktop `zoom` (see <style>), `100svh` and innerHeight are in
+      // physical px but the card lays out in zoomed coordinates — divide by the
+      // computed zoom so a card fills exactly one screen (z = 1 when unzoomed).
+      const z = parseFloat(getComputedStyle(root).zoom) || 1;
+      const h = window.innerHeight / z;
       if (h > appH) { appH = h; root.style.setProperty('--app-height', h + 'px'); }
     };
     const reset = () => { appH = 0; grow(); }; // orientation flips reset the ceiling

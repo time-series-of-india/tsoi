@@ -1,8 +1,11 @@
 ---
-// Dependency-free share control: a trigger that opens a small popover with a
-// single row of monochrome icons — X / LinkedIn / Reddit / WhatsApp / Copy-link,
-// plus native navigator.share on mobile. Broadsheet aesthetic — one understated
-// control, no third-party widgets, no tracking.
+// Dependency-free share control. Two behaviours, decided at runtime:
+//   • Where the OS supports navigator.share (mostly mobile) the trigger IS the
+//     share action — one tap opens the native share sheet (which already carries
+//     every network + copy-link). No popover, no second tap.
+//   • Otherwise (most desktop browsers) the trigger opens a small popover with a
+//     single row of monochrome icons — X / LinkedIn / Reddit / WhatsApp / Copy-link.
+// Broadsheet aesthetic — one understated control, no third-party widgets, no tracking.
 //
 // Three shapes:
 //   button   — a labelled "Share" button, sits in-flow at the end of content
@@ -53,7 +56,6 @@ const isFab = variant === 'fab';
     {NETS.map((n) => (
       <a class="share-ic" data-net={n.net} href={n.href} target="_blank" rel="noopener noreferrer" aria-label={`Share on ${n.label}`} title={n.label}><Fragment set:html={ICONS[n.net]} /></a>
     ))}
-    <button type="button" class="share-ic share-native" hidden aria-label="Share via…" title="Share via…"><Fragment set:html={SHARE_GLYPH} /></button>
     <button type="button" class="share-ic share-copy" aria-label="Copy link" title="Copy link"><Fragment set:html={ICONS.copy} /></button>
   </div>
 </div>
@@ -117,6 +119,20 @@ const isFab = variant === 'fab';
     const btn = box.querySelector<HTMLButtonElement>('.share-btn')!;
     const menu = box.querySelector<HTMLElement>('.share-menu')!;
 
+    // Native-capable (mostly mobile): the trigger opens the OS share sheet on a
+    // single tap. Skip the popover entirely — the sheet already offers every
+    // network and copy-link, so a second step would be redundant.
+    if (typeof navigator.share === 'function') {
+      btn.setAttribute('aria-haspopup', 'false');
+      btn.removeAttribute('aria-expanded');
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        navigator.share({ title, url: location.href }).catch(() => {});
+      });
+      return;
+    }
+
+    // No native share (most desktop browsers): the trigger opens the popover.
     const close = () => { menu.hidden = true; menu.classList.remove('up'); btn.setAttribute('aria-expanded', 'false'); };
     const open = () => {
       menu.hidden = false;
@@ -148,12 +164,5 @@ const isFab = variant === 'fab';
         setTimeout(() => { copy.innerHTML = copyHtml; copy.classList.remove('copied'); copy.setAttribute('aria-label', 'Copy link'); }, 1600);
       } catch { /* clipboard blocked — the network links still work */ }
     });
-
-    // Native share sheet: reveal only where supported (mostly mobile).
-    const native = box.querySelector<HTMLButtonElement>('.share-native');
-    if (native && typeof navigator.share === 'function') {
-      native.hidden = false;
-      native.addEventListener('click', () => { navigator.share({ title, url: location.href }).catch(() => {}); close(); });
-    }
   });
 </script>
