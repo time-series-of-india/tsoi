@@ -36,6 +36,8 @@ site/public/data/
 .env.*.local
 
 # --- Local-only: internal tooling, planning docs, agent config (not public deliverables) ---
+# Internal docs moved to a separate private repo (2026-07-09); the ignore
+# stays as a safety net so a recreated docs/ can't be committed by accident.
 docs/
 # EDITORIAL.md: maintainer-authored editorial standard, held back from the public
 # repo pending review — kept local-only so it can't be committed by accident.
