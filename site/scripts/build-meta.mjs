@@ -178,7 +178,8 @@ const dispatches = execSync("git tag -l 'dispatch-*'", { cwd: SITE, encoding: 'u
   .split('\n').filter(Boolean).sort()
   .map((tag) => {
     const [sha, date, ...subject] = execSync(
-      `git log -1 --format='%h %as %s' ${tag}`, { cwd: SITE, encoding: 'utf8' },
+      `git log -1 --date=format-local:%Y-%m-%d --format='%h %ad %s' ${tag}`,
+      { cwd: SITE, encoding: 'utf8', env: { ...process.env, TZ: 'UTC' } },
     ).trim().split(' ');
     return { id: tag, sha, date, label: subject.join(' ') };
   });
