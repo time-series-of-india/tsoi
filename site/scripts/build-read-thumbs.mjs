@@ -1,6 +1,6 @@
 // Regenerates the reads-landing thumbnails:
-//   public/thumbs/reads/<slug>.png       — light theme
-//   public/thumbs/reads/<slug>-dark.png  — dark theme
+//   public/thumbs/read/<slug>.png       — light theme
+//   public/thumbs/read/<slug>-dark.png  — dark theme
 //
 //   npm run build && node scripts/build-read-thumbs.mjs
 //
@@ -23,7 +23,7 @@ import { chromium } from 'playwright';
 import { READS } from '../src/lib/reads-index.ts';
 
 const SITE_DIR = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const OUT_DIR = resolve(SITE_DIR, 'public/thumbs/reads');
+const OUT_DIR = resolve(SITE_DIR, 'public/thumbs/read');
 const PORT = 4339;
 const CHROMIUM = process.env.CHROMIUM_PATH ?? '/usr/bin/chromium';
 
@@ -41,7 +41,7 @@ async function startPreview() {
   const base = `http://127.0.0.1:${PORT}`;
   for (let i = 0; i < 60; i++) {
     try {
-      const res = await fetch(base + '/economy');
+      const res = await fetch(base + '/economy/read/');
       if (res.ok) return { base, stop: () => proc.kill() };
     } catch { /* not up yet */ }
     await new Promise((r) => setTimeout(r, 500));
@@ -59,7 +59,7 @@ async function capture(browser, base, slug, theme) {
     await context.addInitScript(() => localStorage.setItem('tsoi-theme', 'dark'));
   }
   const page = await context.newPage();
-  await page.goto(`${base}/economy/reads/${slug}`, { waitUntil: 'networkidle', timeout: 30_000 });
+  await page.goto(`${base}/economy/read/${slug}`, { waitUntil: 'networkidle', timeout: 30_000 });
 
   const selector = SELECTOR_OVERRIDES[slug]
     ?? await page.evaluate(() => {
@@ -89,6 +89,14 @@ async function capture(browser, base, slug, theme) {
   await context.close();
 }
 
+// Optional slug args: `node build-read-thumbs.mjs <slug> [slug…]` regenerates
+// only those reads' thumbs (e.g. a newly added read) instead of all of them.
+const only = process.argv.slice(2);
+const TARGETS = only.length ? READS.filter((r) => only.includes(r.slug)) : READS;
+if (only.length && TARGETS.length !== only.length) {
+  throw new Error(`unknown slug(s): ${only.filter((s) => !READS.some((r) => r.slug === s)).join(', ')}`);
+}
+
 mkdirSync(OUT_DIR, { recursive: true });
 const { base, stop } = await startPreview();
 const browser = await chromium.launch({
@@ -97,7 +105,7 @@ const browser = await chromium.launch({
 });
 
 try {
-  for (const r of READS) {
+  for (const r of TARGETS) {
     await capture(browser, base, r.slug, 'light');
     await capture(browser, base, r.slug, 'dark');
   }
@@ -105,4 +113,4 @@ try {
   await browser.close();
   stop();
 }
-console.log(`\n${READS.length * 2} thumbnails written.`);
+console.log(`\n${TARGETS.length * 2} thumbnails written.`);

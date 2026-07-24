@@ -8,6 +8,7 @@ from psycopg2 import sql
 from psycopg2.extras import execute_values
 from collections import defaultdict
 from pathlib import Path
+from etl_util import connect, drop_exact_duplicates
 from normalize import normalize_bank_name
 
 SCHEMA_NAME = os.environ.get("SCHEMA_NAME", "economy_dev")
@@ -47,6 +48,8 @@ def aggregate_rows(rows):
         if len(group) == 1:
             result.append(group[0])
             continue
+        print(f"  merge: {psp} / {typ} / {date}: {len(group)} variant rows summed"
+              f" (vol={[r['volume_mn'] for r in group]})")
         ranks = [_f(r["rank"]) for r in group if _f(r["rank"]) is not None]
         vols  = [_f(r["volume_mn"]) or 0 for r in group]
         total_vol = sum(vols)
@@ -96,7 +99,7 @@ for f in sorted(raw_dir.glob("*.json")):
             "td_pct":       parse_num(r.get("td_percent")),
         })
 
-rows = aggregate_rows(rows)
+rows = aggregate_rows(drop_exact_duplicates(rows))
 
 with open(csv_path, "w", newline="") as f:
     w = csv.DictWriter(f, fieldnames=cols)
@@ -106,10 +109,7 @@ print(f"Parsed {len(rows)} rows → {csv_path}")
 
 
 def load_to_db(rows):
-    conn = psycopg2.connect(
-        host="localhost", user="admin",
-        password=os.environ["DB_PASSWORD"], dbname="npci", port=5432
-    )
+    conn = connect()
     try:
         with conn:
             with conn.cursor() as cur:
@@ -161,10 +161,7 @@ print(f"\n--- Loading into {SCHEMA_NAME}.upi_psp_statistics ---")
 load_to_db(rows)
 
 print("\n--- Verification ---")
-conn = psycopg2.connect(
-    host="localhost", user="admin",
-    password=os.environ["DB_PASSWORD"], dbname="npci", port=5432
-)
+conn = connect()
 try:
     with conn.cursor() as cur:
         cur.execute(

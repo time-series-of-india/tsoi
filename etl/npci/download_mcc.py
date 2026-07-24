@@ -4,14 +4,14 @@ import json
 import time
 from pathlib import Path
 
-from fetcher import fetch_table_detail, iter_months, load_cached
+from fetcher import fetch_table_detail, iter_months, load_cached, write_combined
 
 YEARS = list(range(2017, 2027))
 
 out_dir = Path(__file__).parent / "raw_mcc"
 out_dir.mkdir(exist_ok=True)
 
-all_records, skipped = [], []
+all_records, skipped, errors = [], [], []
 
 for year, month in iter_months(YEARS):
     fname = out_dir / f"{year}_{month}.json"
@@ -38,12 +38,13 @@ for year, month in iter_months(YEARS):
         print(f"  saved: {fname.name} ({len(results)} rows)")
     except Exception as e:
         print(f"  error: {year} {month} — {e}")
-        skipped.append((year, month))
+        errors.append((year, month))
     time.sleep(0.3)
 
 combined = Path(__file__).parent / "all_mcc.json"
-with open(combined, "w") as f:
-    json.dump(all_records, f, indent=2)
+write_combined(combined, all_records, errors=len(errors))
 print(f"\nDone. {len(all_records)} records -> {combined}")
 if skipped:
     print(f"Skipped: {skipped}")
+if errors:
+    print(f"Fetch errors: {errors}")

@@ -1,0 +1,113 @@
+{
+  "game": "off-by-how-much",
+  "title": "Off by How Much?",
+  "seriesKicker": "The Numbers Game",
+  "current": 1,
+  "puzzles": [
+    {
+      "n": 1,
+      "released": "2026-07-20",
+      "primer": {
+        "label": "UPI — Anatomy of a Transaction",
+        "href": "/economy/read/upi-architecture/"
+      },
+      "dataNote": "Real data · May–June 2026",
+      "rounds": [
+        {
+          "type": "log",
+          "q": "How many payments did UPI process in June 2026?",
+          "hint": "One month. All of India.",
+          "min": 1,
+          "max": 100,
+          "start": 10,
+          "fmt": "count",
+          "countScale": 1e9,
+          "actual": 22.7,
+          "answer": "<em>{v}</em> payments",
+          "context": "That is roughly 8,800 payments every second, all month long.",
+          "chart": {
+            "kind": "cols",
+            "cap": "UPI payments, month of June ({u})",
+            "countScale": 1e9,
+            "data": [
+              ["2021", 2.8],
+              ["2022", 5.9],
+              ["2023", 9.3],
+              ["2024", 13.9],
+              ["2025", 18.4],
+              ["2026", 22.7]
+            ]
+          }
+        },
+        {
+          "type": "lin",
+          "q": "What share of all UPI payments do PhonePe and Google Pay carry together?",
+          "hint": "Two apps, out of 80+ live on UPI.",
+          "min": 0,
+          "max": 100,
+          "start": 50,
+          "unit": "%",
+          "fmt": "pct0",
+          "actual": 79.5,
+          "answer": "<em>79.5%</em> — four in five payments",
+          "context": "Two apps, four in five payments — and the order beneath them never stops changing.",
+          "chart": {
+            "kind": "bars",
+            "cap": "Share of UPI volume by app, May 2026",
+            "data": [
+              ["PhonePe", 46.5, "accent", "46.5%"],
+              ["Google Pay", 32.9, "accent", "32.9%"],
+              ["Paytm", 8.0, "teal", "8.0%"],
+              ["Navi", 3.6, "teal", "3.6%"],
+              ["Others", 9.0, "teal", "9.0%"]
+            ]
+          }
+        },
+        {
+          "type": "ab",
+          "q": "Which bank receives the most UPI payments?",
+          "a": { "name": "SBI", "hint": "India’s biggest bank" },
+          "b": { "name": "Yes Bank", "hint": "A mid-size private bank" },
+          "correct": "b",
+          "answer": "<em>Yes Bank</em> — by 4×",
+          "context": "Most UPI is you paying shops — and the QR codes of the big merchant apps are issued overwhelmingly by Yes Bank.",
+          "chart": {
+            "kind": "bars",
+            "cap": "UPI payments received, by beneficiary bank, latest 12 months ({u})",
+            "countScale": 1e6,
+            "data": [
+              ["Yes Bank", 103579, "accent"],
+              ["SBI", 25767, "teal"]
+            ]
+          }
+        },
+        {
+          "type": "log",
+          "q": "What's the average bill at a fast-food counter on UPI?",
+          "hint": "June 2026: one order, one scan.",
+          "min": 20,
+          "max": 2000,
+          "start": 300,
+          "unit": "₹",
+          "pre": true,
+          "fmt": "inr0",
+          "actual": 120,
+          "answer": "<em>{v}</em> a meal",
+          "context": "Nearly {c:50000000} fast-food orders a day, each about the price of a burger and fries. Five years ago the average order here was ₹360; the ticket shrank as the habit spread.",
+          "chart": {
+            "kind": "bars",
+            "cap": "Average bill by category, June 2026",
+            "data": [
+              ["Cigarettes", 65, "teal", "₹65"],
+              ["Fast food", 120, "accent", "₹120"],
+              ["Bakery", 137, "teal", "₹137"],
+              ["Groceries", 213, "teal", "₹213"],
+              ["Pharmacy", 423, "teal", "₹423"],
+              ["Fuel", 658, "teal", "₹658"]
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

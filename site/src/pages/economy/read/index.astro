@@ -1,0 +1,229 @@
+---
+// The Read shelf (/economy/read) — the index of the longreads. With the
+// short reads retired the page borrows the front page's grammar rather than a
+// catalog grid: the NEWEST read is the lead object ("Latest read", never
+// "Featured" — recency is a fact, favouritism is a claim), and everything
+// earlier is the same object, quieter, in a chronological stack that grows
+// downward for years without a redesign. Meta lines carry provenance
+// ("From Dispatch No. N" — plain text until dispatch permalink pages exist,
+// nested anchors being invalid inside the card link).
+// /economy 301s here (public/_redirects + astro.config fallback).
+import StoryPage from '../../../layouts/StoryPage.astro';
+import SectionHeader from '../../../components/editorial/SectionHeader.astro';
+import ViewToggle from '../../../components/editorial/ViewToggle.astro';
+import { READS } from '../../../lib/reads-index';
+import { DISPATCH_LIST } from '../../../lib/dispatches';
+import { THEME_LABELS } from '../../../lib/themes';
+import { readingMinutes } from '../../../lib/reading-time';
+import { dataThrough } from '../../../lib/data-through';
+
+const sectionDate = new Date()
+  .toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })
+  .toUpperCase();
+
+// Longreads only (shorts are retired: unlisted, pages still live), newest
+// first; registry order breaks ties.
+const shelf = READS.filter((r) => r.kind === 'read').sort((a, b) =>
+  b.published.localeCompare(a.published)
+);
+const [lead, ...earlier] = shelf;
+
+// Which dispatch shipped a read — for the "From Dispatch No. N" provenance line.
+const dispatchOf = (slug: string) =>
+  DISPATCH_LIST.find((d) => d.items.some((it) => it.href === `/economy/read/${slug}`))?.edition;
+
+const meta = (slug: string) =>
+  [
+    `${readingMinutes(slug)} min read`,
+    ...(dataThrough(slug) ? [`data through ${dataThrough(slug)}`] : []),
+    ...(dispatchOf(slug) ? [`from Dispatch No. ${dispatchOf(slug)}`] : []),
+  ].join(' · ');
+
+const thumb = (slug: string) => `/thumbs/read/${slug}.png`;
+const thumbDark = (slug: string) => `/thumbs/read/${slug}-dark.png`;
+---
+
+<StoryPage
+  title="Read — Time Series of India"
+  description="Longform reads on India in official numbers — how the country moves money — charted from RBI and NPCI data."
+>
+  <SectionHeader label="Economy · Read" date={`${shelf.length} ${shelf.length === 1 ? 'read' : 'reads'} · ${sectionDate}`}>
+    <ViewToggle active="read" slot="actions" />
+  </SectionHeader>
+
+  <!-- ── the latest read: the lead object ─────────────────────────────── -->
+  <a class="lead" href={`/economy/read/${lead.slug}`}>
+    <span class="cover">
+      <img class="t-light" src={thumb(lead.slug)} alt="" loading="eager" />
+      <img class="t-dark" src={thumbDark(lead.slug)} alt="" loading="eager" />
+    </span>
+    <span class="body">
+      <span class="kick">Latest read &middot; {THEME_LABELS[lead.theme]} &middot; {lead.source}</span>
+      <span class="title">{lead.title}</span>
+      <span class="deck">{lead.deck}</span>
+      <span class="meta">{meta(lead.slug)}</span>
+      <span class="cta">Read the story <span aria-hidden="true">&rarr;</span></span>
+    </span>
+  </a>
+
+  <!-- ── everything before it: the stack ──────────────────────────────── -->
+  {earlier.length > 0 && (
+    <>
+      <p class="list-label">Earlier reads</p>
+      <div class="stack">
+        {earlier.map((r) => (
+          <a class="row" href={`/economy/read/${r.slug}`}>
+            <span class="row-thumb">
+              <img class="t-light" src={thumb(r.slug)} alt="" loading="lazy" />
+              <img class="t-dark" src={thumbDark(r.slug)} alt="" loading="lazy" />
+            </span>
+            <span class="row-body">
+              <span class="row-title">{r.title}</span>
+              <span class="row-deck">{r.deck}</span>
+              <span class="meta">{THEME_LABELS[r.theme]} &middot; {r.source} &middot; {meta(r.slug)}</span>
+            </span>
+          </a>
+        ))}
+      </div>
+    </>
+  )}
+</StoryPage>
+
+<style>
+  /* ── lead: two-cell banner, cover left / body right ──────────────────
+     The lead dominates by position and width, never by owning the whole
+     viewport — the earlier stack must land on screen one (newspaper rule:
+     the front page always shows other headlines beside the lead). */
+  .lead {
+    display: grid;
+    grid-template-columns: 0.85fr 1fr;
+    margin-top: calc(var(--tsoi-spacing-unit) * 4);
+    border-left: 4px solid var(--tsoi-color-primary);
+    background: var(--tsoi-color-surface-container-low);
+    text-decoration: none;
+    color: inherit;
+    transition: background 0.15s;
+  }
+  .lead:hover { background: var(--tsoi-color-surface-container-high); }
+  .lead .cover {
+    display: flex; align-items: center; justify-content: center;
+    overflow: hidden;
+    padding: calc(var(--tsoi-spacing-unit) * 2.5) calc(var(--tsoi-spacing-unit) * 2);
+    border-right: var(--tsoi-rule-column) solid var(--tsoi-color-outline);
+  }
+  .lead .cover img {
+    width: auto; max-width: 100%; max-height: 300px;
+    object-fit: contain; display: block;
+  }
+  .lead .body {
+    display: flex; flex-direction: column; justify-content: center;
+    padding: calc(var(--tsoi-spacing-unit) * 3) calc(var(--tsoi-spacing-unit) * 3.5);
+  }
+  .kick {
+    display: block;
+    font: var(--tsoi-text-byline); font-weight: 500; letter-spacing: 0.1em;
+    text-transform: uppercase; color: var(--tsoi-color-primary-text);
+  }
+  .lead .title {
+    display: block;
+    margin: calc(var(--tsoi-spacing-unit) * 1.25) 0 0;
+    max-width: 26ch;
+    font: var(--tsoi-text-headline-lg);
+    letter-spacing: var(--tsoi-text-headline-lg-tracking);
+    text-wrap: balance;
+  }
+  .lead:hover .title { color: var(--tsoi-color-primary-text); }
+  .lead .deck {
+    display: block;
+    max-width: 62ch;
+    margin: calc(var(--tsoi-spacing-unit) * 1.5) 0 0;
+    font: var(--tsoi-text-deck);
+    color: var(--tsoi-color-on-surface-variant);
+  }
+  .meta {
+    display: block;
+    margin: calc(var(--tsoi-spacing-unit) * 1.75) 0 0;
+    font: var(--tsoi-text-byline); letter-spacing: 0.06em; text-transform: uppercase;
+    color: var(--tsoi-color-on-surface-variant);
+  }
+  .cta {
+    display: inline-block;
+    margin: calc(var(--tsoi-spacing-unit) * 2) 0 0;
+    font: var(--tsoi-text-byline); font-weight: 500; letter-spacing: 0.06em;
+    text-transform: uppercase; color: var(--tsoi-color-primary-text);
+  }
+  .cta span { display: inline-block; transition: transform 0.15s; }
+  .lead:hover .cta span { transform: translateX(3px); }
+
+  /* theme-swapped thumbnails: light captures by default, dark under
+     [data-theme='dark']; both ship, CSS picks one. Selectors carry the same
+     parent chain as the base img rules so they win on specificity. */
+  .lead .cover .t-dark,
+  .row-thumb .t-dark { display: none; }
+  :global(html[data-theme='dark']) .lead .cover .t-light,
+  :global(html[data-theme='dark']) .row-thumb .t-light { display: none; }
+  :global(html[data-theme='dark']) .lead .cover .t-dark,
+  :global(html[data-theme='dark']) .row-thumb .t-dark { display: block; }
+
+  /* ── the stack: earlier reads, same object at lower volume ───────────── */
+  .list-label {
+    margin: calc(var(--tsoi-spacing-unit) * 5) 0 0;
+    font: var(--tsoi-text-byline); letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--tsoi-color-on-surface-variant);
+  }
+  .row {
+    display: grid;
+    grid-template-columns: 132px 1fr;
+    column-gap: calc(var(--tsoi-spacing-unit) * 2.5);
+    align-items: center;
+    padding: calc(var(--tsoi-spacing-unit) * 2.5) 0;
+    text-decoration: none;
+    color: inherit;
+  }
+  .row + .row { border-top: var(--tsoi-rule-column) solid var(--tsoi-color-outline); }
+  .row-thumb {
+    display: flex; align-items: center; justify-content: center;
+    aspect-ratio: 132 / 120; overflow: hidden;
+    background: var(--tsoi-color-surface-container-low);
+    border: 1px solid var(--tsoi-color-outline);
+    transition: border-color 0.15s;
+  }
+  .row:hover .row-thumb { border-color: var(--tsoi-color-primary); }
+  .row-thumb img { max-width: 100%; max-height: 100%; object-fit: contain; display: block; }
+  .row-body { display: block; }
+  .row-title {
+    display: block;
+    font: var(--tsoi-text-headline-md);
+    letter-spacing: var(--tsoi-text-headline-md-tracking);
+    line-height: 1.25;
+  }
+  .row:hover .row-title { color: var(--tsoi-color-primary-text); }
+  .row-deck {
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+    overflow: hidden;
+    margin: calc(var(--tsoi-spacing-unit) * 0.75) 0 0;
+    font: var(--tsoi-text-body);
+    color: var(--tsoi-color-on-surface-variant);
+  }
+  .row .meta { margin-top: var(--tsoi-spacing-unit); }
+
+  /* ── responsive ───────────────────────────────────────────────────────── */
+  @media (max-width: 767px) {
+    /* single column: cover stacks back on top, capped tight so the earlier
+       stack is one thumb-flick away */
+    .lead { grid-template-columns: 1fr; margin-top: calc(var(--tsoi-spacing-unit) * 3); }
+    .lead .cover {
+      padding: calc(var(--tsoi-spacing-unit) * 2) 0;
+      border-right: none;
+      border-bottom: var(--tsoi-rule-column) solid var(--tsoi-color-outline);
+    }
+    .lead .cover img { max-height: 240px; }
+    .lead .body {
+      padding: calc(var(--tsoi-spacing-unit) * 2.5) calc(var(--tsoi-spacing-unit) * 2.5)
+        calc(var(--tsoi-spacing-unit) * 3);
+    }
+    /* compact list rows: thumb beside title, deck dropped (house pattern) */
+    .row { grid-template-columns: 96px 1fr; column-gap: calc(var(--tsoi-spacing-unit) * 2); padding: calc(var(--tsoi-spacing-unit) * 2) 0; }
+    .row-deck { display: none; }
+  }
+</style>

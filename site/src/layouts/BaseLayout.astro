@@ -30,9 +30,11 @@ const beaconToken = import.meta.env.CF_BEACON_TOKEN || process.env.CF_BEACON_TOK
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <link rel="icon" href="/favicon.ico" sizes="32x32" />
-    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <!-- ?v= busts the browsers' sticky favicon cache (URL-keyed, ignores
+         revalidation) for visitors who cached the previous mark. Bump on redesign. -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg?v=2" />
+    <link rel="icon" href="/favicon.ico?v=2" sizes="32x32" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=2" />
     <link rel="canonical" href={canonical} />
     {noindex && <meta name="robots" content="noindex, nofollow" />}
     <title>{title}</title>
@@ -45,7 +47,7 @@ const beaconToken = import.meta.env.CF_BEACON_TOKEN || process.env.CF_BEACON_TOK
     <meta property="og:site_name" content="Time Series of India" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:image" content={ogImageUrl} />
-    <link rel="alternate" type="application/rss+xml" title="Time Series of India — Reads" href="/rss.xml" />
+    <link rel="alternate" type="application/rss+xml" title="Time Series of India" href="/rss.xml" />
     <link
       rel="preload"
       href="/fonts/playfair-display-latin-900-normal.woff2"

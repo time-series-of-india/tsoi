@@ -42,9 +42,12 @@ releases. Maintained by one person in limited hours.
   cited reference. Live figures hydrate from generated data at build time; don't
   hard-type them.
 - **Editorial prose is maintainer-authored.** You may propose factual corrections
-  (with a source); do not author or rewrite narrative prose. Content is
-  CC BY-NC-ND 4.0 — no derivatives or commercial reuse (see
-  [`LICENSE-CONTENT.md`](LICENSE-CONTENT.md)); code is Apache-2.0.
+  (with a source); do not author or rewrite narrative prose. This also covers
+  puzzle questions/hints/context copy for the game — same rule, same reason.
+  Content is CC BY-NC-ND 4.0 — no derivatives or commercial reuse (see
+  [`LICENSE-CONTENT.md`](LICENSE-CONTENT.md)); code is Apache-2.0. A game's
+  *mechanic* isn't content and isn't restricted — build on it freely; only the
+  specific authored puzzle text/design is off-limits to rewrite.
 - **Deploys are manual.** No PR auto-publishes; don't add auto-deploy that would.
 
 ## Verify before you claim done

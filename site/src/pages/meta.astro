@@ -1,0 +1,2284 @@
+---
+// Meta page: the site's own traffic, rendered like every other series here.
+// One self-contained ECharts island (daily/hourly grain and dispatch markers
+// don't fit the month-grained dashboard runtime, so this page carries its own
+// small renderer instead of extending shared code). Data: /data/meta/traffic.json
+// from scripts/build-meta.mjs — a build-time snapshot, stamped as such.
+//
+// Chrome-wise this page borrows the "desk" grammar from DesksView.astro (the
+// payments dashboard's multi-desk shell): a sticky saffron .page-bar holding
+// the page-global All/Humans toggle, and four .desk sections ("Overview" /
+// "Traffic" / "Formats" / "Audience") each with their own sticky .desk-bar.
+// RANGE is per-desk (Traffic, Formats and Audience each own a rangeState
+// instance; Overview has none — its tiles are all-time/now by definition).
+// Traffic and Formats each also hold a "today so far" panel whose window is
+// always the current UTC day, so it ignores the range. It is NOT routed through DesksView or
+// the spec-driven runtime — this file keeps its own markup + a bespoke script
+// renderer; only the chrome (page-bar CSS/markup, desk-bar CSS/markup,
+// --tsoi-page-bar-h measurement, relocatePageBar, whole-desk maximize) is
+// ported in below, adapted to meta's own ids/classes.
+import StoryPage from '../layouts/StoryPage.astro';
+import SectionHeader from '../components/editorial/SectionHeader.astro';
+---
+
+<StoryPage
+  title="Meta — Time Series Observing Itself"
+  description="TSOI's own traffic, measured and published like every other series on the site: daily visitors with dispatch markers, hourly rhythm, referrers, and countries."
+>
+  <SectionHeader label="Meta" />
+  <header class="meta-head">
+    <h1>Time Series Observing Itself</h1>
+    <p class="deck">
+      This site charts India's public data, so its own traffic gets the same treatment.
+      Every number below is measured, collected, and published like any other series here.
+      A <a href="/"><code>dispatch</code></a> is an edition of this site: a dated release of
+      new charts and stories. The latest one is the front page.
+    </p>
+  </header>
+
+  <div class="page-bar">
+    <button type="button" class="page-collapse-btn" aria-expanded="true" aria-label="Collapse all desks">▾</button>
+    <p class="asof" id="meta-asof" hidden>
+      <strong id="meta-now">—</strong> <span id="meta-utc" class="asof-utc" data-info="All times on this page are UTC.">UTC</span>
+      <span class="asof-sep" aria-hidden="true">·</span>
+      <span id="meta-asof-mode">—</span>
+      <span class="asof-sep" aria-hidden="true">·</span>
+      <span id="meta-asof-fresh" class="asof-fresh-full">—</span>
+      <span id="meta-asof-fresh-compact" class="asof-fresh-compact">—</span>
+    </p>
+    <div class="page-controls">
+      <div class="ctl">
+        <span class="ctl-label" data-info="Sessions that started on the site. Scopes the Overview and Traffic panels.">Visits</span>
+        <div class="seg" id="traffic-toggle">
+          <button type="button" data-value="all" data-info="Every visit the server records, bots included.">All</button>
+          <button type="button" data-value="humans" class="active" data-info="Visits from a real browser — the human floor.">Human</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="desks">
+    <section class="desk" id="overview">
+      <div class="desk-bar">
+        <button type="button" class="desk-collapse-btn" aria-expanded="true" aria-controls="overview-body" aria-label="Collapse Overview desk">▾</button>
+        <span class="desk-title" data-info="All-time totals plus the day in progress." tabindex="0">Overview</span>
+        <button type="button" class="desk-max" aria-label="Maximize Overview desk">⤢</button>
+      </div>
+
+      <div class="desk-body" id="overview-body">
+        <div class="stat-strip meta-stats" hidden>
+          <div class="stat">
+            <span class="stat-value" id="stat-inprogress">—</span>
+            <span class="stat-compare" id="stat-inprogress-compare" hidden></span>
+            <span class="stat-label" id="stat-inprogress-label" data-info="Visits on the UTC day still forming; freezes when the feed is off.">Visits so far</span>
+          </div>
+          <div class="stat"><span class="stat-value" id="stat-peak">—</span><span class="stat-label" id="stat-peak-label" data-info="Busiest finished day, by visits.">Peak day visits</span></div>
+          <div class="stat"><span class="stat-value" id="stat-countries">—</span><span class="stat-label" id="stat-countries-label" data-info="Distinct countries with a visit, all time. All includes bot-only ones.">Countries reached</span></div>
+          <div class="stat"><span class="stat-value" id="stat-days">—</span><span class="stat-label" data-info="Days since this site went public.">Days public</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="desk" id="traffic">
+      <div class="desk-bar">
+        <button type="button" class="desk-collapse-btn" aria-expanded="true" aria-controls="traffic-body" aria-label="Collapse Traffic desk">▾</button>
+        <span class="desk-title" data-info="Visits per UTC day, and the day in progress by hour / 15 min." tabindex="0">Traffic</span>
+        <button type="button" class="desk-max" aria-label="Maximize Traffic desk">⤢</button>
+      </div>
+
+      <div class="desk-body" id="traffic-body">
+      <div class="panels">
+        <section class="panel wide">
+          <div class="panel-bar">
+            <span class="dot" aria-hidden="true"></span>
+            <span class="panel-title" data-info="Visits per UTC day. The newest point is still forming (pulsing ring); dashed lines mark dispatches.">Daily visits, with dispatches marked</span>
+            <span class="tz-suffix">(UTC days)</span>
+            <div class="panel-right">
+              <button type="button" class="range-reset" id="range-window-traffic" hidden>
+                <span class="range-reset-win mono"></span><span class="range-reset-x" aria-hidden="true">×</span>
+              </button>
+              <div class="seg" id="range-toggle-traffic"
+                   data-info="Time window shown. Drag to select; double-click to reset.">
+                <button type="button" data-value="7d">7D</button>
+                <button type="button" data-value="14d">14D</button>
+                <button type="button" data-value="all" class="active">ALL</button>
+              </div>
+              <button type="button" class="panel-max" aria-label="Maximize panel">⤢</button>
+            </div>
+          </div>
+          <div class="chart" id="chart-hero"></div>
+        </section>
+
+        <section class="panel wide">
+          <div class="panel-bar">
+            <span class="dot" aria-hidden="true"></span>
+            <span class="panel-title" data-info="The UTC day still forming, by hour or 15 min. Dashed marker = now; live only.">Today so far</span>
+            <span class="tz-suffix" id="today-tz">(UTC)</span>
+            <div class="panel-right">
+              <div class="seg" id="today-grain">
+                <button type="button" data-value="1h" class="active">1H</button>
+                <button type="button" data-value="15m">15M</button>
+              </div>
+              <div class="seg" id="today-prev">
+                <button type="button" data-value="prev" aria-pressed="false">Previous day</button>
+              </div>
+              <div class="seg" id="today-local">
+                <button type="button" data-value="local" aria-pressed="false"
+                  data-info="Relabel the axis in your device's local time.">Local</button>
+              </div>
+              <button type="button" class="panel-max" aria-label="Maximize panel">⤢</button>
+            </div>
+          </div>
+          <div class="chart chart-hourly" id="chart-today"></div>
+        </section>
+      </div>
+      </div>
+    </section>
+
+    <section class="desk" id="formats">
+      <div class="desk-bar">
+        <button type="button" class="desk-collapse-btn" aria-expanded="true" aria-controls="formats-body" aria-label="Collapse Formats desk">▾</button>
+        <span class="desk-title" data-info="Page views split across play, read and explore." tabindex="0">Formats</span>
+        <button type="button" class="desk-max" aria-label="Maximize Formats desk">⤢</button>
+      </div>
+
+      <div class="desk-body" id="formats-body">
+      <div class="panels">
+        <section class="panel wide">
+          <div class="panel-bar">
+            <span class="dot" aria-hidden="true"></span>
+            <span class="panel-title" data-info="Each UTC day's page views as a 100% split across the three formats. Tooltip has the exact counts.">Play, read, explore</span>
+            <span class="tz-suffix">(share of page views)</span>
+            <div class="panel-right">
+              <button type="button" class="range-reset" id="range-window-formats" hidden>
+                <span class="range-reset-win mono"></span><span class="range-reset-x" aria-hidden="true">×</span>
+              </button>
+              <div class="seg" id="range-toggle-formats"
+                   data-info="Time window shown. Drag to select; double-click to reset.">
+                <button type="button" data-value="7d">7D</button>
+                <button type="button" data-value="14d">14D</button>
+                <button type="button" data-value="all" class="active">ALL</button>
+              </div>
+              <button type="button" class="panel-max" aria-label="Maximize panel">⤢</button>
+            </div>
+          </div>
+          <div class="chart chart-hourly" id="chart-formats"></div>
+        </section>
+
+        <section class="panel wide">
+          <div class="panel-bar">
+            <span class="dot" aria-hidden="true"></span>
+            <span class="panel-title" data-info="Page views by format on the UTC day still forming, by hour or 15 min. Dashed marker = now; live only.">Today so far, by format</span>
+            <span class="tz-suffix" id="tformats-tz">(UTC)</span>
+            <div class="panel-right">
+              <div class="seg" id="tformats-grain">
+                <button type="button" data-value="1h" class="active">1H</button>
+                <button type="button" data-value="15m">15M</button>
+              </div>
+              <div class="seg" id="tformats-prev">
+                <button type="button" data-value="prev" aria-pressed="false">Previous day</button>
+              </div>
+              <div class="seg" id="tformats-local">
+                <button type="button" data-value="local" aria-pressed="false"
+                  data-info="Relabel the axis in your device's local time.">Local</button>
+              </div>
+              <button type="button" class="panel-max" aria-label="Maximize panel">⤢</button>
+            </div>
+          </div>
+          <div class="chart chart-hourly" id="chart-today-formats"></div>
+        </section>
+      </div>
+      </div>
+    </section>
+
+    <section class="desk" id="audience">
+      <div class="desk-bar">
+        <button type="button" class="desk-collapse-btn" aria-expanded="true" aria-controls="audience-body" aria-label="Collapse Audience desk">▾</button>
+        <span class="desk-title" data-info="Where readers come from and where they are." tabindex="0">Audience</span>
+
+        <div class="desk-controls">
+          <div class="ctl">
+            <span class="ctl-label" data-info="Time window for both tables. TODAY is the day still forming.">Range</span>
+            <div class="seg" id="range-toggle-audience">
+              <button type="button" data-value="today">TODAY</button>
+              <button type="button" data-value="7d">7D</button>
+              <button type="button" data-value="14d">14D</button>
+              <button type="button" data-value="all" class="active">ALL</button>
+            </div>
+          </div>
+        </div>
+
+        <button type="button" class="range-reset" id="range-window-audience" hidden>
+          <span class="range-reset-win mono"></span><span class="range-reset-x" aria-hidden="true">×</span>
+        </button>
+        <button type="button" class="desk-filters-btn" aria-expanded="false">Filters</button>
+        <button type="button" class="desk-max" aria-label="Maximize Audience desk">⤢</button>
+      </div>
+
+      <div class="desk-body" id="audience-body">
+      <div class="panels">
+        <section class="panel">
+          <div class="panel-bar">
+            <span class="dot" aria-hidden="true"></span>
+            <span class="panel-title" data-info="Referrers, counted in the browser — ad-blockers skew them low. Ignores All/Human.">Where readers arrive from</span>
+            <div class="panel-right"><button type="button" class="panel-max" aria-label="Maximize panel">⤢</button></div>
+          </div>
+          <div class="comp-wrap" id="table-referrers"></div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-bar">
+            <span class="dot" aria-hidden="true"></span>
+            <span class="panel-title" data-info="Visits by country from IP. All is mostly crawlers; Human is real browsers.">Where readers are</span>
+            <div class="panel-right"><button type="button" class="panel-max" aria-label="Maximize panel">⤢</button></div>
+          </div>
+          <div class="comp-wrap" id="table-countries"></div>
+        </section>
+
+      </div>
+      </div>
+    </section>
+  </div>
+
+  <article class="prose">
+    <h3>Privacy</h3>
+    <p>
+      The site stores no individual-level data. Measurement is limited to aggregate request
+      counts at Cloudflare's edge and a cookieless page-view beacon.
+    </p>
+  </article>
+</StoryPage>
+
+<style>
+  .meta-head { max-width: 70ch; margin-top: calc(var(--tsoi-spacing-unit) * 2); }
+  .meta-head h1 { margin: 0; font: var(--tsoi-text-headline-lg); letter-spacing: var(--tsoi-text-headline-lg-tracking); }
+  .deck { margin: var(--tsoi-spacing-unit) 0 0; font: var(--tsoi-text-deck); letter-spacing: var(--tsoi-text-deck-tracking); color: var(--tsoi-color-on-surface-variant); }
+  .deck code { font-family: var(--tsoi-font-mono); font-size: 0.88em; }
+
+  /* ── page bar: one time picker for the whole page (Grafana model) ──────
+     A thin saffron strip, not a second surface-tint slab — ported from
+     DesksView.astro so the two dashboard idioms read as one family. Left
+     slot: "Updated <timestamp>" byline (was .asof in the old .global-bar);
+     right slot: RANGE, pushed right by .page-controls' margin-left:auto. */
+  .page-bar {
+    display: flex; align-items: center; gap: calc(var(--tsoi-spacing-unit) * 2); flex-wrap: wrap;
+    padding: calc(var(--tsoi-spacing-unit) * 0.375) calc(var(--tsoi-spacing-unit) * 1.5);
+    margin-top: calc(var(--tsoi-spacing-unit) * 2);
+    background: var(--tsoi-color-pagebar);
+    position: sticky; top: 0; z-index: 7;
+  }
+  .asof { display: inline-flex; align-items: baseline; gap: 6px; margin: 0; font: var(--tsoi-text-byline); text-transform: uppercase; letter-spacing: 0.04em; color: var(--tsoi-color-on-pagebar); }
+  .asof[hidden] { display: none; }
+  .asof strong { font-weight: 400; font-family: var(--tsoi-font-mono); letter-spacing: 0; color: var(--tsoi-color-on-pagebar); }
+  .asof-sep { opacity: 0.55; }
+  /* Freshness has two variants; the compact one ("6h ago") only shows on the
+     narrow bar (see the max-width block below). Desktop hides it. */
+  .asof-fresh-compact { display: none; }
+  /* The "UTC" chip carries the reader's-offset tooltip; its dotted underline
+     (from the global [data-info] rule) is tuned for cream grounds, so relight
+     it — and its cursor — for the saffron page bar. */
+  /* :not(button) — the segmented buttons are already self-evidently clickable,
+     and a help cursor on them reads as a stray question mark on hover. */
+  .page-bar [data-info]:not(button) { text-decoration-color: color-mix(in srgb, var(--tsoi-color-on-pagebar) 55%, transparent); cursor: help; }
+  .page-controls { display: flex; align-items: center; gap: calc(var(--tsoi-spacing-unit) * 2); margin-left: auto; }
+  /* Collapse-all chevron: aggregate tri-state (see syncPageCollapseBtn) — down
+     while any desk is expanded (click folds all), rotated right once all are
+     folded (click expands all). A shade smaller than the desk chevron, since the
+     saffron strip is deliberately short. Meaningless inside a maximized overlay,
+     where relocatePageBar has moved the whole page bar. */
+  .page-collapse-btn {
+    flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+    width: 24px; height: 24px; padding: 0; border: 0; border-radius: 2px; cursor: pointer;
+    background: transparent; color: var(--tsoi-color-on-pagebar); font-size: 16px; line-height: 1;
+  }
+  .page-collapse-btn:hover { opacity: 0.8; }
+  .page-collapse-btn.collapsed { transform: rotate(-90deg); }
+  :global(.desk.maximized) .page-collapse-btn,
+  :global(.panel.maximized) .page-collapse-btn { display: none; }
+  /* RANGE label sits on the saffron strip — light it to match the byline. */
+  .page-bar .ctl-label { color: var(--tsoi-color-on-pagebar); }
+  @media (max-width: 600px) {
+    .page-bar { flex-wrap: nowrap; gap: var(--tsoi-spacing-unit); }
+    .page-controls { gap: var(--tsoi-spacing-unit); min-width: 0; }
+    /* The live UTC clock is the anchor — keep it whole; let the trailing
+       freshness clip if the bar is too narrow (it reappears on wider screens
+       and via the info tooltip regardless). */
+    .asof { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex-shrink: 1; min-width: 0; }
+    .asof #meta-now, .asof #meta-utc { flex-shrink: 0; }
+    /* "Traffic" label is redundant on mobile: the All/Humans buttons carry
+       their own tooltips now, so drop the word to give the asof its room. */
+    .page-bar .ctl-label { display: none; }
+    /* Swap the full freshness ("built 6 hours ago") for the compact form
+       ("6h ago") — a stale/snapshot age can otherwise clip the trailing word. */
+    .asof-fresh-full { display: none; }
+    .asof-fresh-compact { display: inline; }
+  }
+
+  /* Desks are flush — no margin between .desk elements — so the JS-driven
+     stacking below (see the <script>) can compute a clean handoff: bar N-1
+     holds at the page-bar offset until desk N's true top arrives to touch
+     it, then they move together. The resting gap before the next bar is a
+     trailing `::after` spacer, deliberately NOT padding-bottom: a sticky
+     element's NATIVE release (independent of whatever `top` script.ts
+     computes) is bounded by its container's CONTENT edge, not its padding
+     edge, so padding here would make native sticky release the bar early —
+     fighting the JS instead of matching it — while generated content is
+     real content as far as that boundary is concerned, so native release
+     and the script's own computed trigger land on the same scroll position.
+     Mirrors DesksView.astro. */
+  .desks { display: flex; flex-direction: column; padding-block: calc(var(--tsoi-spacing-unit) * 3); }
+  .desk { scroll-margin-top: var(--tsoi-page-bar-h, 45px); }
+  .desk:not(:last-child)::after { content: ''; display: block; height: calc(var(--tsoi-spacing-unit) * 2); }
+
+  /* ── desk bar: title, controls, filters toggle, desk maximize ────────── */
+  .desk-bar {
+    display: flex; align-items: center; gap: calc(var(--tsoi-spacing-unit) * 2); flex-wrap: wrap;
+    padding: var(--tsoi-spacing-unit) calc(var(--tsoi-spacing-unit) * 1.5);
+    border: var(--tsoi-rule-column) solid var(--tsoi-color-outline);
+    border-top: 2px solid var(--tsoi-color-primary);
+    background: var(--tsoi-color-surface-container-high);
+    position: sticky; top: var(--tsoi-page-bar-h, 45px); z-index: 6;
+    /* The whole bar folds/unfolds the desk (see the script), so the surface
+       reads as clickable; the controls inside keep their own cursor. */
+    cursor: pointer;
+  }
+  /* The gap below the bar lives on the NEXT element, never as the bar's own
+     margin-bottom: a sticky element is bounded by its MARGIN box, so a bottom
+     margin makes the bar release that many px early and leaves a permanent gap
+     between it and the incoming desk's bar during the push. */
+  .desk-bar + * { margin-top: calc(var(--tsoi-spacing-unit) * 2); }
+  /* ── desk collapse: chevron + folded body (ported from DesksView) ─────── */
+  /* Sized to match .desk-max at the other end of the bar — the fold and the
+     maximize are the desk's two view controls, so they get equal weight. */
+  .desk-collapse-btn {
+    flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+    width: 28px; height: 28px; padding: 0; border: 0; border-radius: 2px; cursor: pointer;
+    background: transparent; color: var(--tsoi-color-on-surface-variant); font-size: 19px; line-height: 1;
+  }
+  .desk-collapse-btn:hover { color: var(--tsoi-color-on-surface); }
+  .desk-collapse-btn.collapsed { transform: rotate(-90deg); }
+  /* Folded: hide the body and any desk-level controls (a hidden desk's range
+     control is meaningless). .desk-max is deliberately NOT hidden — maximize
+     must keep working on a collapsed desk (it force-expands it; see the script). */
+  .desk.collapsed .desk-body,
+  .desk.collapsed .desk-controls,
+  .desk.collapsed .desk-filters-btn { display: none; }
+  .desk-title {
+    flex-shrink: 0;
+    /* margin-right:auto pushes the title hard left and floats the control group
+       (+ ⤢) to the right end of the bar — so the Traffic toggle sits just
+       before maximize rather than crowding the title. */
+    margin-right: auto;
+    font: var(--tsoi-text-byline); font-weight: 600; letter-spacing: 0.06em;
+    text-transform: uppercase; font-size: 13px; color: var(--tsoi-color-on-surface);
+  }
+  .desk-controls {
+    display: flex; align-items: center; gap: calc(var(--tsoi-spacing-unit) * 2); flex-wrap: wrap;
+  }
+  :global(.panel.maximized) .desk-controls {
+    flex: 0 0 auto;
+    padding: var(--tsoi-spacing-unit) calc(var(--tsoi-spacing-unit) * 1.5);
+    border-bottom: var(--tsoi-rule-column) solid var(--tsoi-color-outline);
+    background: var(--tsoi-color-surface-container-high);
+  }
+  .ctl { display: flex; align-items: center; gap: var(--tsoi-spacing-unit); }
+  .ctl-label { font: var(--tsoi-text-byline); text-transform: uppercase; letter-spacing: 0.04em; color: var(--tsoi-color-on-surface-variant); }
+  /* The dragged-range chip doubles as its own reset. It is the only affordance
+     for undoing a drag on touch (double-click is desktop-only and undiscoverable),
+     so it sits beside the range control it undoes and never inside a collapsible
+     drawer — that is no place for the exit. Traffic, Formats and Audience each
+     carry their range (and this reset chip) in their own desk bar; the chip
+     renders only while a custom window is active, so the default bar is
+     unchanged. */
+  .range-reset {
+    display: inline-flex; align-items: center; gap: 8px;
+    font: var(--tsoi-text-byline); font-family: var(--tsoi-font-mono); letter-spacing: 0;
+    padding: 4px 8px 4px 10px; border: 1px solid var(--tsoi-color-outline); border-radius: 2px;
+    background: var(--tsoi-color-background); color: var(--tsoi-color-primary-text); cursor: pointer;
+  }
+  .range-reset[hidden] { display: none; }
+  .range-reset:hover { border-color: var(--tsoi-color-primary); }
+  .range-reset-x { font-size: 15px; line-height: 1; opacity: 0.75; }
+  @media (max-width: 600px) {
+    /* Its own row: the window text plus the desk title, Filters and maximize
+       will not share 390px without truncating something that matters. Order 4
+       puts it AFTER .desk-max (which is order 2) — at the same order its
+       flex-basis:100% wrapped first and knocked the maximize icon onto a third
+       line. Scoped to the desk bar: inside .panel-right, flex-basis:100% would
+       blow the panel bar apart instead, and .panel-bar already wraps on its own. */
+    .desk-bar > .range-reset { order: 4; flex-basis: 100%; justify-content: space-between; }
+    .panel-right { flex-wrap: wrap; justify-content: flex-end; }
+  }
+
+  .desk-filters-btn {
+    display: none; flex-shrink: 0;
+    font: var(--tsoi-text-byline); text-transform: uppercase; letter-spacing: 0.04em;
+    padding: 5px 10px; border: 1px solid var(--tsoi-color-outline); border-radius: 2px; cursor: pointer;
+    background: var(--tsoi-color-background); color: var(--tsoi-color-on-surface-variant);
+  }
+  .desk-filters-btn:hover { background: var(--tsoi-color-surface-container-high); color: var(--tsoi-color-on-surface); }
+
+  .desk-max {
+    flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    width: 28px; height: 28px; padding: 0; border: 0; border-radius: 2px; cursor: pointer;
+    background: transparent; color: var(--tsoi-color-on-surface-variant); font-size: 19px; line-height: 1;
+  }
+  .desk-max:hover { background: var(--tsoi-color-surface-container-high); color: var(--tsoi-color-on-surface); }
+
+  @media (max-width: 600px) {
+    .desk-bar { position: sticky; }
+    .desk-controls { display: none; width: 100%; flex-direction: column; align-items: stretch; gap: var(--tsoi-spacing-unit); order: 3; }
+    .desk-controls.mobile-open { display: flex; }
+    .desk-controls .ctl { width: 100%; justify-content: space-between; }
+    /* Filters disclosure then maximize: order the toggle before ⤢ so the
+       maximize icon sits to the RIGHT of Filters (⤢ keeps margin-left:auto,
+       so it still parks at the far edge). */
+    .desk-filters-btn { display: inline-flex; align-items: center; justify-content: center; order: 1; }
+    .desk-max { order: 2; }
+  }
+
+  /* ── desk maximize overlay ────────────────────────────────────────────── */
+  :global(.tsoi-desk-backdrop) { position: fixed; inset: 0; z-index: 44; background: rgba(0, 0, 0, 0.55); }
+  :global(.desk.maximized) {
+    position: fixed; inset: 0; z-index: 45; overflow-y: auto;
+    background: var(--tsoi-color-background);
+    padding: 0 calc(var(--tsoi-spacing-unit) * 2) calc(var(--tsoi-spacing-unit) * 4);
+    border: 0;
+  }
+
+  .stat-strip { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: calc(var(--tsoi-spacing-unit) * 2); margin-bottom: calc(var(--tsoi-spacing-unit) * 2); }
+  .stat { border: var(--tsoi-rule-column) solid var(--tsoi-color-outline); background: var(--tsoi-color-surface); padding: calc(var(--tsoi-spacing-unit) * 1.5); display: flex; flex-direction: column; gap: calc(var(--tsoi-spacing-unit) / 2); }
+  .stat-value { font: var(--tsoi-text-metric-xl); color: var(--tsoi-color-on-surface); }
+  /* Breach state (in-progress value exceeds the sealed peak, same instrument):
+     saffron value + small comparator line, never a raw --primary fill (that
+     token doesn't carry the dark-theme contrast fix). */
+  .stat-value.breach { color: var(--tsoi-color-primary-text); }
+  .stat-compare { font: var(--tsoi-text-byline); color: var(--tsoi-color-primary-text); }
+  .stat-compare[hidden] { display: none; }
+  .stat-label { font: var(--tsoi-text-byline); text-transform: uppercase; letter-spacing: 0.04em; color: var(--tsoi-color-on-surface-variant); }
+  @media (max-width: 600px) { .stat-strip { grid-template-columns: 1fr 1fr; gap: var(--tsoi-spacing-unit); } }
+
+  .panels { display: grid; grid-template-columns: 1fr; gap: calc(var(--tsoi-spacing-unit) * 2); }
+  @media (min-width: 880px) { .panels { grid-template-columns: 1fr 1fr; } .panel.wide { grid-column: 1 / -1; } }
+  .panel { border: var(--tsoi-rule-column) solid var(--tsoi-color-outline); background: var(--tsoi-color-surface); }
+  .panel-bar { display: flex; align-items: center; gap: var(--tsoi-spacing-unit); flex-wrap: wrap; padding: var(--tsoi-spacing-unit); border-bottom: var(--tsoi-rule-column) solid var(--tsoi-color-outline); }
+  .panel-title { font: var(--tsoi-text-label-caps); letter-spacing: 0.04em; text-transform: uppercase; color: var(--tsoi-color-on-surface); }
+  .tz-suffix { font: var(--tsoi-text-byline); color: var(--tsoi-color-on-surface-variant); }
+  .dot { width: 6px; height: 6px; border-radius: var(--tsoi-radius-full); background: var(--tsoi-color-chart-1); flex-shrink: 0; }
+  .seg { display: inline-flex; border: 1px solid var(--tsoi-color-outline); border-radius: 2px; overflow: hidden; }
+  .seg button { font: var(--tsoi-text-byline); text-transform: uppercase; letter-spacing: 0.04em; padding: 5px 10px; border: 0; cursor: pointer; background: var(--tsoi-color-background); color: var(--tsoi-color-on-surface-variant); }
+  .seg button + button { border-left: 1px solid var(--tsoi-color-outline); }
+  /* Accepted AA deviation (2026-07-19): white on light's #CC5500 fill is
+     4.31:1 against the 4.5:1 floor; the passing darker saffron read too red,
+     so the brand fill stays. */
+  .seg button.active { background: var(--tsoi-color-primary); color: #fff; }
+  /* …except on the saffron page bar, where --primary IS the strip colour
+     (--tsoi-color-pagebar is the same #CC5500), so a saffron-filled active
+     segment dissolves into the background and the selected range reads as a
+     hole in the control. Invert the whole control there rather than just
+     recolouring the active cell: if the inactive cells keep their cream fill,
+     "selected" ends up carried by text colour alone against identical
+     backgrounds — swapping one unreadable state for an ambiguous one. Letting
+     the strip show through the inactive cells makes the active one a cream
+     lozenge, which is the same figure/ground relationship the control has on
+     a tan desk bar, just inverted. Borders are the cream at low alpha (the
+     outline token is tuned for cream grounds and disappears on saffron). */
+  .page-bar .seg { border-color: rgba(245, 240, 229, 0.45); }
+  .page-bar .seg button {
+    background: transparent;
+    color: var(--tsoi-color-on-pagebar);
+  }
+  .page-bar .seg button + button { border-left-color: rgba(245, 240, 229, 0.45); }
+  .page-bar .seg button:hover:not(.active) { background: rgba(245, 240, 229, 0.15); }
+  .page-bar .seg button.active {
+    background: var(--tsoi-color-on-pagebar);
+    /* Pinned, not --tsoi-color-primary-text: that token flips to the bright
+       dark-theme saffron (#FF8236), which lands at 2.1:1 on this lozenge —
+       the lozenge is cream in BOTH themes (--tsoi-color-pagebar is pinned for
+       the same reason), so its text has to be pinned to match. This is light's
+       primary-text value; 5.2:1 on the cream in either theme. */
+    color: #A84600;
+  }
+  .seg button[aria-disabled='true'] { opacity: 0.4; cursor: not-allowed; }
+  /* .panel-max glyph is styled globally by ../lib/panel-chrome.ts (shared with
+     DashboardView); the .panel-right wrapper (same idiom as DesksView) right-
+     aligns it and any panel control (the hero's metric seg) as one group. */
+  .panel-right { margin-left: auto; display: inline-flex; align-items: center; gap: var(--tsoi-spacing-unit); }
+
+  .chart { width: 100%; height: 380px; }
+  /* Touch-only tooltip close control. Only rendered on coarse pointers (see
+     withClose in the script): on desktop the tooltip dismisses itself when the
+     pointer leaves, so a × there would be clutter. Sized for a finger, and
+     floated so it never pushes the tooltip's own rows around. */
+  /* :global — this markup is injected at runtime by the ECharts tooltip
+     formatter, so it never carries Astro's scope attribute and a scoped rule
+     would silently not apply (which is how it first shipped as an 8x16 target).
+     pointer-events is explicit because the tooltip only accepts input at all
+     thanks to `enterable`. */
+  :global(.tip-x) {
+    float: right; margin: -6px -6px 0 12px; padding: 6px 10px;
+    font-size: 18px; line-height: 18px; font-weight: 600;
+    color: var(--tsoi-color-on-surface-variant);
+    cursor: pointer; pointer-events: auto; touch-action: manipulation;
+  }
+  .chart-hourly { height: 300px; }
+  @media (max-width: 600px) { .chart { height: 320px; } .chart-hourly { height: 260px; } }
+
+  /* Comparison tables (referrers / countries) — a lean HTML+SVG replacement
+     for the old horizontal ECharts bar panels: name · proportional bar ·
+     mono count · per-day sparkline. Rows are built client-side (the JSON
+     fetch resolves after hydration), so row-level rules use :global(). */
+  .comp-wrap { padding: calc(var(--tsoi-spacing-unit) / 2) var(--tsoi-spacing-unit); overflow-x: auto; }
+  .panel.maximized .comp-wrap { flex: 1; overflow-y: auto; }
+  :global(.comp-table) { width: 100%; border-collapse: collapse; }
+  :global(.comp-table td) { padding: 5px 6px; border-bottom: 1px solid var(--tsoi-color-outline); vertical-align: middle; }
+  :global(.comp-name) { font: var(--tsoi-text-metric-sm); color: var(--tsoi-color-on-surface); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 0; width: 38%; }
+  :global(.comp-rest .comp-name) { color: var(--tsoi-color-on-surface-variant); }
+  :global(.comp-bar-cell) { width: 28%; }
+  :global(.comp-bar-track) { height: 8px; border-radius: 2px; background: var(--tsoi-color-surface-container-high); overflow: hidden; }
+  :global(.comp-bar) { height: 100%; background: var(--tsoi-color-primary); border-radius: 2px; }
+  :global(.comp-value) { font: var(--tsoi-text-metric-sm); font-family: var(--tsoi-font-mono); text-align: right; color: var(--tsoi-color-on-surface-variant); white-space: nowrap; width: 74px; }
+  :global(.comp-spark) { width: 60px; }
+  :global(.comp-spark svg) { display: block; width: 100%; height: 20px; overflow: visible; }
+  /* Sparkline column is the first thing to go on phones — the bar + count
+     already carry the comparison; the trend is a nice-to-have here (each
+     panel's own dedicated trend lives in the daily/hourly charts above). */
+  @media (max-width: 480px) { :global(.comp-spark) { display: none; } }
+
+  .prose { max-width: 70ch; }
+  .prose h3 { margin: calc(var(--tsoi-spacing-unit) * 3) 0 0; font: var(--tsoi-text-headline-md); letter-spacing: var(--tsoi-text-headline-md-tracking); }
+  .prose p { margin: var(--tsoi-spacing-unit) 0 0; font: var(--tsoi-text-deck); letter-spacing: var(--tsoi-text-deck-tracking); }
+</style>
+
+<script>
+  import * as echarts from 'echarts';
+  import { dataUrl } from '../lib/data-url';
+  import { dragZoomOption, initInfoTooltips, initMaximize, initTouchTipToggle, isCoarsePointer, pushOverlay, requestOverlayClose } from '../lib/panel-chrome';
+
+  type Tokens = { text: string; subtle: string; line: string; mono: string; c1: string; c2: string; c3: string; primary: string; surface: string };
+  const tokens = (): Tokens => {
+    const s = getComputedStyle(document.documentElement);
+    const v = (n: string) => s.getPropertyValue(n).trim();
+    return {
+      text: v('--tsoi-color-on-surface'), subtle: v('--tsoi-color-on-surface-variant'),
+      line: v('--tsoi-color-outline'), mono: v('--tsoi-font-mono'), c1: v('--tsoi-color-chart-1'),
+      c2: v('--tsoi-color-chart-2'), c3: v('--tsoi-color-chart-3'),
+      primary: v('--tsoi-color-primary'), surface: v('--tsoi-color-surface'),
+    };
+  };
+
+  const nf = new Intl.NumberFormat('en-IN');
+  // Compact counts for tiles, axes and leaderboard values. Reads the same
+  // <html data-units> flag as the masthead's Cr|bn toggle, which until now was
+  // visible on this page and drove nothing here (the dashboards' fmt() is not
+  // reusable: it expects values already denominated in crore, so it would render
+  // 51,680 visits as "5,168 Cr").
+  //
+  // Magnitude-aware rather than always-on: below the threshold the exact figure
+  // is both more precise and more satisfying ("1,887", not "1.9K"), so at
+  // today's volumes nothing changes at all. Tooltips deliberately keep the exact
+  // number — they have the room, and that is where someone goes for the digits.
+  const isIntlUnits = () => document.documentElement.dataset.units === 'intl';
+  // One decimal, but drop a trailing ".0": axis ticks land on round numbers, so
+  // without this every label reads "10.0 L, 20.0 L, 30.0 L" and the noise is in
+  // the part that never varies.
+  const trim1 = (v: number) => String(Number(v.toFixed(1)));
+  // Thresholds are on the ROUNDED figure, not the raw one. 9,999,000 is under a
+  // crore, but the lakh branch rounds it to 100.0 and printed "100 L" where the
+  // reader expects "1 Cr" — same on the intl side, where 999,700 printed
+  // "1000K". Each band promotes as soon as what it would PRINT overflows.
+  const fmtCount = (n: number): string => {
+    if (!Number.isFinite(n)) return '—';
+    const a = Math.abs(n);
+    if (isIntlUnits()) {
+      if (a >= 1e9 || Number((a / 1e6).toFixed(1)) >= 1000) return `${trim1(n / 1e9)}B`;
+      if (a >= 1e6 || Math.round(a / 1e3) >= 1000) return `${trim1(n / 1e6)}M`;
+      if (a >= 1e5) return `${Math.round(n / 1e3)}K`;
+      return nf.format(n);
+    }
+    if (a >= 1e7 || Number((a / 1e5).toFixed(1)) >= 100) return `${trim1(n / 1e7)} Cr`;
+    if (a >= 1e5) return `${trim1(n / 1e5)} L`;
+    return nf.format(n);
+  };
+  // An axis is ONE scale, so every tick on it has to be denominated the same
+  // way. fmtCount picks its unit per value, which is right for a standalone
+  // figure and wrong for a column of them: at a peak of 1.5 lakh the ticks came
+  // out "1.5 L / 1.2 L / 90,000 / 60,000 / 30,000" and the reader had to change
+  // units halfway down. Pick the unit once, from the largest value the axis will
+  // carry, and format every tick in it.
+  const axisFmt = (peak: number) => {
+    const a = Math.abs(peak);
+    // Zero carries no unit — "0 L" above "0.3 L" is noise on the one tick whose
+    // value is the same in every system.
+    const unit = (div: number, suf: string) => (v: number) => (v === 0 ? '0' : `${trim1(v / div)}${suf}`);
+    if (isIntlUnits()) {
+      if (a >= 1e9) return unit(1e9, 'B');
+      if (a >= 1e6) return unit(1e6, 'M');
+      if (a >= 1e5) return unit(1e3, 'K');
+    } else {
+      if (a >= 1e7) return unit(1e7, ' Cr');
+      if (a >= 1e5) return unit(1e5, ' L');
+    }
+    return (v: number) => nf.format(v);
+  };
+  // Largest finite value across any mix of series arrays; 0 when there is none,
+  // which keeps a data-less axis on plain digits.
+  const peakOf = (...arrs: (number | null | undefined)[][]) => {
+    let m = 0;
+    for (const a of arrs) for (const v of a) if (typeof v === 'number' && Number.isFinite(v) && v > m) m = v;
+    return m;
+  };
+  const dayLabel = (d: string) =>
+    new Date(`${d}T00:00:00Z`).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', timeZone: 'UTC' });
+  // The WHOLE page is on one clock: UTC. It's the grain the raw data is
+  // bucketed in (CF's daily/hourly rollups are UTC), so anything else would
+  // either distort the numbers or leave the daily chart on a different clock
+  // from everything around it. timeZone: 'UTC' pins hour labels + the tooltip
+  // to that clock; the live "now" readout in the page bar (see the script)
+  // gives the reader an anchor so "which day is today" is never a guess, and
+  // a tooltip on the "UTC" chip shows their own offset for self-translation.
+  // (Hero 2 labels its own time-of-day slots directly, so there is no shared
+  // hour formatter here any more.)
+  // The reader's own offset from UTC, e.g. "UTC+5:30" / "UTC-4" — shown once,
+  // in the "UTC" chip's tooltip, never stamped on every axis label.
+  const utcOffsetLabel = () => {
+    const mins = -new Date().getTimezoneOffset(); // positive = ahead of UTC
+    if (mins === 0) return 'UTC';
+    const sign = mins >= 0 ? '+' : '-';
+    const abs = Math.abs(mins);
+    const h = Math.floor(abs / 60), m = abs % 60;
+    return `UTC${sign}${h}${m ? ':' + String(m).padStart(2, '0') : ''}`;
+  };
+  // Live UTC wall clock for the page-bar anchor, e.g. "21 Jul 09:42".
+  const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const two = (n: number) => String(n).padStart(2, '0');
+  const utcClock = (d = new Date()) =>
+    `${two(d.getUTCDate())} ${MONTHS[d.getUTCMonth()]} ${two(d.getUTCHours())}:${two(d.getUTCMinutes())}`;
+  // Timezone-immune freshness: "just now" / "N min ago" / "N hours ago" /
+  // "N days ago". Floor, not round — "59s ago" is not yet "1 min ago".
+  const relTime = (pastMs: number) => {
+    const s = Math.max(0, Math.floor((Date.now() - pastMs) / 1000));
+    if (s < 60) return 'just now';
+    const m = Math.floor(s / 60);
+    if (m < 60) return `${m} min ago`;
+    const h = Math.floor(m / 60);
+    if (h < 24) return `${h} hour${h === 1 ? '' : 's'} ago`;
+    const days = Math.floor(h / 24);
+    return `${days} day${days === 1 ? '' : 's'} ago`;
+  };
+  // Compact form for the narrow page bar, where "built 6 hours ago" clips: a
+  // snapshot's age can run to hours/days, so mobile shows "6h ago" / "2d ago"
+  // (the mode word already carries built-vs-updated, so the verb is dropped).
+  const relTimeCompact = (pastMs: number) => {
+    const s = Math.max(0, Math.floor((Date.now() - pastMs) / 1000));
+    if (s < 60) return 'now';
+    const m = Math.floor(s / 60);
+    if (m < 60) return `${m}m ago`;
+    const h = Math.floor(m / 60);
+    if (h < 24) return `${h}h ago`;
+    return `${Math.floor(h / 24)}d ago`;
+  };
+
+  // --- global time range -----------------------------------------------
+  // Grafana-style: a single {from,to} epoch-ms window (or null = ALL) drives
+  // a desk's range-aware panels. "Now" anchors to the LAST hourly data point
+  // rather than wall-clock time, so a quick range always contains data even
+  // hours after ingestion last ran. A factory, not a singleton: Traffic and
+  // Audience each hold their OWN instance (below) so their ranges can't
+  // couple — changing one must never re-render the other's panels. Kept as
+  // one small section (not a shared lib) — this is a meta-only concept for
+  // now; the "snap to day / snap to hour" grain below would need to become a
+  // per-page config before it's worth lifting into ../lib for the generic
+  // dashboards.
+  const DAY = 86_400_000, HOUR = 3_600_000;
+  type Win = { from: number; to: number } | null;
+  // Traffic and Formats offer 7D/14D/ALL (daily grain; days-public is small
+  // enough that 30D would just equal ALL) and answer "right now" with their own
+  // "today so far" panel. Audience has one control for both jobs, so it adds
+  // TODAY. Deliberately TODAY and not a trailing 24H: every other window on this
+  // page is UTC-day aligned, and a rolling 24h was the only thing straddling two
+  // days — TODAY instead reconciles with the current-day tile above.
+  type Quick = 'today' | '24h' | '7d' | '14d' | 'all';
+  // `nowAt` is a getter, never a captured number: quick ranges are all relative
+  // to "now", so a load-time constant meant that after a UTC rollover TODAY
+  // rendered yesterday (in full, since dayInRange is day-granular) and 7D/14D
+  // ended a day early. Read the clock at selection time instead.
+  function makeRangeState(nowAt: () => number) {
+    let win: Win = null;
+    let quick: Quick | null = 'all';
+    // Where a drag started from. Resetting a dragged window should hand back the
+    // range the reader had chosen, not dump them at ALL — if they were on 7D and
+    // dragged inside it, 7D is the state they expect to return to. Captured only
+    // on quick -> custom, so narrowing repeatedly still unwinds to the original.
+    let prevQuick: Quick = 'all';
+    const subs: Array<() => void> = [];
+    const api = {
+      subscribe(fn: () => void) { subs.push(fn); },
+      get: () => ({ win, quick }),
+      setQuick(q: Quick) {
+        quick = q;
+        prevQuick = q;
+        const nowMs = nowAt();
+        if (q === 'all') { win = null; }
+        else if (q === 'today') {
+          const d = new Date(nowMs);
+          win = { from: Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()), to: nowMs };
+        } else {
+          const span = q === '24h' ? HOUR * 24 : q === '14d' ? DAY * 14 : DAY * 7;
+          win = { from: nowMs - span, to: nowMs };
+        }
+        subs.forEach((fn) => fn());
+      },
+      setCustom(from: number, to: number) {
+        if (quick !== null) prevQuick = quick;
+        quick = null;
+        win = { from, to };
+        subs.forEach((fn) => fn());
+      },
+      prev: () => prevQuick,
+      reset: () => api.setQuick(prevQuick),
+    };
+    return api;
+  }
+  // A calendar day (UTC-anchored, matching how `day` strings are stored and
+  // labelled elsewhere on this page) is "in" a window if its [00:00, 24:00)
+  // span overlaps it at all — used to decide which hero days/dispatch
+  // markers show, and which daily rows feed the comparison tables.
+  const dayInRange = (day: string, win: Win): boolean => {
+    if (!win) return true;
+    const start = Date.parse(`${day}T00:00:00Z`);
+    return start <= win.to && start + DAY - 1 >= win.from;
+  };
+  // en-GB's default date+time format inserts a comma ("11 Jul, 19:30"); strip
+  // it to match the plain "08 Jul 14:00" style used elsewhere on this page.
+  const rangeFmt = (ms: number) =>
+    new Date(ms).toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'UTC' }).replace(',', '');
+  const formatWindow = (w: Win) => (w ? `${rangeFmt(w.from)} → ${rangeFmt(w.to)}` : '');
+
+  // --- comparison-table helpers ------------------------------------------
+  // A lean stand-in for the ECharts "comptable" board (name | bar | trend)
+  // used elsewhere on the site: plain rows, an inline-styled div bar, and a
+  // tiny hand-built SVG sparkline. No axes, no chart instance — cheap to
+  // re-render on every range change and it scales with the table via CSS
+  // alone (no resize plumbing needed).
+  type DayRow = Record<string, any>;
+  type EntityAgg = { key: string; total: number; byDay: Map<string, number> };
+  function aggregateByEntity(rows: DayRow[], entityKey: string, valueKey: string, win: Win): Map<string, EntityAgg> {
+    const m = new Map<string, EntityAgg>();
+    for (const r of rows) {
+      if (!dayInRange(r.day, win)) continue;
+      const key = String(r[entityKey]);
+      const e = m.get(key) ?? m.set(key, { key, total: 0, byDay: new Map() }).get(key)!;
+      e.total += r[valueKey];
+      e.byDay.set(r.day, (e.byDay.get(r.day) ?? 0) + r[valueKey]);
+    }
+    return m;
+  }
+  const topRows = (m: Map<string, EntityAgg>, n: number) => {
+    const arr = [...m.values()].sort((a, b) => b.total - a.total);
+    return { top: arr.slice(0, n), rest: arr.slice(n) };
+  };
+  // Self-scaled per row; a single point (or a flat window) degenerates to a
+  // plain horizontal mark rather than a division-by-zero squiggle.
+  function sparkSvg(vals: number[], stroke: string): string {
+    const w = 100, h = 24, pad = 3;
+    if (!vals.length) return '';
+    const min = Math.min(...vals), max = Math.max(...vals);
+    if (vals.length < 2 || max === min) {
+      const y = h / 2;
+      return `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none"><line x1="${pad}" y1="${y}" x2="${w - pad}" y2="${y}" stroke="${stroke}" stroke-width="1.5" stroke-linecap="round"/></svg>`;
+    }
+    const innerW = w - pad * 2, range = max - min;
+    const pts = vals.map((v, i) => {
+      const x = pad + (i / (vals.length - 1)) * innerW;
+      const y = h - pad - ((v - min) / range) * (h - pad * 2);
+      return `${x.toFixed(1)},${y.toFixed(1)}`;
+    }).join(' ');
+    return `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none"><polyline points="${pts}" fill="none" stroke="${stroke}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+  }
+
+  // ── page bar follows the maximize overlay (ported from DesksView.astro) ──
+  // A maximized panel or desk is position:fixed over the whole viewport, so
+  // the page bar (with RANGE) would be hidden behind it. Physically MOVE the
+  // one .page-bar node into whichever overlay is on top instead of floating a
+  // second fixed copy — moving a node preserves its wired listeners, so RANGE
+  // keeps working. A comment marks its home slot for restore. Reads the live
+  // .maximized state, so it handles the nested case (panel maximized inside a
+  // maximized desk) and is safe to call after any open/close.
+  const pageBar = document.querySelector<HTMLElement>('.page-bar');
+  const pageBarHome = pageBar ? document.createComment('page-bar-home') : null;
+  if (pageBar && pageBarHome) pageBar.before(pageBarHome);
+  const relocatePageBar = () => {
+    if (!pageBar || !pageBarHome) return;
+    const host = document.querySelector<HTMLElement>('.panel.maximized')
+      ?? document.querySelector<HTMLElement>('.desk.maximized');
+    if (host) {
+      if (host.firstChild !== pageBar) host.prepend(pageBar);
+    } else if (pageBar.previousSibling !== pageBarHome) {
+      pageBarHome.after(pageBar);
+    }
+  };
+  // Desk bars stick BELOW the page bar, not at the very top (see the
+  // --tsoi-page-bar-h var in the <style> block) — measure it so the offset
+  // (and the jump-nav's scroll-margin-top) tracks the bar's real height
+  // instead of an assumed pixel value, in case it ever wraps to two lines.
+  if (pageBar) {
+    const setPageBarH = () => document.documentElement.style.setProperty('--tsoi-page-bar-h', `${pageBar.offsetHeight}px`);
+    setPageBarH();
+    new ResizeObserver(setPageBarH).observe(pageBar);
+  }
+
+  // Stack desk-bars by computing each one's `top` from the NEXT desk
+  // section's live natural position, not from the previous bar's already-
+  // resolved (possibly already-sliding) position. Two earlier attempts both
+  // missed: a shared offset releases the outgoing bar a full bar-height
+  // before the incoming one arrives (a visible slide with a gap); a fixed
+  // cumulative offset closes that gap but then leaves the outgoing bar's
+  // vacated slot permanently hollow once it's gone (nothing bleeds-proof it,
+  // so scrolled content shows through). Chasing the outgoing bar's own
+  // (already-moving) rect just inherits whatever quirk made it move early,
+  // one step removed. The fix: a desk SECTION is plain in-flow — unlike its
+  // sticky `.desk-bar` child, its rect.top always reflects where it truly,
+  // physically is on scroll, never adjusted (the same property the desk-
+  // collapse scroll-anchor logic below already relies on). Bar i rests at
+  // `base` until desk (i+1)'s true top, closing in from below, would need to
+  // overlap bar i to keep scrolling normally — only then does bar i get
+  // pushed, at the exact instant of contact (zero gap, not early, not late),
+  // moving in lockstep with the incoming section from that point on. Bar i
+  // can also never be pushed ABOVE its own natural (unstuck) position — that
+  // floor is what lets it scroll away cleanly once it's the one being
+  // chased off. The last bar has no next section pushing it, so it just
+  // rests at `base` like an ordinary single sticky bar.
+  const desks = Array.from(document.querySelectorAll<HTMLElement>('.desk'));
+  const deskBars = desks.map((d) => d.querySelector<HTMLElement>('.desk-bar')!);
+
+  // Desk collapse state — restored per-tab (sessionStorage, keyed by desk id so
+  // a future desk-order change can't restore the wrong one; not the URL, so a
+  // shared link doesn't carry the sender's folding). Default is all-expanded.
+  // Applied SYNCHRONOUSLY here, before the async data IIFE below paints, so a
+  // restored-collapsed desk never flashes open first. The full state machine
+  // (toggle wiring, resize-on-expand) lives in the IIFE and reads the same key.
+  const COLLAPSE_KEY = 'tsoi:meta:desks:collapsed';
+  // First-visit default: Formats and Audience start folded (Overview + Traffic
+  // are the headline desks). Applied only when NOTHING is stored yet — the
+  // moment the reader toggles anything, saveCollapsed writes the key and their
+  // choice wins from then on, even if that choice is "all expanded" (stored []).
+  const DEFAULT_COLLAPSED = ['formats', 'audience'];
+  const loadCollapsedIds = (): Set<string> => {
+    try {
+      const raw = sessionStorage.getItem(COLLAPSE_KEY);
+      return new Set<string>(raw === null ? DEFAULT_COLLAPSED : JSON.parse(raw));
+    } catch { return new Set(DEFAULT_COLLAPSED); } // private mode — folding is a nicety
+  };
+  {
+    const stored = loadCollapsedIds();
+    desks.forEach((d) => {
+      if (!stored.has(d.id)) return;
+      d.classList.add('collapsed');
+      const cb = d.querySelector<HTMLElement>('.desk-collapse-btn');
+      cb?.classList.add('collapsed');
+      cb?.setAttribute('aria-expanded', 'false');
+    });
+    const pcb = document.querySelector<HTMLElement>('.page-collapse-btn');
+    if (pcb && desks.length && desks.every((d) => stored.has(d.id))) {
+      pcb.classList.add('collapsed');
+      pcb.setAttribute('aria-expanded', 'false');
+    }
+  }
+
+  let stackRaf = 0;
+  const restackDeskBars = () => {
+    const base = pageBar?.offsetHeight ?? 0;
+    const naturalTops = desks.map((d) => d.getBoundingClientRect().top);
+    deskBars.forEach((bar, i) => {
+      // A maximized desk is position:fixed, full-viewport, and the only one
+      // showing — the OTHER desks' naturalTops still reflect wherever they
+      // sit in the underlying (hidden) page, which is meaningless here and
+      // was exactly the bug: a desk maximized while its neighbour's true top
+      // happened to be far down the page inherited that huge number as its
+      // own `top`, stranding the bar deep inside the overlay's own (mostly
+      // empty) scroll box with a giant blank gap above it. Maximized just
+      // wants the plain single-bar case, same as the last desk below.
+      if (desks[i].classList.contains('maximized')) { bar.style.top = `${base}px`; return; }
+      // The LAST bar is never pushed by anything below it — it just rests at
+      // `base` like an ordinary single sticky bar. Writing its `top` every
+      // frame is not only redundant, it's the source of the bottom-desk jank:
+      // a JS `top` set on a position:sticky element lands one frame behind the
+      // compositor's own sticky, so during momentum / rubber-band scroll at
+      // the page bottom the last bar visibly wobbles. Leave it to native CSS
+      // sticky (its stylesheet `top: var(--tsoi-page-bar-h)` already equals
+      // `base`) — clear any inline top so the stylesheet wins and no per-frame
+      // JS touches it. Its section position is still READ below to push the
+      // second-to-last bar; only its own `top` is left alone.
+      if (i === desks.length - 1) { bar.style.top = ''; return; }
+      const ceiling = Math.min(base, naturalTops[i + 1] - bar.offsetHeight);
+      const top = Math.max(naturalTops[i], ceiling);
+      // Same wobble, same cure as the last bar above — generalised (kept in
+      // sync with DesksView.astro's restackDeskBars). A bar only needs hand-
+      // steering while the next desk is closing in from below and pushing it
+      // ABOVE the page-bar offset; that downward slide is the intended motion a
+      // per-frame `top` draws. Every other moment — the bar resting stuck at
+      // `base`, or still down in flow waiting its turn — native CSS sticky
+      // (stylesheet `top: base`) already holds it, and a JS `top` written each
+      // frame only lands one frame behind the compositor and wobbles, worst on
+      // momentum / rubber-band scroll (this was the bottom-of-page bounce with
+      // Formats + Audience folded, where every remaining bar rests at `base`).
+      // `< base`, not `<= base`: at rest `top` clamps to exactly `base`, which
+      // must go to native — only a strictly smaller value is a live push.
+      if (top < base) bar.style.top = `${top}px`;
+      else bar.style.top = '';
+    });
+  };
+  const scheduleRestack = () => {
+    if (stackRaf) return;
+    stackRaf = requestAnimationFrame(() => { stackRaf = 0; restackDeskBars(); });
+  };
+  restackDeskBars();
+  window.addEventListener('scroll', scheduleRestack, { passive: true });
+  const deskBarStackObserver = new ResizeObserver(restackDeskBars);
+  deskBars.forEach((bar) => deskBarStackObserver.observe(bar));
+  if (pageBar) deskBarStackObserver.observe(pageBar);
+
+  (async () => {
+    // Live-first: the meta-live worker keeps /data/live/traffic.json fresh
+    // (same shape as the baked snapshot, merged every 5 min). The page never
+    // depends on it — any failure, slow response, or empty body falls back to
+    // the build-time snapshot. PUBLIC_META_LIVE_URL lets previews point at
+    // the workers.dev URL before the prod route exists.
+    const liveUrl = import.meta.env.PUBLIC_META_LIVE_URL || '/data/live/traffic.json';
+    const fetchLive = async () => {
+      const r = await fetch(liveUrl, { signal: AbortSignal.timeout(4000) });
+      if (!r.ok) throw new Error(String(r.status));
+      const j = await r.json();
+      if (!Array.isArray(j.daily) || !j.daily.length) throw new Error('empty live payload');
+      return j;
+    };
+    // Tracked so the live tick (below) only arms when the initial load
+    // actually came from the worker — a snapshot-mode load has nothing to
+    // poll (the static file doesn't change between requests).
+    let liveOk = true;
+    const data = await fetchLive().catch(
+      () => { liveOk = false; return fetch(dataUrl('/data/meta/traffic.json')).then((r) => r.json()); });
+    const { daily, hourly, countries_daily: countriesDaily, referrers_daily: referrersDaily, dispatches } = data;
+    const beaconDaily = data.beacon_daily ?? [];
+    // The beacon's own country breakdown, so "countries reached" answers the
+    // All | Human toggle. Absent from older payloads, so default to empty.
+    const countriesHumanDaily = data.countries_human_daily ?? [];
+    // Page views per format (play / read / explore), already grouped by the
+    // seeder so the client never sees raw paths.
+    const formatsDaily = data.formats_daily ?? [];
+    // The two "today so far" panels' intraday buckets: 15-minute grain, worker
+    // only. The baked snapshot seeds them empty (the telemetry DB has no
+    // 15-minute grain), which is exactly what puts those panels into their
+    // "live feed offline" state. rolling15/prevDay15 are site-wide visits (the
+    // traffic current-day panel); the formats* pair is the same buckets split
+    // by format (the formats current-day panel). Each row is
+    // { t, all, human } (and + format for the format arrays).
+    const rolling15 = data.rolling15 ?? [];
+    const prevDay15 = data.prev_day15 ?? [];
+    const formatsRolling15 = data.formats_rolling15 ?? [];
+    const formatsPrevDay15 = data.formats_prev_day15 ?? [];
+    // Today's partial leaderboard rows, published apart from the sealed
+    // complete-day arrays. Merged in only when the range reaches today.
+    const todayCountries = data.today_countries ?? [];
+    const todayCountriesHuman = data.today_countries_human ?? [];
+    const todayReferrers = data.today_referrers ?? [];
+    const todayFormats = data.today_formats ?? [];
+    // Sealed complete days plus the day still forming. Defined up here rather
+    // than beside the tables because the Countries reached tile needs it too:
+    // it read the sealed arrays alone, so it undercounted every country first
+    // seen today and then jumped at midnight, while the table beside it (same
+    // toggle, same instant) already showed them. Guarded on the CLIENT's UTC
+    // date, so a stale payload can never inject a day that is no longer today.
+    const liveRows = (sealed: any[], todayRows: any[]) => {
+      const t = new Date().toISOString().slice(0, 10);
+      const fresh = todayRows.filter((r: any) => r.day === t);
+      return fresh.length ? sealed.concat(fresh) : sealed;
+    };
+
+
+    // --- header chip + stat tiles (everything on one clock, UTC — see the
+    // hourLabel note up top; the two desk rangeStates below only scope the
+    // Traffic and Audience panels, never the Overview stat strip) ---
+    const asof = document.getElementById('meta-asof')!;
+    const nowEl = document.getElementById('meta-now')!;
+    const utcEl = document.getElementById('meta-utc')!;
+    const asofModeEl = document.getElementById('meta-asof-mode')!;
+    const asofFreshEl = document.getElementById('meta-asof-fresh')!;
+    const asofFreshCompactEl = document.getElementById('meta-asof-fresh-compact')!;
+    // The "UTC" chip's tooltip carries the reader's own offset so anyone who
+    // wants to self-translate can, without every axis label doing it for them.
+    utcEl.dataset.info = utcOffsetLabel() === 'UTC'
+      ? 'All times on this page are UTC — the same as your device.'
+      : `All times on this page are UTC. Your device is at ${utcOffsetLabel()}.`;
+    // Mode word reflects where THIS build_at came from — liveOk (below) flips
+    // to false the moment the initial fetch falls back to the baked snapshot,
+    // so a snapshot load never claims to be "live". A live payload can also go
+    // STALE in place (worker cron dead, R2 serving an old file): the worker
+    // writes every 5 min, so a built_at older than three of those windows
+    // means the feed has stalled — the chip drops back to "snapshot" and the
+    // dot's ripple stops (frozen data must not look like it is still arriving).
+    // The freshness itself is shown as relative time ("updated 4 min ago"),
+    // which is timezone-immune AND signals staleness on its own (a live feed
+    // reading "updated 40 min ago" is self-evidently behind).
+    const LIVE_STALE_MS = 15 * 60_000;
+    let lastBuiltAtMs = Date.parse(data.built_at);
+    const liveFresh = () => liveOk && Date.now() - lastBuiltAtMs < LIVE_STALE_MS;
+    // Verb differs by source: a snapshot was "built", a live feed "updated".
+    const freshVerb = () => (liveOk ? 'updated' : 'built');
+    const renderFresh = () => {
+      asofModeEl.textContent = (!liveOk || !liveFresh()) ? 'snapshot' : 'live';
+      // Both variants stay current; CSS shows the full one on desktop, the
+      // compact one on the narrow page bar (only one is ever visible).
+      asofFreshEl.textContent = `${freshVerb()} ${relTime(lastBuiltAtMs)}`;
+      asofFreshCompactEl.textContent = relTimeCompact(lastBuiltAtMs);
+    };
+    const renderNow = () => { nowEl.textContent = utcClock(); };
+    const setAsof = (builtAt: string) => { lastBuiltAtMs = Date.parse(builtAt); renderFresh(); };
+    // One lightweight ticker drives BOTH the live "now" clock and the relative
+    // freshness text (independent of the 5-min data poll below — the clock has
+    // to move and "N min ago" has to age even while no new payload arrives).
+    // Runs in snapshot mode too: the clock and "built N ago" are useful there.
+    renderNow();
+    setAsof(data.built_at);
+    asof.hidden = false;
+    // An interval that survives the back button. `pagehide` fires when the page
+    // enters the bfcache as well as on real unload, so tearing the timer down
+    // with { once: true } and never re-arming left a restored page frozen for
+    // the rest of its life: no data poll, and no freshness ticker either, so
+    // the chip kept insisting "updated just now" hours after the fact. Cleared
+    // on hide (a bfcached page must not keep timers running) and re-armed on a
+    // persisted `pageshow`, with an immediate catch-up call so the restored
+    // page corrects itself at once instead of after a full period.
+    const keepAlive = (fn: () => void, ms: number) => {
+      let id = setInterval(fn, ms);
+      window.addEventListener('pagehide', () => clearInterval(id));
+      window.addEventListener('pageshow', (e) => {
+        if (!(e as PageTransitionEvent).persisted) return;
+        clearInterval(id);
+        fn();
+        id = setInterval(fn, ms);
+      });
+    };
+    keepAlive(() => { renderNow(); renderFresh(); }, 15_000);
+
+    // In-progress bucket, hoisted above the stat tiles (which now include it):
+    // published separately from `daily`/`beacon_daily` (both exclude it) and
+    // guarded on the CLIENT's UTC date so a stale baked snapshot or cached
+    // payload can never leak a bucket that isn't actually still forming.
+    let todayPoint: any = data.today ?? null;
+    const isTodayLive = (t: any): boolean => !!t && t.day === new Date().toISOString().slice(0, 10);
+
+    // Human is the default view: it is the honest human floor, and the All side
+    // is heavily inflated by crawlers (most sharply on "countries reached").
+    let humansOnly = true;
+    // Stat strip re-renders on the TRAFFIC toggle and on every live tick.
+    // Totals are complete days PLUS the last-known in-progress bucket (the
+    // tick re-sums from its fresh payload, so at UTC rollover the sealed day
+    // arrives in `daily` instead of dipping the sum). Peak day stays
+    // complete-days-only: a forming bucket can't win yet.
+    const inprogressEl = document.getElementById('stat-inprogress')!;
+    const inprogressCompareEl = document.getElementById('stat-inprogress-compare')!;
+    const inprogressLabelEl = document.getElementById('stat-inprogress-label')!;
+    const renderStats = () => {
+      // "forming" = the feed is live AND fresh AND on the current UTC day, so
+      // the value is still accumulating ("so far"). Otherwise the feed is
+      // off/stale (or this is a baked snapshot): FREEZE — keep showing the
+      // last reading we have for its day rather than blanking to "—" (a bare —
+      // reads as broken; the frozen number, labelled with its own date, is
+      // honest — the page-bar chip already says "snapshot · built N ago").
+      // Only when there's no in-progress bucket at all does it fall to "—".
+      const forming = liveFresh() && isTodayLive(todayPoint);
+      const hasToday = !!todayPoint;
+      // Both sides are the same metric (visits, meaning sessions) read at two
+      // points, so the tiles never cross instruments: edge visits vs edge peak,
+      // beacon visits vs beacon peak. Edge `visits` is null for days older than
+      // the country archive, so skip those rather than let null win the max.
+      const peakOf = (rows: any[]): any => {
+        const valid = rows.filter((r: any) => r.visits != null);
+        return valid.length ? valid.reduce((a: any, b: any) => (b.visits > a.visits ? b : a)) : null;
+      };
+      const peakRow = humansOnly ? peakOf(beaconDaily) : peakOf(daily);
+      const curVal: number | null = !hasToday ? null
+        : humansOnly ? (todayPoint.beacon ? todayPoint.beacon.visits : null)
+        : (todayPoint.visits ?? null);
+      const peakVal: number | null = peakRow ? peakRow.visits : null;
+      if (curVal != null) {
+        inprogressEl.textContent = fmtCount(curVal);
+        // "so far" only while genuinely forming; a frozen reading drops it (it
+        // is not still counting) and just names the day it was captured on.
+        inprogressLabelEl.textContent =
+          `Visits on ${dayLabel(todayPoint.day)}${forming ? ' so far' : ''}`;
+        // Saffron multiplier only once today reaches or passes the standing
+        // peak. Below that it is an ordinary tile: a fractional "0.1x peak"
+        // reads as noise, not news.
+        const ratio = peakVal ? curVal / peakVal : 0;
+        const breach = peakVal != null && ratio >= 1;
+        inprogressEl.classList.toggle('breach', breach);
+        inprogressCompareEl.hidden = !breach;
+        inprogressCompareEl.textContent = breach ? `${ratio.toFixed(1)}× previous peak` : '';
+      } else {
+        inprogressEl.textContent = '—';
+        inprogressEl.classList.remove('breach');
+        inprogressCompareEl.hidden = true;
+        inprogressLabelEl.textContent = 'Visits so far';
+      }
+      // Peak day counts finished days only, so a record forming today does not
+      // move it until the UTC day rolls over and that day is sealed.
+      document.getElementById('stat-peak')!.textContent = peakRow ? fmtCount(peakRow.visits) : '—';
+      document.getElementById('stat-peak-label')!.textContent = peakRow
+        ? `Peak day visits (${dayLabel(peakRow.day)})` : 'Peak day visits';
+      // Distinct countries, all time. A set union, not a sum, so it never adds
+      // across days. The All side is mostly crawler geography. Includes the day
+      // still forming (see liveRows): a country first seen today counts today,
+      // which is what "all time" has to mean for a live tile, and what the
+      // countries table beside it already did.
+      const countryRows = humansOnly
+        ? liveRows(countriesHumanDaily, todayCountriesHuman)
+        : liveRows(countriesDaily, todayCountries);
+      document.getElementById('stat-countries')!.textContent = countryRows.length
+        ? fmtCount(new Set(countryRows.map((r: any) => r.country)).size) : '—';
+      // Inclusive count of UTC days: launch day itself is day 1, and the number
+      // increments at 00:00Z like every other boundary on this page. Math.round
+      // put the change at 12:00Z instead, so the tile spent every morning a day
+      // behind the chart beside it. The anchor is the first day with any edge
+      // traffic (2026-07-05, first hourly bucket 20:00Z), which is the deploy
+      // that made the site reachable — the repo's first commit reads 06 Jul
+      // only because that was already past midnight in IST.
+      document.getElementById('stat-days')!.textContent = String(
+        Math.max(1, Math.floor((Date.now() - +new Date(`${daily[0].day}T00:00:00Z`)) / 86400000) + 1));
+    };
+    renderStats();
+    document.querySelectorAll<HTMLElement>('.meta-stats').forEach((el) => { el.hidden = false; });
+
+    // --- charts (hero + hourly only; the two comparison tables below are
+    // plain HTML/SVG, not ECharts instances) ---
+    const charts: echarts.ECharts[] = [];
+    const el = (id: string) => document.getElementById(id)!;
+    // --- touch tooltips ---
+    // ECharts' default trigger is 'mousemove|click', and on a touch screen the
+    // touchmove of a page scroll counts as a move: tooltips pop open unasked
+    // while the reader is just scrolling past a chart. On coarse pointers switch
+    // to click, so only a deliberate tap opens one. `enterable` then lets the
+    // box itself take taps, which is what makes an in-tooltip close control
+    // possible. The site's existing gesture (tap the same spot again,
+    // initTouchTipToggle below) stays wired, but it is not discoverable on its
+    // own, so the box also carries an explicit ×.
+    const COARSE = isCoarsePointer();
+    const touchTip = COARSE
+      ? { enterable: true, triggerOn: 'click', hideDelay: 4000 }
+      : {};
+    const withClose = (html: string) =>
+      (COARSE ? `<span class="tip-x" data-tip-close role="button" aria-label="Close">\u00d7</span>${html}` : html);
+
+    const mk = (id: string) => { const c = echarts.init(el(id)); charts.push(c); return c; };
+    const hero = mk('chart-hero');
+    const todayChart = mk('chart-today');
+    const fmtChart = mk('chart-formats');
+    const tfmtChart = mk('chart-today-formats');
+
+    // Tap-again-to-dismiss is the site's touch convention (used by the other
+    // dashboards); /meta had simply never wired it. Keep it, and add the
+    // explicit × on top: the tooltip content is re-rendered on every axis move,
+    // so the close control is handled by delegation on the chart container
+    // rather than bound to the element. Capture phase, so it wins before
+    // ECharts' own zr click handler re-opens a tooltip at the same spot.
+    if (COARSE) {
+      ([[hero, 'chart-hero'], [todayChart, 'chart-today'],
+        [fmtChart, 'chart-formats'], [tfmtChart, 'chart-today-formats']] as const)
+        .forEach(([c, id]) => {
+          initTouchTipToggle(c);
+          el(id).addEventListener('click', (ev: Event) => {
+            const x = (ev.target as HTMLElement)?.closest?.('[data-tip-close]');
+            if (!x) return;
+            ev.stopPropagation();
+            ev.preventDefault();
+            // hideTip alone does NOT close an enterable tooltip: the tap that
+            // lands on the × is itself a pointer-enter on the tooltip box, and
+            // enterable's "keep showing while the pointer is inside" wins the
+            // race. So hide the node directly and tell ECharts to match, or the
+            // two disagree and the next tap reopens at the stale position.
+            // ECharts sets display itself on the next show(), so this is not
+            // sticky.
+            (x.parentElement as HTMLElement | null)?.style.setProperty('display', 'none');
+            c.dispatchAction({ type: 'hideTip' });
+          }, true);
+        });
+    }
+    // The "in progress" ripple (below) has no line-width knob in ECharts:
+    // effectScatter's ring is always zrender's Path default of 1px, strokeNoScale
+    // so it never grows with the ring itself — thin enough against the chart's
+    // cream background that it barely registers except where it happens to
+    // cross the line. z2: 99 + silent: true is the exact pair echarts stamps
+    // ONLY on ripple paths (chart/helper/EffectSymbol.js), so it's a safe hook
+    // to reach through to zrender and thicken them after every render.
+    const thickenRipples = (c: echarts.ECharts) => c.on('rendered', () => {
+      c.getZr().storage.getDisplayList().forEach((el: any) => {
+        if (el.z2 === 99 && el.silent === true) el.setStyle('lineWidth', 3);
+      });
+    });
+    // Only the daily hero carries an in-progress ripple ring; the formats stacked
+    // bar uses a faint glow and the current-day panels a dashed marker instead.
+    thickenRipples(hero);
+
+    const axis = (t: Tokens) => ({
+      axisLine: { lineStyle: { color: t.line } }, axisTick: { show: false },
+      axisLabel: { color: t.subtle, fontFamily: t.mono, fontSize: 11 },
+      splitLine: { lineStyle: { color: t.line, opacity: 0.5 } },
+    });
+    // No dataZoom slider any more — quick ranges + drag-select (below) +
+    // double-click reset fully replace it. Brush stays desktop-only (a
+    // mouse-drag gesture); touch keeps only the quick-range buttons.
+    const brushOption = () => (isCoarsePointer() ? {} : dragZoomOption());
+
+    // Hero x-axis: union of measured days and dispatch dates, so a dispatch tagged
+    // on a not-yet-complete day still gets its marker at the axis edge. This is
+    // the FULL day list; renderHero() below filters it to the active window.
+    const heroDays: string[] = [];
+    const byDay: Record<string, any> = Object.fromEntries(daily.map((r: any) => [r.day, r]));
+    // In the Humans view, uniques/page_views swap to the beacon's bot-free (but
+    // ad-block-undercounted) visits/pageloads instead of the edge counts.
+    const byDayBeacon: Record<string, any> = Object.fromEntries(beaconDaily.map((r: any) => [r.day, r]));
+    const heroValue = (d: string) => {
+      // The in-progress day isn't in byDay/byDayBeacon (their contract is
+      // complete days) — it comes from the separate `today` object, so the
+      // line runs INTO the dot instead of stopping a day short. The dip this
+      // draws is real ("so far today"), and the hollow symbol + "in progress"
+      // tooltip on that point say so. isTodayLive, not a bare null-check:
+      // a stale `today` whose date has since become a COMPLETE day in
+      // `daily` must not shadow that day's real value with null. Checked
+      // BEFORE the humansOnly branch below — that branch used to return
+      // early on its own, which meant the live day fell straight through to
+      // byDayBeacon (a complete-days-only map, so always null there) and the
+      // line stopped one day short of the dot every time Humans was active.
+      if (isTodayLive(todayPoint) && d === todayPoint.day) return heroTodayValue();
+      // One metric on both sides (visits, meaning sessions), read at two points:
+      // the beacon for Human, the edge for All. Edge `visits` is null for days
+      // predating the country archive, which reads as a gap rather than a zero.
+      return humansOnly
+        ? (byDayBeacon[d]?.visits ?? null)
+        : (byDay[d]?.visits ?? null);
+    };
+
+    // --- in-progress point: the current UTC day, published separately from
+    // `daily`/`beacon_daily` (both exclude it). The line carries its value
+    // (heroValue above) and a scatter point rides on top of the last vertex —
+    // the scatter is what gives the point its distinct hollow symbol and its
+    // "in progress" tooltip identity. Guarded on the CLIENT's UTC date so a
+    // stale baked snapshot (built hours/days ago) or an old cached live
+    // payload can never paint a point that isn't actually still forming — if
+    // the date doesn't match "now", there's nothing to show.
+    //
+    // Labelled "in progress", never "today": the buckets are UTC days (axis
+    // labels below use timeZone: 'UTC'), so for a reader west of UTC — e.g.
+    // IST before 05:30 local — the accumulating bucket is their local
+    // *yesterday*, not their today.
+    // Hero x-axis: union of measured days, dispatch dates and the in-progress
+    // day, so a dispatch tagged on a not-yet-complete day still gets its marker
+    // at the axis edge. This CANNOT be a load-time constant. The live tick
+    // mutates `daily`/`beacon_daily` in place, and a page left open across
+    // 00:00 UTC rolls onto a day the list has never heard of — the feed keeps
+    // delivering, the tiles keep climbing, and the chart silently stops
+    // extending because there is no slot to draw into. Recomputed every tick
+    // instead. Returns whether the list actually changed, because an added day
+    // moves the axis and only a full re-render can follow that (the tick's
+    // merge setOption touches series data alone).
+    const syncHeroDays = (): boolean => {
+      const next = [...new Set<string>([
+        ...daily.map((r: any) => r.day as string),
+        ...beaconDaily.map((r: any) => r.day as string),
+        ...dispatches.map((d: any) => d.date as string),
+        ...(isTodayLive(todayPoint) ? [todayPoint.day as string] : []),
+      ])].sort();
+      if (next.length === heroDays.length && next.every((d, i) => d === heroDays[i])) return false;
+      heroDays.splice(0, heroDays.length, ...next);   // in place: closures hold this array
+      return true;
+    };
+    syncHeroDays();
+    // Same metric/humansOnly logic as heroValue, but sourced from the
+    // separate `today` object rather than `byDay`/`byDayBeacon`. Null when
+    // the point is stale, absent, or (in Humans view) has no beacon data.
+    const heroTodayValue = (): number | null => {
+      if (!isTodayLive(todayPoint)) return null;
+      if (humansOnly) return todayPoint.beacon ? todayPoint.beacon.visits : null;
+      return todayPoint.visits ?? null;
+    };
+    const metricLabel = () => (humansOnly ? 'Human visits' : 'All visits');
+
+    const heroOption = (t: Tokens, days: string[], visibleDispatches: any[], todayScatter: { day: string; value: number } | null) => {
+      // Ripple only while the feed is actually FRESH (liveFresh, not just
+      // liveOk — a stalled worker's frozen dot must stop implying arrival)
+      // and the reader hasn't asked for reduced motion.
+      const liveRipple = liveFresh() && !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      const yFmt = axisFmt(peakOf(days.map(heroValue), todayScatter ? [todayScatter.value] : []));
+      return {
+        grid: { left: 56, right: 20, top: 30, bottom: 34 },
+        tooltip: {
+          trigger: 'axis', ...touchTip, axisPointer: { type: 'line', lineStyle: { color: t.subtle } },
+          // Custom formatter, not valueFormatter: on the in-progress day the
+          // line and the scatter carry the SAME value, and two identical rows
+          // read as a bug — show the scatter's "in progress" row alone there,
+          // the plain metric row everywhere else.
+          formatter: (ps: any[]) => {
+            // axisValueLabel comes from the axisPointer's own label config, not
+            // from the axisLabel formatter, so it arrives as the raw
+            // '2026-07-11' while the axis beneath reads '11 Jul'. Format it here
+            // so this tooltip matches its own axis and the other charts'.
+            const day = ps[0].axisValue ? dayLabel(ps[0].axisValue) : (ps[0].axisValueLabel ?? '');
+            const prog = ps.find((p: any) => p.seriesName === 'in progress' &&
+              (Array.isArray(p.value) ? p.value[1] : p.value) != null);
+            if (prog) {
+              const v = Array.isArray(prog.value) ? prog.value[1] : prog.value;
+              return withClose(`${day}<br/>${prog.marker} in progress&nbsp;&nbsp;<b>${nf.format(v)}</b>`);
+            }
+            const line = ps.find((p: any) => p.seriesType === 'line');
+            if (!line) return withClose(day);
+            return withClose(`${day}<br/>${line.marker} ${line.seriesName}&nbsp;&nbsp;<b>${line.value == null ? '—' : nf.format(line.value)}</b>`);
+          },
+        },
+        xAxis: { type: 'category', data: days, boundaryGap: false,
+          ...axis(t), splitLine: { show: false },
+          axisLabel: { color: t.subtle, fontFamily: t.mono, fontSize: 11, formatter: dayLabel } },
+        yAxis: { type: 'value', ...axis(t), axisLine: { show: false },
+          axisLabel: { color: t.subtle, fontFamily: t.mono, fontSize: 11, formatter: yFmt } },
+        ...brushOption(),
+        // Two series, one visual: the line carries the in-progress value as its
+        // last vertex (heroValue), and the scatter rides on that vertex to give
+        // it a visible hollow symbol and its own "in progress" tooltip name —
+        // a detached dot was tried first and read worse than the connected dip.
+        series: [{
+          name: metricLabel(),
+          type: 'line', smooth: true, showSymbol: false, connectNulls: false,
+          data: days.map(heroValue),
+          lineStyle: { width: 2, color: t.c1 }, itemStyle: { color: t.c1 },
+          areaStyle: { opacity: 0.06, color: t.c1 },
+          markLine: {
+            silent: false, symbol: 'none',
+            lineStyle: { color: t.primary, width: 1, type: 'dashed' },
+            label: { color: t.primary, fontFamily: t.mono, fontSize: 10, formatter: (p: any) => p.name },
+            // Labels are centred on their line, so a dispatch on the FIRST or
+            // LAST visible day (common now that the axis reaches the in-progress
+            // day) ran off the canvas edge and clipped. At the edges the text
+            // hangs inward from the line instead.
+            data: visibleDispatches.map((d: any) => ({
+              xAxis: d.date, name: d.id,
+              ...(d.date === days[days.length - 1] ? { label: { align: 'right' } } : {}),
+              ...(d.date === days[0] ? { label: { align: 'left' } } : {}),
+            })),
+          },
+        }, {
+          // Series index 1 always exists (even with empty data) so the live
+          // tick below can merge-update by index without a full notMerge
+          // rebuild. Hollow circle: surface-coloured fill + the same hue as
+          // the line for the border (never the dispatch markLine's saffron) —
+          // reads as "the newest point, still forming".
+          name: 'in progress',
+          type: liveRipple ? 'effectScatter' : 'scatter',
+          data: todayScatter ? [[todayScatter.day, todayScatter.value]] : [],
+          symbolSize: 7,
+          itemStyle: { color: t.surface, borderColor: t.c1, borderWidth: 2 },
+          ...(liveRipple ? { showEffectOn: 'render', rippleEffect: { brushType: 'stroke', scale: 8, period: 3, number: 2 } } : {}),
+          z: 3,
+        }],
+      };
+    };
+
+    // --- current day, bucketed: "today so far" (traffic +, below, formats) ---
+    // The in-progress point on the hero above, opened out. Buckets are the UTC
+    // day 00:00 to now, so they sum to exactly that point (same metric, same
+    // window, same side of the All/Human toggle) — the two charts reconcile by
+    // construction, which is the whole reason this is day-aligned rather than a
+    // trailing window.
+    //
+    // Source is `rolling15` (trailing ~24h of 15-minute buckets), which always
+    // covers today-so-far because today-so-far is never longer than 24h. 1H is a
+    // pure client-side rollup of four buckets, so the grain toggle costs no
+    // fetch. `prevDay15` is yesterday's complete UTC day, overlaid on the same
+    // time-of-day slots. slotOf is shared with the formats current-day panel.
+    const slotOf = (d: Date, grain: string) =>
+      grain === '1h' ? d.getUTCHours() : d.getUTCHours() * 4 + Math.floor(d.getUTCMinutes() / 15);
+    // Buckets are always UTC-aligned (that is the grain the data arrives in);
+    // the "local" option relabels the axis alone by shifting each label by the
+    // reader's own UTC offset, so the current UTC day's buckets read in their
+    // device's local time (e.g. in IST the axis then starts at 05:30 instead of
+    // 00:00). Labels wrap past midnight, which is expected — they are ordinal
+    // labels on sequential buckets, not a clock. getTimezoneOffset is minutes
+    // BEHIND UTC, so negate it for the offset ahead; the double-mod keeps a
+    // negative offset (readers west of UTC) in range.
+    const slotLabels = (grain: string, local = false) => {
+      const step = grain === '1h' ? 60 : 15;
+      const n = grain === '1h' ? 24 : 96;
+      const off = local ? -new Date().getTimezoneOffset() : 0;
+      return Array.from({ length: n }, (_, i) => {
+        const min = (((i * step + off) % 1440) + 1440) % 1440;
+        return `${String(Math.floor(min / 60)).padStart(2, '0')}:${String(min % 60).padStart(2, '0')}`;
+      });
+    };
+    // A dashed vertical marker at the bucket currently filling — this replaces
+    // the halo ring the hero uses. Everything to its right is "not yet".
+    const nowMarkLine = (t: Tokens, label: string) => ({
+      silent: true, symbol: 'none',
+      lineStyle: { color: t.primary, width: 1, type: 'dashed' as const, opacity: 0.9 },
+      label: { show: true, formatter: 'now', position: 'end' as const,
+        color: t.primary, fontFamily: t.mono, fontSize: 10 },
+      data: [{ xAxis: label }],
+    });
+    // The "live feed offline" placeholder both current-day panels fall back to
+    // in snapshot mode (no 15-minute grain in the baked file).
+    const offlineOption = (t: Tokens) => ({
+      grid: { left: 56, right: 20, top: 20, bottom: 34 },
+      xAxis: { type: 'category', data: [], show: false }, yAxis: { type: 'value', show: false },
+      graphic: [{ type: 'text', left: 'center', top: 'middle', silent: true,
+        style: { text: 'Live feed offline.\nIntraday detail resumes when it returns.',
+          fill: t.subtle, fontFamily: t.mono, fontSize: 12, lineHeight: 20, align: 'center' } }],
+      series: [],
+    });
+
+    let todayGrain: '1h' | '15m' = '1h';
+    let showPrevDay = false;
+    let localToday = false;
+    const buildToday = (grain: string, local: boolean) => {
+      const slots = grain === '1h' ? 24 : 96;
+      const side = humansOnly ? 'human' : 'all';
+      const todayKey = new Date().toISOString().slice(0, 10);
+      const nowSlot = slotOf(new Date(), grain);
+      // Elapsed slots seed to 0 (a quiet bucket is a real zero); slots after the
+      // open one stay null so the line stops instead of flatlining ahead.
+      const cur: (number | null)[] = Array.from({ length: slots }, (_, i) => (i <= nowSlot ? 0 : null));
+      for (const r of rolling15) {
+        if (!r.t.startsWith(todayKey)) continue;
+        cur[slotOf(new Date(r.t), grain)] = (cur[slotOf(new Date(r.t), grain)] ?? 0) + (r[side] ?? 0);
+      }
+      const prev: (number | null)[] = showPrevDay ? Array.from({ length: slots }, () => 0) : [];
+      if (showPrevDay) for (const r of prevDay15) prev[slotOf(new Date(r.t), grain)] = (prev[slotOf(new Date(r.t), grain)] ?? 0) + (r[side] ?? 0);
+      return { labels: slotLabels(grain, local), cur, prev, nowSlot };
+    };
+    const todayOption = (t: Tokens) => {
+      if (!rolling15.length) return offlineOption(t);
+      const { labels, cur, prev, nowSlot } = buildToday(todayGrain, localToday);
+      const sideLabel = humansOnly ? 'human' : 'all';
+      const tz = localToday ? utcOffsetLabel() : 'UTC';
+      // At the very start of a UTC day only the open slot has a value; a
+      // one-vertex line with no symbol draws nothing, so give it a symbol until a
+      // second point arrives. Smoothing suits hourly totals but turns the small
+      // 15-minute integers into an overshooting comb — straight segments there.
+      const lonePoint = cur.filter((v) => v != null).length <= 1;
+      const smooth = todayGrain === '1h';
+      const series: any[] = [];
+      if (showPrevDay) series.push({
+        type: 'line', name: 'Previous day', smooth, showSymbol: false, data: prev, z: 1,
+        lineStyle: { width: 1.5, color: t.subtle, opacity: 0.55, type: 'dashed' }, itemStyle: { color: t.subtle },
+      });
+      series.push({
+        type: 'line', name: 'Today', smooth, showSymbol: lonePoint, symbolSize: 7,
+        data: cur, z: 2, connectNulls: false,
+        lineStyle: { width: 2, color: t.c1 }, itemStyle: { color: t.c1 }, areaStyle: { opacity: 0.06, color: t.c1 },
+        markLine: nowMarkLine(t, labels[nowSlot]),
+      });
+      const yFmt = axisFmt(peakOf(cur, prev));
+      return {
+        grid: { left: 56, right: 20, top: 20, bottom: 34 },
+        tooltip: {
+          trigger: 'axis', ...touchTip, axisPointer: { type: 'line', lineStyle: { color: t.subtle } },
+          formatter: (ps: any[]) => {
+            const i = ps[0].dataIndex;
+            const seen = new Set<string>();
+            const rows = ps.filter((p: any) => p.value != null && !seen.has(p.seriesName) && seen.add(p.seriesName))
+              .map((p: any) => `${p.marker}${p.seriesName}: ${nf.format(p.value)}`).join('<br/>');
+            const ahead = i > nowSlot ? ' (not yet)' : i === nowSlot ? ' (still filling)' : '';
+            return withClose(`${labels[i]} ${tz}${ahead}<br/>${rows || '—'}<br/><span style="opacity:.7">${sideLabel} visits</span>`);
+          },
+        },
+        xAxis: { type: 'category', data: labels, boundaryGap: false, ...axis(t), splitLine: { show: false },
+          axisLabel: { color: t.subtle, fontFamily: t.mono, fontSize: 11,
+            hideOverlap: true, ...(todayGrain === '15m' ? { interval: 3 } : {}) } },
+        yAxis: { type: 'value', ...axis(t), axisLine: { show: false }, minInterval: 1,
+          axisLabel: { color: t.subtle, fontFamily: t.mono, fontSize: 11, formatter: yFmt } },
+        series,
+      };
+    };
+    const renderToday = (t: Tokens) => { todayChart.setOption(todayOption(t), true); };
+
+    // --- per-desk range: state + drag-select wiring ---
+    // Three independent instances — Traffic (its hero + drag-select), Formats
+    // (its stacked-day chart + drag-select) and Audience (both comparison
+    // tables). No cross-desk coupling: changing one never touches another's
+    // subscribers. The current-day panels sit inside Traffic/Formats but ignore
+    // the range (their window is always the current UTC day).
+    const lastHourlyMs = hourly.length ? Date.parse(hourly[hourly.length - 1].ts) : Date.now();
+    // Snapshot loads have no live tick, so quick ranges anchor to the data's
+    // own last timestamp (wall-clock "now" would show empty windows on an
+    // old snapshot). A live load's data extends up to the actual present, so
+    // anchor there instead — otherwise an hourly feed that lags the live
+    // `today` bucket (even briefly, e.g. right after a UTC day rolls over
+    // and before that day's first hourly bucket lands) can silently exclude
+    // today from every quick range, hiding the in-progress dot for no reason
+    // a reader could see.
+    const nowAnchor = () => (liveOk ? Date.now() : lastHourlyMs);
+    const trafficRange = makeRangeState(nowAnchor);
+    const formatsRange = makeRangeState(nowAnchor);
+    const audienceRange = makeRangeState(nowAnchor);
+    let currentHeroDays = heroDays;
+
+    const computeWindowDays = (win: Win): string[] => {
+      if (!win) return heroDays;
+      const filtered = heroDays.filter((d) => dayInRange(d, win));
+      if (filtered.length) return filtered;
+      const before = heroDays.filter((d) => Date.parse(`${d}T00:00:00Z`) <= win.to);
+      return [before.at(-1) ?? heroDays[0]];
+    };
+    const computeWindowDispatches = (win: Win) => (win ? dispatches.filter((d: any) => dayInRange(d.date, win)) : dispatches);
+
+    const armBrush = (c: echarts.ECharts) =>
+      c.dispatchAction({ type: 'takeGlobalCursor', key: 'brush', brushOption: { brushType: 'lineX', brushMode: 'single' } });
+    // Wires drag-to-select → the given range + double-click → reset, ONCE per
+    // chart instance. Deliberately NOT ../lib/panel-chrome's activateDragZoom:
+    // that helper zooms the chart it's drawn on (still what the generic
+    // dashboards want); here a drag on EITHER Traffic-desk chart sets the ONE
+    // range shared by hero + hourly (never Audience's), so the brush can't
+    // just dispatch a local dataZoom action. Returns a rearm function to call
+    // after every notMerge setOption (which rebuilds — and disarms — the brush).
+    function wireRangeBrush(chart: echarts.ECharts, toWindow: (a: number, b: number) => Win, range: ReturnType<typeof makeRangeState>) {
+      if (isCoarsePointer()) return () => {};
+      chart.on('brushEnd', (params: any) => {
+        const area = params.areas?.[0];
+        chart.dispatchAction({ type: 'brush', command: 'clear', areas: [] });
+        armBrush(chart);
+        const coordRange = area?.coordRange as [number, number] | undefined;
+        if (!coordRange) return;
+        const win = toWindow(coordRange[0], coordRange[1]);
+        if (win) range.setCustom(win.from, win.to);
+      });
+      chart.getZr().on('dblclick', () => range.reset());
+      return () => armBrush(chart);
+    }
+    // Hero: snap OUTWARD to whole days touched by the drag (floor the start
+    // index, ceil the end index) against whatever day list is CURRENTLY
+    // rendered — so narrowing further within an already-active range reads
+    // the visible axis, not the full dataset.
+    const heroWindowFromBrush = (a: number, b: number): Win => {
+      const days = currentHeroDays;
+      if (!days.length) return null;
+      const i0 = Math.max(0, Math.min(days.length - 1, Math.floor(Math.min(a, b))));
+      const i1 = Math.max(0, Math.min(days.length - 1, Math.ceil(Math.max(a, b))));
+      return { from: Date.parse(`${days[i0]}T00:00:00Z`), to: Date.parse(`${days[i1]}T23:59:59Z`) };
+    };
+    // Only the hero carries a drag-select. Hero 2's window is fixed to the
+    // current UTC day, so there is nothing there to brush.
+    const rearmHero = wireRangeBrush(hero, heroWindowFromBrush, trafficRange);
+
+    // --- touch: drag across the hero to pick a range ---
+    // ECharts' own brush is armed with takeGlobalCursor, which makes zrender
+    // swallow every touchmove over the canvas — on a page with four charts that
+    // means the reader cannot scroll past one by dragging on it. Hence the
+    // desktop-only guard in wireRangeBrush. So on touch we do the gesture
+    // ourselves and only claim it once the drag is clearly horizontal:
+    //
+    //   vertical-ish first move  -> never engage, the page scrolls as normal
+    //   horizontal first move    -> engage, preventDefault, draw the selection
+    //
+    // A drag also moves far enough that the browser suppresses the synthetic
+    // click, so it can't accidentally open a tooltip; and touches that start on
+    // the tooltip (the × control) are ignored outright so closing still works.
+    function wireTouchRangeDrag(
+      chart: echarts.ECharts, containerId: string,
+      toWindow: (a: number, b: number) => Win, range: ReturnType<typeof makeRangeState>,
+    ) {
+      if (!COARSE) return;
+      const host = el(containerId);
+      const SLOP = 12;              // px of travel before intent is judged
+      const RATIO = 1.5;            // how much more horizontal than vertical
+      let x0 = 0, y0 = 0, active = false, decided = false;
+      let sel: HTMLDivElement | null = null;
+
+      const clearSel = () => { sel?.remove(); sel = null; };
+      const paint = (a: number, bx: number) => {
+        if (!sel) {
+          sel = document.createElement('div');
+          // inline styles on purpose: this node is created at runtime and would
+          // never carry Astro's scope attribute, so a scoped rule would not apply
+          sel.style.cssText = 'position:absolute;top:0;bottom:0;pointer-events:none;' +
+            'background:color-mix(in srgb, var(--tsoi-color-primary) 14%, transparent);' +
+            'border-left:1px solid var(--tsoi-color-primary);' +
+            'border-right:1px solid var(--tsoi-color-primary);z-index:2;';
+          host.style.position = host.style.position || 'relative';
+          host.appendChild(sel);
+        }
+        sel.style.left = `${Math.min(a, bx)}px`;
+        sel.style.width = `${Math.abs(bx - a)}px`;
+      };
+
+      host.addEventListener('touchstart', (ev: TouchEvent) => {
+        // never hijack a touch aimed at the tooltip or its close control
+        if (!(ev.target as HTMLElement)?.closest?.('canvas')) return;
+        if (ev.touches.length !== 1) return;
+        const r = host.getBoundingClientRect();
+        x0 = ev.touches[0].clientX - r.left;
+        y0 = ev.touches[0].clientY - r.top;
+        active = false; decided = false;
+      }, { passive: true });
+
+      host.addEventListener('touchmove', (ev: TouchEvent) => {
+        if (ev.touches.length !== 1) return;
+        const r = host.getBoundingClientRect();
+        const x = ev.touches[0].clientX - r.left;
+        const y = ev.touches[0].clientY - r.top;
+        if (!decided) {
+          const dx = Math.abs(x - x0), dy = Math.abs(y - y0);
+          if (Math.max(dx, dy) < SLOP) return;      // too early to tell
+          decided = true;
+          active = dx > dy * RATIO;                  // horizontal wins, or give up the gesture
+          if (!active) return;
+        }
+        if (!active) return;
+        ev.preventDefault();                         // ours now: don't scroll the page
+        paint(x0, x);
+      }, { passive: false });
+
+      const finish = () => {
+        if (!active) { clearSel(); return; }
+        const left = parseFloat(sel?.style.left || '0');
+        const width = parseFloat(sel?.style.width || '0');
+        clearSel(); active = false; decided = false;
+        if (width < SLOP) return;                    // a nudge, not a selection
+        // scalar, not a point: with an {xAxisIndex} finder convertFromPixel takes
+        // a pixel offset and returns the axis value (a category index here, which
+        // is exactly what heroWindowFromBrush expects). Passing [x, y] silently
+        // yields undefined and the drag does nothing.
+        const a = chart.convertFromPixel({ xAxisIndex: 0 }, left) as unknown as number;
+        const b = chart.convertFromPixel({ xAxisIndex: 0 }, left + width) as unknown as number;
+        if (!Number.isFinite(a) || !Number.isFinite(b)) return;
+        const win = toWindow(a, b);
+        if (win) range.setCustom(win.from, win.to);
+      };
+      host.addEventListener('touchend', finish, { passive: true });
+      host.addEventListener('touchcancel', () => { clearSel(); active = false; decided = false; }, { passive: true });
+    }
+    wireTouchRangeDrag(hero, 'chart-hero', heroWindowFromBrush, trafficRange);
+
+    // The in-progress point only shows when the active window actually
+    // reaches the present: computeWindowDays already drops today's day from
+    // currentHeroDays for a historical window, so gating on that membership
+    // (rather than re-deriving from `win` here) keeps this in lockstep with
+    // whatever the axis is actually showing.
+    const currentTodayScatter = (): { day: string; value: number } | null => {
+      const v = heroTodayValue();
+      return v != null && currentHeroDays.includes(todayPoint.day) ? { day: todayPoint.day, value: v } : null;
+    };
+    const renderHero = (t: Tokens) => {
+      const win = trafficRange.get().win;
+      currentHeroDays = computeWindowDays(win);
+      hero.setOption(heroOption(t, currentHeroDays, computeWindowDispatches(win), currentTodayScatter()), true);
+      rearmHero();
+    };
+
+    // --- VISITS toggle: page-level, re-renders the hero series + stat tiles.
+    // Both sides are the same metric (visits) read at two points, so there is
+    // no metric picker to keep in sync any more and nothing to disable: every
+    // panel this scopes has an All and a Human answer. The two comparison
+    // tables below have a fixed measurement each, stated in their own info
+    // tooltips, so they don't respond to this. ---
+    document.querySelectorAll<HTMLButtonElement>('#traffic-toggle button').forEach((b) =>
+      b.addEventListener('click', () => {
+        humansOnly = b.dataset.value === 'humans';
+        document.querySelectorAll('#traffic-toggle button').forEach((x) => x.classList.remove('active'));
+        b.classList.add('active');
+        const t = tokens();
+        renderHero(t);
+        renderToday(t);
+        renderStats();
+        renderFormatsDesk();
+        renderTables();       // and so does the countries leaderboard
+      }));
+
+    // --- comparison tables ---
+    const regionName = (() => {
+      try { const dn = new Intl.DisplayNames(['en'], { type: 'region' }); return (c: string) => dn.of(c) ?? c; }
+      catch { return (c: string) => c; }
+    })();
+    const TOP_N = 10;
+    function renderCompTable(containerId: string, rows: DayRow[], entityKey: string, valueKey: string, nameOf: (k: string) => string) {
+      const t = tokens();
+      const { top, rest } = topRows(aggregateByEntity(rows, entityKey, valueKey, audienceRange.get().win), TOP_N);
+      const restTotal = rest.reduce((s, r) => s + r.total, 0);
+      const maxVal = Math.max(1, ...top.map((r) => r.total), restTotal);
+      const barCell = (total: number) =>
+        `<div class="comp-bar-track"><div class="comp-bar" style="width:${Math.max(2, Math.round((total / maxVal) * 100))}%"></div></div>`;
+      const sortedVals = (byDay: Map<string, number>) =>
+        [...byDay.entries()].sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)).map(([, v]) => v);
+      const rowsHtml = top.map((r) =>
+        `<tr><td class="comp-name">${nameOf(r.key)}</td><td class="comp-bar-cell">${barCell(r.total)}</td>` +
+        `<td class="comp-value">${fmtCount(r.total)}</td><td class="comp-spark">${sparkSvg(sortedVals(r.byDay), t.primary)}</td></tr>`
+      ).join('');
+      const restHtml = rest.length
+        ? `<tr class="comp-rest"><td class="comp-name">Rest (${rest.length})</td><td class="comp-bar-cell">${barCell(restTotal)}</td>` +
+          `<td class="comp-value">${fmtCount(restTotal)}</td><td class="comp-spark"></td></tr>`
+        : '';
+      const body = (rowsHtml + restHtml) || `<tr><td class="comp-name" colspan="4">No data in this window.</td></tr>`;
+      document.getElementById(containerId)!.innerHTML = `<table class="comp-table"><tbody>${body}</tbody></table>`;
+    }
+    // --- formats: which of play / read / explore is being consumed ---
+    // Page views, deliberately a different unit from the visits panels above:
+    // a visit is credited to the page it LANDED on, so with the front page as
+    // the dispatch hub a visits-by-format chart would flatten every format that
+    // people reach by clicking through. These do not sum to the hero, and the
+    // panel says so. Two panels: a stacked bar per UTC day (below) and the day
+    // still forming opened out into three lines (further below).
+    const FORMATS: Array<{ key: string; label: string; color: (t: Tokens) => string }> = [
+      { key: 'read', label: 'Read', color: (t) => t.c1 },
+      { key: 'play', label: 'Play', color: (t) => t.c2 },
+      { key: 'explore', label: 'Explore', color: (t) => t.c3 },
+    ];
+    // The day list currently on the Formats axis, so a drag snaps against what
+    // is actually drawn (mirrors currentHeroDays).
+    let currentFormatDays: string[] = [];
+    const formatsOption = (t: Tokens) => {
+      const win = formatsRange.get().win;
+      // Sealed days plus the one still forming, so the stacked bar carries an
+      // in-progress column exactly as the hero carries an in-progress point.
+      const rows = liveRows(formatsDaily, todayFormats);
+      const days: string[] = [...new Set<string>(rows.map((r: any) => r.day as string))]
+        .filter((d) => dayInRange(d, win)).sort();
+      currentFormatDays = days;
+      const field = humansOnly ? 'human_views' : 'all_views';
+      const at = new Map(rows.map((r: any) => [`${r.day}|${r.format}`, r]));
+      const valAt = (d: string, k: string) => (at.get(`${d}|${k}`) as any)?.[field] ?? 0;
+      // The forming (current) day is the newest column; it is still filling
+      // (the intraday panel below shows the detail), so it carries no special
+      // mark here — the tooltip notes "in progress" and that is enough.
+      const formingDay = todayFormats.length && isTodayLive({ day: todayFormats[0].day })
+        ? todayFormats[0].day : null;
+      if (!days.length) {
+        return {
+          grid: { left: 56, right: 20, top: 20, bottom: 34 },
+          xAxis: { type: 'category', data: [], show: false }, yAxis: { type: 'value', show: false },
+          graphic: [{ type: 'text', left: 'center', top: 'middle', silent: true,
+            style: { text: 'No data in this window.', fill: t.subtle, fontFamily: t.mono, fontSize: 12 } }],
+          series: [],
+        };
+      }
+      // 100% stacked: each column is a day's format split normalised to its own
+      // total, so the height is share, not volume. Plotted at full precision so
+      // the segments always fill to 100; the tooltip carries the exact counts
+      // (and their percentage). dayTotal(0) leaves a day empty rather than 0/0.
+      const keyOf = Object.fromEntries(FORMATS.map((f) => [f.label, f.key]));
+      const dayTotal = (d: string) => FORMATS.reduce((s, f) => s + valAt(d, f.key), 0);
+      const share = (d: string, k: string) => { const tot = dayTotal(d); return tot ? (valAt(d, k) / tot) * 100 : 0; };
+      return {
+        grid: { left: 56, right: 20, top: 24, bottom: 34 },
+        legend: { show: true, top: 0, right: 8, icon: 'roundRect', itemWidth: 10, itemHeight: 8,
+          data: FORMATS.map((f) => f.label),
+          textStyle: { color: t.subtle, fontFamily: t.mono, fontSize: 11 } },
+        tooltip: { trigger: 'axis', ...touchTip, axisPointer: { type: 'shadow' },
+          formatter: (ps: any[]) => {
+            const day = days[ps[0].dataIndex];
+            const total = dayTotal(day);
+            const list = ps.filter((p: any) => p.seriesType === 'bar').map((p: any) => {
+              const exact = valAt(day, keyOf[p.seriesName]);
+              const pct = total ? (exact / total) * 100 : 0;
+              return `${p.marker}${p.seriesName}: ${nf.format(exact)} (${pct.toFixed(1)}%)`;
+            }).join('<br/>');
+            return withClose(
+              `${dayLabel(day)}${day === formingDay ? ' · in progress' : ''}<br/>` +
+              `${list}<br/><b>Total: ${nf.format(total)}</b>`);
+          },
+        },
+        xAxis: { type: 'category', data: days, boundaryGap: true, ...axis(t), splitLine: { show: false },
+          axisLabel: { color: t.subtle, fontFamily: t.mono, fontSize: 11, hideOverlap: true, formatter: dayLabel } },
+        yAxis: { type: 'value', max: 100, ...axis(t), axisLine: { show: false },
+          axisLabel: { color: t.subtle, fontFamily: t.mono, fontSize: 11, formatter: (v: number) => `${v}%` } },
+        ...brushOption(),
+        series: FORMATS.map((f) => ({
+          type: 'bar', name: f.label, stack: 'total', barMaxWidth: 34,
+          data: days.map((d) => share(d, f.key)),
+          itemStyle: { color: f.color(t) },
+        })),
+      };
+    };
+    // Formats has its own range (7D/14D/ALL) and its own reset chip, so it needs
+    // the same drag-to-select as the hero, on its own state.
+    const formatsWindowFromBrush = (a: number, b: number): Win => {
+      const days = currentFormatDays;
+      if (!days.length) return null;
+      const i0 = Math.max(0, Math.min(days.length - 1, Math.floor(Math.min(a, b))));
+      const i1 = Math.max(0, Math.min(days.length - 1, Math.ceil(Math.max(a, b))));
+      return { from: Date.parse(`${days[i0]}T00:00:00Z`), to: Date.parse(`${days[i1]}T23:59:59Z`) };
+    };
+    const rearmFormats = wireRangeBrush(fmtChart, formatsWindowFromBrush, formatsRange);
+    wireTouchRangeDrag(fmtChart, 'chart-formats', formatsWindowFromBrush, formatsRange);
+    const renderFormats = (t: Tokens) => {
+      fmtChart.setOption(formatsOption(t), true);
+      rearmFormats();   // notMerge rebuilds the brush component every render
+    };
+
+    // --- formats current day: the stacked column above opened out, as three
+    // intraday lines with the same dashed "now" marker as the traffic panel.
+    // Source is `formatsRolling15` (per-format 15-minute buckets, trailing
+    // ~24h); `formatsPrevDay15` supplies the optional previous-day overlay. ---
+    let tformatsGrain: '1h' | '15m' = '1h';
+    let showPrevDayFmt = false;
+    let localTFmt = false;
+    // The reader's legend selection, preserved across re-renders (every render is
+    // notMerge, which would otherwise reset the legend to all-visible on the next
+    // live tick or toggle). Updated from legendselectchanged below.
+    let tfmtLegendSel: Record<string, boolean> | null = null;
+    const buildTodayFormats = (grain: string, local: boolean) => {
+      const slots = grain === '1h' ? 24 : 96;
+      const side = humansOnly ? 'human' : 'all';
+      const todayKey = new Date().toISOString().slice(0, 10);
+      const nowSlot = slotOf(new Date(), grain);
+      const cur: Record<string, (number | null)[]> = {};
+      for (const f of FORMATS) cur[f.key] = Array.from({ length: slots }, (_, i) => (i <= nowSlot ? 0 : null));
+      for (const r of formatsRolling15) {
+        if (!r.t.startsWith(todayKey)) continue;
+        const arr = cur[r.format]; if (!arr) continue;
+        const s = slotOf(new Date(r.t), grain); arr[s] = (arr[s] ?? 0) + (r[side] ?? 0);
+      }
+      const prev: Record<string, (number | null)[]> = {};
+      if (showPrevDayFmt) {
+        for (const f of FORMATS) prev[f.key] = Array.from({ length: slots }, () => 0);
+        for (const r of formatsPrevDay15) {
+          const arr = prev[r.format]; if (!arr) continue;
+          const s = slotOf(new Date(r.t), grain); arr[s] = (arr[s] ?? 0) + (r[side] ?? 0);
+        }
+      }
+      return { labels: slotLabels(grain, local), cur, prev, nowSlot };
+    };
+    const todayFormatsOption = (t: Tokens) => {
+      if (!formatsRolling15.length) return offlineOption(t);
+      const { labels, cur, prev, nowSlot } = buildTodayFormats(tformatsGrain, localTFmt);
+      const sideLabel = humansOnly ? 'human' : 'all';
+      const tz = localTFmt ? utcOffsetLabel() : 'UTC';
+      const smooth = tformatsGrain === '1h';
+      const lonePoint = !FORMATS.some((f) => cur[f.key].filter((v) => v != null).length > 1);
+      // A format's today line and its previous-day line share the legend NAME
+      // (f.label), so toggling one legend entry hides/shows both together — the
+      // prev line follows its format's selection instead of lingering. Today is
+      // pushed first so the legend swatch takes the solid style; z keeps it drawn
+      // over the faint dashed prev line regardless of array order. The two are
+      // told apart in the tooltip by seriesId (t- vs p-).
+      const series: any[] = [];
+      FORMATS.forEach((f, idx) => series.push({
+        type: 'line', id: `t-${f.key}`, name: f.label, smooth, showSymbol: lonePoint, symbolSize: 6,
+        data: cur[f.key], z: 2, connectNulls: false,
+        lineStyle: { width: 2, color: f.color(t) }, itemStyle: { color: f.color(t) },
+        ...(idx === 0 ? { markLine: nowMarkLine(t, labels[nowSlot]) } : {}),
+      }));
+      if (showPrevDayFmt) for (const f of FORMATS) series.push({
+        type: 'line', id: `p-${f.key}`, name: f.label, smooth, showSymbol: false, data: prev[f.key], z: 1,
+        lineStyle: { width: 1.5, color: f.color(t), opacity: 0.38, type: 'dashed' }, itemStyle: { color: f.color(t) },
+      });
+      const yFmt = axisFmt(peakOf(
+        ...FORMATS.map((f) => cur[f.key]),
+        ...(showPrevDayFmt ? FORMATS.map((f) => prev[f.key]) : []),
+      ));
+      return {
+        grid: { left: 56, right: 20, top: 24, bottom: 34 },
+        legend: { show: true, top: 0, right: 8, icon: 'roundRect', itemWidth: 10, itemHeight: 2,
+          data: FORMATS.map((f) => f.label),
+          ...(tfmtLegendSel ? { selected: tfmtLegendSel } : {}),
+          textStyle: { color: t.subtle, fontFamily: t.mono, fontSize: 11 } },
+        tooltip: { trigger: 'axis', ...touchTip, axisPointer: { type: 'line', lineStyle: { color: t.subtle } },
+          formatter: (ps: any[]) => {
+            const i = ps[0].dataIndex;
+            const rows = ps.filter((p: any) => p.value != null).map((p: any) => {
+              const isPrev = String(p.seriesId).startsWith('p-');
+              return `${p.marker}${p.seriesName}${isPrev ? ' · prev' : ''}: ${nf.format(p.value)}`;
+            }).join('<br/>');
+            const ahead = i > nowSlot ? ' (not yet)' : i === nowSlot ? ' (still filling)' : '';
+            return withClose(`${labels[i]} ${tz}${ahead}<br/>${rows || '—'}<br/><span style="opacity:.7">${sideLabel} page views</span>`);
+          },
+        },
+        xAxis: { type: 'category', data: labels, boundaryGap: false, ...axis(t), splitLine: { show: false },
+          axisLabel: { color: t.subtle, fontFamily: t.mono, fontSize: 11,
+            hideOverlap: true, ...(tformatsGrain === '15m' ? { interval: 3 } : {}) } },
+        yAxis: { type: 'value', ...axis(t), axisLine: { show: false }, minInterval: 1,
+          axisLabel: { color: t.subtle, fontFamily: t.mono, fontSize: 11, formatter: yFmt } },
+        series,
+      };
+    };
+    const renderTodayFormats = (t: Tokens) => { tfmtChart.setOption(todayFormatsOption(t), true); };
+    // Remember the reader's legend selection so it survives the next notMerge
+    // render. Shared series names mean a format's today and previous-day lines
+    // toggle together (same legend entry), which is the linkage we want.
+    tfmtChart.on('legendselectchanged', (p: any) => { tfmtLegendSel = p.selected; });
+
+    const renderFormatsDesk = () => { const t = tokens(); renderFormats(t); renderTodayFormats(t); };
+
+    // Sealed complete days plus today's partial rows, but only when the payload's
+    // today is genuinely the current UTC day — the same guard the hero's
+    // in-progress point uses, so a stale snapshot never pins yesterday's numbers
+    // under today's date. dayInRange then decides whether the active window
+    // actually reaches them, so "24H" finally means the last 24 hours rather
+    // than "the most recent complete day".
+    const renderTables = () => {
+      // Ranked by visits, not page views: a referrer attributes an ARRIVAL, and
+      // an arrival is a session start. Summing visits across referrers also
+      // reconciles exactly with the hero's Human line (verified against eight
+      // consecutive production days), which page views never did.
+      renderCompTable('table-referrers', liveRows(referrersDaily, todayReferrers),
+        'host', 'visits', (h) => (h === '(direct)' ? 'Direct / none' : h));
+      // The only audience panel that answers the toggle: both datasets carry a
+      // country dimension, so All and Human are the same question asked twice.
+      renderCompTable('table-countries',
+        humansOnly ? liveRows(countriesHumanDaily, todayCountriesHuman)
+                   : liveRows(countriesDaily, todayCountries),
+        'country', 'visits', regionName);
+    };
+
+    // --- range UI: quick-range seg + custom-window text, one wiring per desk ---
+    function wireRangeUI(range: ReturnType<typeof makeRangeState>, buttons: NodeListOf<HTMLButtonElement>, windowEl: HTMLElement) {
+      const winText = windowEl.querySelector<HTMLElement>('.range-reset-win')!;
+      const sync = () => {
+        const { win, quick } = range.get();
+        buttons.forEach((b) => b.classList.toggle('active', b.dataset.value === quick));
+        windowEl.hidden = quick !== null;
+        if (quick === null) {
+          winText.textContent = formatWindow(win);
+          // say what tapping it does, rather than leaving a bare ×
+          const back = range.prev().toUpperCase();
+          windowEl.setAttribute('aria-label', `Dragged range ${formatWindow(win)}. Reset to ${back}.`);
+          windowEl.title = `Reset to ${back}`;
+        }
+      };
+      buttons.forEach((b) => b.addEventListener('click', () => range.setQuick(b.dataset.value as Quick)));
+      windowEl.addEventListener('click', () => range.reset());
+      return sync;
+    }
+    const syncTrafficRangeUI = wireRangeUI(trafficRange,
+      document.querySelectorAll<HTMLButtonElement>('#range-toggle-traffic button'),
+      document.getElementById('range-window-traffic')!);
+    const syncFormatsRangeUI = wireRangeUI(formatsRange,
+      document.querySelectorAll<HTMLButtonElement>('#range-toggle-formats button'),
+      document.getElementById('range-window-formats')!);
+    const syncAudienceRangeUI = wireRangeUI(audienceRange,
+      document.querySelectorAll<HTMLButtonElement>('#range-toggle-audience button'),
+      document.getElementById('range-window-audience')!);
+
+    // Each desk renders on its OWN range only — subscribing a range to another
+    // desk's render fn is exactly the coupling decision the range factory rules
+    // out. renderAll (below) is the one place they legitimately run together: a
+    // theme flip repaints every chart regardless of which range is active. The
+    // range scopes the day chart in each desk; each desk's current-day panel is
+    // always the current UTC day, so it ignores the window but repaints anyway
+    // (cheap, and it keeps the All/Human side in step).
+    const renderTrafficDesk = () => { const t = tokens(); renderHero(t); renderToday(t); };
+    const renderAudienceDesk = () => { renderTables(); };
+    trafficRange.subscribe(() => { syncTrafficRangeUI(); renderTrafficDesk(); });
+    formatsRange.subscribe(() => { syncFormatsRangeUI(); renderFormatsDesk(); });
+    audienceRange.subscribe(() => { syncAudienceRangeUI(); renderAudienceDesk(); });
+    syncTrafficRangeUI();
+    syncFormatsRangeUI();
+    syncAudienceRangeUI();
+    renderTrafficDesk();
+    renderFormatsDesk();
+    renderAudienceDesk();
+    const renderAll = () => { renderTrafficDesk(); renderFormatsDesk(); renderAudienceDesk(); };
+
+    // --- current-day grain + previous-day toggles (traffic and formats) ---
+    const wireGrain = (sel: string, set: (g: '1h' | '15m') => void, render: () => void) =>
+      document.querySelectorAll<HTMLButtonElement>(`${sel} button`).forEach((b) =>
+        b.addEventListener('click', () => {
+          set(b.dataset.value as '1h' | '15m');
+          document.querySelectorAll(`${sel} button`).forEach((x) => x.classList.remove('active'));
+          b.classList.add('active');
+          render();
+        }));
+    const wirePrev = (sel: string, toggle: () => boolean, render: () => void) => {
+      const b = document.querySelector<HTMLButtonElement>(`${sel} button`)!;
+      b.addEventListener('click', () => {
+        const on = toggle();
+        b.classList.toggle('active', on);
+        b.setAttribute('aria-pressed', String(on));
+        render();
+      });
+    };
+    const setTz = (id: string, local: boolean) => {
+      const e = document.getElementById(id); if (e) e.textContent = local ? `(${utcOffsetLabel()})` : '(UTC)';
+    };
+    wireGrain('#today-grain', (g) => { todayGrain = g; }, () => renderToday(tokens()));
+    wirePrev('#today-prev', () => (showPrevDay = !showPrevDay), () => renderToday(tokens()));
+    wirePrev('#today-local', () => (localToday = !localToday),
+      () => { setTz('today-tz', localToday); renderToday(tokens()); });
+    wireGrain('#tformats-grain', (g) => { tformatsGrain = g; }, () => renderTodayFormats(tokens()));
+    wirePrev('#tformats-prev', () => (showPrevDayFmt = !showPrevDayFmt), () => renderTodayFormats(tokens()));
+    wirePrev('#tformats-local', () => (localTFmt = !localTFmt),
+      () => { setTz('tformats-tz', localTFmt); renderTodayFormats(tokens()); });
+
+    // --- live tick: keep the in-progress point, the stat tiles, the hourly
+    // panel and the comparison tables current. Only armed when the initial load
+    // actually came from the worker (liveOk) — a snapshot-mode load has
+    // nothing new to poll for, so retrying every 5 min would just fetch the
+    // same 404 endlessly. A merge setOption (no `true`/notMerge) touches only
+    // the two series' data (the line's last vertex carries the in-progress
+    // value — see heroValue — so it must refresh alongside the scatter),
+    // leaving axes and any active brush/zoom state untouched.
+    if (liveOk) {
+      // Freshness can change without a new payload (worker stalls → built_at
+      // ages past LIVE_STALE_MS between ticks). The 15s asof ticker already
+      // repaints the chip's text; this only has to catch the fresh↔stale
+      // TRANSITION: re-render the hero once so the ripple starts/stops (the
+      // merge-update path can't touch the effectScatter type), and re-render
+      // the stat strip so the in-progress tile drops "so far" and freezes.
+      let wasFresh = liveFresh();
+      const reconcileFreshness = () => {
+        renderFresh();
+        // The fresh↔stale flip turns the hero's ripple on/off (an
+        // effectScatter↔scatter type change the merge path can't express) and
+        // adds/removes the formats stacked bar's faint live glow, so re-render
+        // both.
+        if (liveFresh() !== wasFresh) { wasFresh = liveFresh(); renderHero(tokens()); renderStats(); renderFormatsDesk(); }
+      };
+      const tick = async () => {
+        try {
+          const j = await fetchLive();
+          todayPoint = j.today ?? null;
+          // The same payload carries sealed days, healed late data, the
+          // hourly window and the audience series — refresh every captured
+          // array IN PLACE so the stat tiles, hourly panel and comparison
+          // tables track the dot (closures keep their bindings; the hero
+          // keeps brush/zoom state via the merge setOption below).
+          const sync = (arr: any[], fresh: any[] | undefined) => { if (fresh) arr.splice(0, arr.length, ...fresh); };
+          sync(daily, j.daily); sync(beaconDaily, j.beacon_daily); sync(hourly, j.hourly);
+          sync(countriesDaily, j.countries_daily); sync(referrersDaily, j.referrers_daily);
+          sync(countriesHumanDaily, j.countries_human_daily);
+          sync(formatsDaily, j.formats_daily);
+          sync(todayCountries, j.today_countries); sync(todayCountriesHuman, j.today_countries_human);
+          sync(todayReferrers, j.today_referrers); sync(todayFormats, j.today_formats);
+          // Intraday buckets for the two current-day panels — full recompute
+          // each tick (keyed by time, regenerated grid), so replace outright.
+          sync(rolling15, j.rolling15); sync(prevDay15, j.prev_day15);
+          sync(formatsRolling15, j.formats_rolling15); sync(formatsPrevDay15, j.formats_prev_day15);
+          for (const k of Object.keys(byDay)) delete byDay[k];
+          for (const r of daily) byDay[r.day] = r;
+          for (const k of Object.keys(byDayBeacon)) delete byDayBeacon[k];
+          for (const r of beaconDaily) byDayBeacon[r.day] = r;
+          setAsof(j.built_at);
+          renderStats();
+          renderTables();
+          renderToday(tokens());
+          renderFormatsDesk();
+          // A UTC rollover (or a day the feed has newly sealed) changes the
+          // axis itself, which the merge update below cannot express — it only
+          // ever writes series data. Full re-render in that case, merge in the
+          // common one, so the usual tick still preserves brush/zoom state.
+          if (syncHeroDays()) {
+            renderHero(tokens());
+          } else {
+            const scatter = currentTodayScatter();
+            const vals = currentHeroDays.map(heroValue);
+            // The y-axis unit is chosen from the largest value on the axis, and
+            // on a spike day that value is the in-progress point this very
+            // update is raising. Merge the formatter alongside the data or the
+            // axis keeps whatever unit was right at page load — a tab left open
+            // through a surge would still be counting in bare digits long after
+            // the numbers moved into lakhs. Merging axisLabel leaves any active
+            // brush/zoom alone, which is why this isn't a full re-render.
+            hero.setOption({
+              yAxis: { axisLabel: { formatter: axisFmt(peakOf(vals, scatter ? [scatter.value] : [])) } },
+              series: [
+                { data: vals },
+                { data: scatter ? [[scatter.day, scatter.value]] : [] },
+              ],
+            });
+          }
+        } catch {
+          // Transient failure — leave the last-known point on screen; the
+          // next tick retries.
+        }
+        reconcileFreshness();
+      };
+      keepAlive(tick, 5 * 60_000);
+    }
+
+    const ro = new ResizeObserver(() => charts.forEach((c) => c.resize()));
+    ['chart-hero', 'chart-today', 'chart-formats', 'chart-today-formats']
+      .forEach((id) => ro.observe(el(id)));
+    // data-units joins data-theme: both restyle every number on the page.
+    // renderAll covers charts and tables; the stat tiles need their own call.
+    new MutationObserver(() => { renderAll(); renderStats(); })
+      .observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'data-units'] });
+    document.fonts?.ready.then(renderAll);
+
+    // --- panel chrome: maximize (+ "v" while hovered, Escape) and info tooltips ---
+    initMaximize({
+      panels: Array.from(document.querySelectorAll<HTMLElement>('.panel')),
+      resize: (panel) => {
+        const chartId = panel.querySelector<HTMLElement>('.chart')?.id;
+        if (chartId === 'chart-hero') hero.resize();
+        else if (chartId === 'chart-today') todayChart.resize();
+        else if (chartId === 'chart-formats') fmtChart.resize();
+        else if (chartId === 'chart-today-formats') tfmtChart.resize();
+      },
+      onOpen: () => relocatePageBar(),
+      onClose: () => relocatePageBar(),
+    });
+    initInfoTooltips();
+
+    // --- whole-desk maximize (ported from DesksView.astro) ---
+    // 4 desks here; Traffic and Formats have ECharts instances to resize —
+    // Overview is a stat strip and Audience's comp tables are plain HTML/SVG,
+    // both reflow via CSS alone.
+    const deskEls = Array.from(document.querySelectorAll<HTMLElement>('.desk'));
+    const backdrop = document.createElement('div');
+    backdrop.className = 'tsoi-desk-backdrop';
+    backdrop.hidden = true;
+    document.body.appendChild(backdrop);
+    let currentMax = -1;
+    let deskSeq = 0;
+    const resizeDesk = (i: number) => {
+      if (deskEls[i]?.id === 'traffic') { hero.resize(); todayChart.resize(); }
+      else if (deskEls[i]?.id === 'formats') { fmtChart.resize(); tfmtChart.resize(); }
+    };
+
+    // --- desk collapse / expand (ported from DesksView.astro) ---
+    // The DOM/aria for a restored-collapsed desk was already applied
+    // synchronously above; this owns the live toggles. `collapsed` reads the
+    // same store, so the two never drift.
+    const collapsed: boolean[] = (() => { const s = loadCollapsedIds(); return deskEls.map((d) => s.has(d.id)); })();
+    const saveCollapsed = () => {
+      try { sessionStorage.setItem(COLLAPSE_KEY, JSON.stringify(deskEls.filter((_, i) => collapsed[i]).map((d) => d.id))); }
+      catch { /* see loadCollapsedIds */ }
+    };
+    const pageCollapseBtn = document.querySelector<HTMLButtonElement>('.page-collapse-btn');
+    const syncPageCollapseBtn = () => {
+      if (!pageCollapseBtn) return;
+      const anyExpanded = collapsed.some((c) => !c);
+      pageCollapseBtn.setAttribute('aria-expanded', String(anyExpanded));
+      pageCollapseBtn.setAttribute('aria-label', anyExpanded ? 'Collapse all desks' : 'Expand all desks');
+      pageCollapseBtn.classList.toggle('collapsed', !anyExpanded);
+    };
+    const applyCollapsed = (i: number) => {
+      const deskEl = deskEls[i];
+      deskEl.classList.toggle('collapsed', collapsed[i]);
+      const btn = deskEl.querySelector<HTMLButtonElement>('.desk-collapse-btn');
+      if (!btn) return;
+      btn.setAttribute('aria-expanded', String(!collapsed[i]));
+      btn.setAttribute('aria-label', `${collapsed[i] ? 'Expand' : 'Collapse'} ${deskEl.querySelector('.desk-title')?.textContent ?? ''} desk`);
+      btn.classList.toggle('collapsed', collapsed[i]);
+    };
+    // Charts laid out or resized inside display:none carry stale dimensions
+    // (ECharts can't measure a hidden box), so resize on expand. Every path —
+    // per-desk chevron, collapse-all, maximize's force-expand — goes through
+    // here so DOM class, aria, the sticky-bar restack and the resize can't drift.
+    const setCollapsed = (i: number, value: boolean, opts: { persist?: boolean } = {}) => {
+      collapsed[i] = value;
+      applyCollapsed(i);
+      if (opts.persist ?? true) saveCollapsed();
+      if (!value) requestAnimationFrame(() => resizeDesk(i));
+      syncPageCollapseBtn();
+      scheduleRestack();
+    };
+    // Collapse-all / expand-all shifts every bar below the topmost visible one;
+    // hold the reader's scroll by measuring the anchor desk's before/after top.
+    const withScrollAnchor = (mutate: () => void) => {
+      const barH = pageBar?.offsetHeight ?? 0;
+      const anchor = deskEls.find((d) => {
+        const bar = d.querySelector<HTMLElement>('.desk-bar');
+        return !!bar && bar.getBoundingClientRect().bottom > barH;
+      });
+      const before = anchor?.getBoundingClientRect().top;
+      mutate();
+      if (anchor && before != null) {
+        const after = anchor.getBoundingClientRect().top;
+        if (after !== before) window.scrollBy(0, after - before);
+      }
+    };
+    // The whole desk bar toggles the fold — chevron, title or empty space alike.
+    // CAPTURE phase, deliberately: on coarse pointers initInfoTooltips attaches a
+    // click handler to every [data-info] element that calls stopPropagation, and
+    // the desk title is one — in the bubble phase that swallowed the tap and the
+    // bar was dead on touch. Capture runs before it. Stopping propagation here in
+    // turn keeps a tap from ALSO opening the title's tooltip while it folds.
+    // Only REAL controls are excluded (maximize, the range segment and its reset
+    // chip, Filters), never a whole container, so the bar doesn't develop dead
+    // zones. The chevron is exempted from the generic `button` rule.
+    const NO_FOLD = '.desk-max, .desk-filters-btn, .range-reset, .ctl, button, select, input, textarea, label, a';
+    deskEls.forEach((deskEl, i) => {
+      deskEl.querySelector<HTMLElement>('.desk-bar')?.addEventListener('click', (e) => {
+        const t = e.target as HTMLElement;
+        if (!t.closest('.desk-collapse-btn') && t.closest(NO_FOLD)) return;
+        e.stopPropagation();
+        setCollapsed(i, !collapsed[i]);
+      }, true);
+    });
+    pageCollapseBtn?.addEventListener('click', () => {
+      const anyExpanded = collapsed.some((c) => !c);
+      withScrollAnchor(() => deskEls.forEach((_, i) => setCollapsed(i, anyExpanded)));
+    });
+    syncPageCollapseBtn();
+    // A collapsed desk that was rendered while folded still needs one resize once
+    // it can measure — do it now for any desk restored expanded is a no-op, and
+    // expanded desks were already sized by the initial render.
+    deskEls.forEach((_, i) => { if (!collapsed[i]) resizeDesk(i); });
+    // Maximize must show content even from a folded desk, so it force-expands on
+    // open and restores the fold on close (never persisted — the fold choice the
+    // reader made still stands).
+    let preMaxCollapsed = false;
+
+    const doCloseDesk = () => {
+      if (currentMax < 0) return;
+      const i = currentMax;
+      currentMax = -1;
+      const deskEl = deskEls[i];
+      deskEl.classList.remove('maximized');
+      relocatePageBar();
+      backdrop.hidden = true;
+      const btn = deskEl.querySelector<HTMLButtonElement>('.desk-max')!;
+      btn.textContent = '⤢';
+      btn.setAttribute('aria-label', `Maximize ${deskEl.querySelector('.desk-title')?.textContent ?? ''} desk`);
+      // Restore the fold the reader had before maximizing (not persisted — it
+      // was never a real state change, just a view override).
+      if (preMaxCollapsed) { setCollapsed(i, true, { persist: false }); preMaxCollapsed = false; }
+      // Back in normal flow: the maximized-branch shortcut in restackDeskBars
+      // no longer applies, so recompute now rather than waiting on a stray
+      // scroll/resize to happen to fire first.
+      scheduleRestack();
+      requestAnimationFrame(() => resizeDesk(i));
+    };
+    const openDesk = (i: number) => {
+      if (currentMax === i) return;
+      if (currentMax >= 0) doCloseDesk();
+      currentMax = i;
+      // A folded desk would maximize to an empty body (.desk.collapsed hides it),
+      // so force it open first; doCloseDesk re-folds it.
+      preMaxCollapsed = collapsed[i];
+      if (preMaxCollapsed) setCollapsed(i, false, { persist: false });
+      const deskEl = deskEls[i];
+      deskEl.classList.add('maximized');
+      relocatePageBar();
+      backdrop.hidden = false;
+      const btn = deskEl.querySelector<HTMLButtonElement>('.desk-max')!;
+      btn.textContent = '✕';
+      btn.setAttribute('aria-label', 'Close');
+      pushOverlay(`desk-${i}-${++deskSeq}`, doCloseDesk);
+      // Without this, the bar keeps whatever `top` it last had in the normal
+      // page flow — reasonable there, meaningless once reinterpreted inside
+      // the overlay's own (mostly empty) scroll box. See restackDeskBars.
+      scheduleRestack();
+      requestAnimationFrame(() => resizeDesk(i));
+    };
+    const closeDesk = () => { if (currentMax >= 0) requestOverlayClose(); };
+    backdrop.addEventListener('click', closeDesk);
+    deskEls.forEach((deskEl, i) => {
+      deskEl.querySelector<HTMLButtonElement>('.desk-max')!.addEventListener('click', () => {
+        currentMax === i ? closeDesk() : openDesk(i);
+      });
+    });
+
+    // Mobile "Filters" toggle: collapses/expands a desk's control block.
+    // Desk maximize stays visible regardless of viewport. Traffic, Formats and
+    // Audience each carry a RANGE in .desk-controls (it scopes that desk's day
+    // chart / both tables), so each gets the drawer; Overview has no controls.
+    deskEls.forEach((deskEl) => {
+      const btn = deskEl.querySelector<HTMLButtonElement>('.desk-filters-btn');
+      const controls = deskEl.querySelector<HTMLElement>('.desk-controls');
+      btn?.addEventListener('click', () => {
+        const open = controls!.classList.toggle('mobile-open');
+        btn.textContent = open ? 'Hide filters' : 'Filters';
+        btn.setAttribute('aria-expanded', String(open));
+      });
+    });
+  })();
+</script>

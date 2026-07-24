@@ -1,7 +1,11 @@
 Time Series of India
-Copyright 2026 Prateek Gulati
+Copyright 2026 Time Series of India
 
-This product is licensed under the Apache License, Version 2.0 (see LICENSE).
+The code, ETL, and infrastructure in this repository are licensed under the
+Apache License, Version 2.0 (see LICENSE). The editorial and visual content
+(prose, chart/dashboard designs, game/puzzle text and design, generated cards)
+is licensed separately, under CC BY-NC-ND 4.0 — see LICENSE-CONTENT.md. This
+NOTICE covers the Apache-licensed portion only.
 
 The data presented and processed by this software is sourced from public
 releases by the Reserve Bank of India (RBI) and the National Payments

@@ -8,6 +8,15 @@ import type { ECharts } from 'echarts';
 // `restore` should fully re-render the chart's option (setOption(opt, true)),
 // which reliably brings every series or slice back. Returns a reset function the
 // caller can invoke after its own re-renders to clear the isolation state.
+//
+// Grafana-style modifier: ⌘/Ctrl+click toggles a single entry (add/remove it from
+// the visible set) instead of isolating — so several series can be built up by
+// hand. We read the modifier from the last pointerdown, since ECharts'
+// legendselectchanged event doesn't carry the originating mouse event.
+let metaHeld = false;
+if (typeof document !== 'undefined') {
+  document.addEventListener('pointerdown', (e) => { metaHeld = e.metaKey || e.ctrlKey; }, true);
+}
 export function legendIsolation(chart: ECharts, restore: () => void) {
   let isolated: string | null = null;
   let busy = false;
@@ -16,7 +25,11 @@ export function legendIsolation(chart: ECharts, restore: () => void) {
     busy = true;
     const clicked: string = params.name;
     const names = Object.keys(params.selected);
-    if (isolated === clicked) {
+    if (metaHeld) {
+      // multi-select: keep ECharts' default per-entry toggle (already applied),
+      // just drop out of isolate mode so a later plain click isolates cleanly.
+      isolated = null;
+    } else if (isolated === clicked) {
       isolated = null;
       restore();
     } else {

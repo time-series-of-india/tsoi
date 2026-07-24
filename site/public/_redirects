@@ -1,8 +1,41 @@
 # Proper server-side 301s (Cloudflare) — replaces Astro's static meta-refresh
-# pages so social scrapers and search engines follow them. Destinations carry the
-# trailing slash to match the canonical URLs (avoids an extra 307 hop).
-/                          /economy/beats/   301
-/economy/beats/payments    /economy/beats/   301
-/economy/beats/payments/   /economy/beats/   301
-/economy/reads             /economy/         301
-/economy/reads/            /economy/         301
+# pages so social scrapers and search engines follow them. Destinations carry
+# the trailing slash to match the canonical URLs (avoids an extra hop).
+# Format rename (Jul 2026): beats → play, reads → read, dashboards → explore.
+# Splats carry deep links (old shared article/deck/dashboard URLs) across.
+# /economy points straight at the read shelf — never chain through /reads.
+# The old beats page IS the payments deck, so its index goes to the deck's
+# permanent URL (alive but unlisted since decks left the rack) — sending an
+# old share to the rack would swap the cards someone was promised for a game.
+/economy/beats/*        /economy/play/:splat     301
+/economy/beats          /economy/play/payments/  301
+/economy/beats/         /economy/play/payments/  301
+/economy/reads/*        /economy/read/:splat     301
+/economy/reads          /economy/read/           301
+/economy/reads/         /economy/read/           301
+# Desks fold (Jul 2026): the six standalone dashboards live on as desks of
+# /economy/explore/payments/. Explicit lines sit above the /dashboards/*
+# splat so first-match-wins sends old deep links there in one hop.
+/economy/dashboards/overview          /economy/explore/payments/  301
+/economy/dashboards/product-view      /economy/explore/payments/  301
+/economy/dashboards/bank-performance  /economy/explore/payments/  301
+/economy/dashboards/upi-ecosystem     /economy/explore/payments/  301
+/economy/dashboards/mcc               /economy/explore/payments/  301
+/economy/dashboards/state-wise        /economy/explore/payments/  301
+/economy/explore/overview             /economy/explore/payments/  301
+/economy/explore/overview/            /economy/explore/payments/  301
+/economy/explore/product-view         /economy/explore/payments/  301
+/economy/explore/product-view/        /economy/explore/payments/  301
+/economy/explore/bank-performance     /economy/explore/payments/  301
+/economy/explore/bank-performance/    /economy/explore/payments/  301
+/economy/explore/upi-ecosystem        /economy/explore/payments/  301
+/economy/explore/upi-ecosystem/       /economy/explore/payments/  301
+/economy/explore/mcc                  /economy/explore/payments/  301
+/economy/explore/mcc/                 /economy/explore/payments/  301
+/economy/explore/state-wise           /economy/explore/payments/  301
+/economy/explore/state-wise/          /economy/explore/payments/  301
+/economy/dashboards/*   /economy/explore/:splat  301
+/economy/dashboards     /economy/explore/        301
+/economy/dashboards/    /economy/explore/        301
+/economy                /economy/read/           301
+/economy/               /economy/read/           301

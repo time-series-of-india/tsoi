@@ -1,6 +1,8 @@
 ---
 // Newspaper section header: caps label, hairline extending right, optional
-// update date at the far right, 2px on-surface rule beneath.
+// update date, optional trailing actions (e.g. the Play/Read/Explore
+// toggle) — all riding the same rule, 2px on-surface rule beneath. On
+// narrow widths the row wraps so actions drop to their own full-width line.
 interface Props {
   label: string;
   date?: string;
@@ -13,11 +15,15 @@ const { label, date } = Astro.props;
   <h2 class="label">{label}</h2>
   <span class="hairline" aria-hidden="true"></span>
   {date && <span class="date">{date}</span>}
+  {Astro.slots.has('actions') && (
+    <span class="actions"><slot name="actions" /></span>
+  )}
 </div>
 
 <style>
   .section-header {
     display: flex;
+    flex-wrap: wrap;
     align-items: baseline;
     gap: var(--tsoi-column-gutter);
     padding-bottom: calc(var(--tsoi-spacing-unit) / 2);
@@ -44,5 +50,17 @@ const { label, date } = Astro.props;
     text-transform: uppercase;
     color: var(--tsoi-color-on-surface-variant);
     white-space: nowrap;
+  }
+
+  .actions {
+    /* the toggle is a bordered control, not text — centre it against the
+       row's cross-axis instead of sitting it on the label/date baseline */
+    align-self: center;
+  }
+
+  @media (max-width: 600px) {
+    /* row wraps: label + hairline + date stay on line one, actions (the
+       full-width toggle) drop to their own line beneath */
+    .actions { flex-basis: 100%; }
   }
 </style>

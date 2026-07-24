@@ -19,6 +19,9 @@ const require = createRequire(resolve(dirname(fileURLToPath(import.meta.url)), '
 const { chromium } = require('playwright');
 
 const HERE = dirname(fileURLToPath(import.meta.url));
+// RAW_ROOT lets a wrapper stage fetches outside the real raw_*/ dirs and only
+// promote validated files (tsoi data pull).
+const RAW_ROOT = process.env.RAW_ROOT ?? HERE;
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const startYear = Number(process.argv[2] ?? 2026);
 const endYear = Number(process.argv[3] ?? 2026);
@@ -35,8 +38,12 @@ const TABS = [
   { dir: 'raw_imps_bank',     product: 'IMPS', tab: 'bank-performance' },
 ];
 
+// Pi: system chromium at /usr/bin/chromium. Mac: fall back to playwright's
+// bundled browser when no CHROMIUM_PATH is given and the Pi path is absent.
+const executablePath =
+  process.env.CHROMIUM_PATH ?? (existsSync('/usr/bin/chromium') ? '/usr/bin/chromium' : undefined);
 const browser = await chromium.launch({
-  executablePath: process.env.CHROMIUM_PATH ?? '/usr/bin/chromium',
+  executablePath,
   args: ['--no-sandbox', '--disable-gpu', '--disable-dev-shm-usage'],
 });
 const page = await browser.newPage();
@@ -68,7 +75,7 @@ async function fetchAll(params) {
 
 let fetched = 0, skippedExisting = 0, noData = 0;
 for (const t of TABS) {
-  const outDir = resolve(HERE, t.dir);
+  const outDir = resolve(RAW_ROOT, t.dir);
   mkdirSync(outDir, { recursive: true });
   for (let year = startYear; year <= endYear; year++) {
     for (const month of MONTHS) {

@@ -1,0 +1,74 @@
+---
+// Short read: the card divergence. Data:
+// public/data/economy/reads/credit-vs-debit.json (scripts/build-reads-data.mjs).
+import ReadLayout from '../../../components/read/ReadLayout.astro';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+
+const data = JSON.parse(readFileSync(fileURLToPath(new URL('../../../../public/data/economy/reads/credit-vs-debit.json', import.meta.url)), 'utf8'));
+const { stats } = data;
+const payload = JSON.stringify(data);
+---
+
+<ReadLayout
+  slug="credit-vs-debit"
+  kicker="Economy · Monthly"
+  asOf={stats.asOf}
+  units={true}
+>
+  <figure class="chartfig">
+    <div class="chart" id="read-chart" style="height:360px"></div>
+    <figcaption>Monthly card payments: <span class="e e1">credit cards</span> vs <span class="e e2">debit cards</span>. Source: RBI.</figcaption>
+  </figure>
+
+  <div class="prose">
+    <p>A <span class="e e2">debit card</span> and UPI are the same kind of thing: both move money
+      straight out of your bank balance. So when UPI spread, it did not add a new way to pay so much
+      as replace an old one. Debit-card payments are down about <strong>{stats.debitDropPct}%</strong>
+      from their level when UPI took off, as the swipe gave way to the scan.</p>
+    <p>A <span class="e e1">credit card</span> is a different animal. It is not really a payment tool,
+      it is a short-term loan, and UPI does not replace borrowing. So credit kept climbing while debit
+      fell, and the two crossed in <strong>{stats.crossover}</strong>. Today Indians put about
+      <strong>{stats.creditVsDebit} times</strong> as much on credit cards as on debit.</p>
+
+    <div class="pullstat">
+      <div><span class="n e2">{stats.debitDropPct}%</span><span class="l"><em>debit</em>-card payments down since UPI took off</span></div>
+      <div><span class="n e1">{stats.crossover}</span><span class="l">when <em>credit</em> overtook debit</span></div>
+    </div>
+
+    <p>It is why lumping the two together as &ldquo;cards&rdquo; hides the real story. One card is
+      fading because something does its job better; the other is thriving because nothing else does
+      its job at all. Same piece of plastic, opposite fates.</p>
+
+    <p class="source">Source: RBI payment system statistics, processed by Time Series of India.
+      <a href="/economy/explore/payments#product">Explore the dashboard →</a></p>
+  </div>
+
+  <script type="application/json" id="read-data" set:html={payload}></script>
+</ReadLayout>
+
+<script>
+  import * as echarts from 'echarts';
+  import { buildPanel, readTokens } from '../../../lib/dashboards/runtime';
+  import type { PanelSpec, CtrlState } from '../../../lib/dashboards/runtime';
+
+  const data = JSON.parse(document.getElementById('read-data')!.textContent!);
+  const host = document.getElementById('read-chart');
+  if (host) {
+    const spec: PanelSpec = { id: 'cards', title: '', chart: 'line', staticAxis: true, encoding: { x: 'date', series: 'card', y: 'volume_cr' } };
+    const opt = () => {
+      const t = readTokens();
+      const o: any = buildPanel(spec, data.cardRows, { metric: 'volume_cr' } as CtrlState, t);
+      const col: Record<string, string> = { 'Credit cards': t.palette[0], 'Debit cards': t.palette[1] };
+      o.series = o.series.map((s: any) => ({ ...s, lineStyle: { ...s.lineStyle, color: col[s.name] }, itemStyle: { ...s.itemStyle, color: col[s.name] } }));
+      o.series[0] = { ...o.series[0], markLine: { silent: true, symbol: 'none', data: [{ xAxis: data.stats.crossDate }], lineStyle: { color: t.subtle, type: 'dashed' }, label: { formatter: 'crossover', color: t.subtle, fontFamily: t.mono, fontSize: 10 } } };
+      return o;
+    };
+    const chart = echarts.init(host);
+    const render = () => chart.setOption(opt(), true);
+    new ResizeObserver(() => chart.resize()).observe(host);
+    new MutationObserver(render).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'data-units'] });
+    render();
+    document.fonts?.ready.then(render);
+  }
+</script>

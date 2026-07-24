@@ -1,0 +1,872 @@
+---
+// Longform read: "UPI: Anatomy of a Transaction". Prose + diagrams + three charts.
+// Diagrams use the shared engine (src/lib/diagrams/{nodes,engine}.ts).
+// Data: /data/economy/read-upi-architecture.json
+// Citations: internal docs, editorial/read-upi-architecture-sources.md
+import StoryPage from '../../../layouts/StoryPage.astro';
+import ReaderControls from '../../../components/chart/ReaderControls.astro';
+import ScrollProgress from '../../../components/read/ScrollProgress.astro';
+import ShareButtons from '../../../components/editorial/ShareButtons.astro';
+import { readingMinutes } from '../../../lib/reading-time';
+import { dataThrough } from '../../../lib/data-through';
+import { INode, Actor, IC } from '../../../lib/diagrams/nodes';
+
+const title = 'UPI: Anatomy of a Transaction';
+const deck = 'You pay in seconds. Seven parties make it happen, and you see only one of them.';
+const subtext = 'We follow one payment from the scan to the green tick: at each stop, how that layer works, and what the data shows about how it has changed, including the days it fails.';
+
+// === Touchpoint strip (bookend) ===
+const TStep = (icon: string, k: string) =>
+  `<div class="tstep e-app"><span class="tp-ic">${IC[icon]}</span><span class="tl">${k}</span></div>`;
+const TArrow = () =>
+  `<svg class="tarrow" viewBox="0 0 20 28" aria-hidden="true" fill="none"><line x1="10" y1="2" x2="10" y2="20" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><polyline points="5,15 10,24 15,15" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+const TBranch = () =>
+  `<svg class="tbranch" viewBox="0 0 120 28" preserveAspectRatio="none" aria-hidden="true" fill="none"><line x1="60" y1="1" x2="60" y2="12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><line x1="30" y1="12" x2="90" y2="12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><line x1="30" y1="12" x2="30" y2="27" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><line x1="90" y1="12" x2="90" y2="27" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>`;
+const stripSteps = TStep('qr','scan') + TArrow() + TStep('user','name & amount') + TArrow() + TStep('lock','PIN');
+const bandEmpty = `<div class="tband empty"><span class="bicon">${IC.eyeoff}</span><span class="bk">the part you never see</span></div>`;
+// the relay revealed: each hidden party as its coloured entity icon + label
+const relayLeg = (cls: string, icon: string, label: string) =>
+  `<span class="leg ${cls}"><span class="leg-ic">${IC[icon]}</span><span class="leg-l">${label}</span></span>`;
+const bandFilled = `<div class="tband filled"><span class="bl">the relay</span><span class="legs">${relayLeg('e-app', 'phone', 'app')}<span class="ch">›</span>${relayLeg('e-psp', 'bank', 'sponsor')}<span class="ch">›</span>${relayLeg('e-npci', 'hub', 'hub')}<span class="ch">›</span>${relayLeg('e-rem', 'bank', 'banks')}</span></div>`;
+const tpResults = `<div class="tresult"><div class="tres e-app"><span class="tp-ic">${IC.check}</span><span class="tl">payment sent</span></div><div class="tres e-app"><span class="tp-ic">${IC.bell}</span><span class="tl">received</span></div></div>`;
+const stripEmpty = stripSteps + bandEmpty + TBranch() + tpResults;
+const stripFilled = stripSteps + bandFilled + TBranch() + tpResults;
+
+// === fig:0 hub ===
+const hubHtml = [
+  INode('e-app a-yapp', 'phone', 'Your app', 'PhonePe, GPay'),
+  INode('e-psp a-ypsp', 'bank', 'Your PSP', 'issues your @handle'),
+  INode('e-rem a-ybank', 'bank', 'Your bank', 'money out ⊖'),
+  INode('e-npci a-npci', 'hub', 'NPCI', 'the switch'),
+  INode('e-ben a-pbank', 'bank', 'Payee bank', 'money in ⊕'),
+  INode('e-psp a-ppsp', 'bank', 'Payee PSP', 'owns payee @handle'),
+  INode('e-app a-papp', 'phone', 'Payee app', 'shows received'),
+].join('');
+
+// === Sequence actors ===
+const legActors = [
+  Actor('s-app', 'e-app', 'phone', 'Your app', 'TPAP'),
+  Actor('s-psp', 'e-psp', 'bank', 'Your PSP', 'sponsor'),
+  Actor('s-npci', 'e-npci', 'hub', 'NPCI', 'switch'),
+].join('');
+
+const moveActors = [
+  Actor('m-rem', 'e-rem', 'bank', 'Your bank', 'remitter'),
+  Actor('m-npci', 'e-npci', 'hub', 'NPCI', 'switch'),
+  Actor('m-ben', 'e-ben', 'bank', 'Payee bank', 'beneficiary'),
+].join('');
+
+const resultActors = [
+  Actor('r-yapp', 'e-app', 'phone', 'Your app', 'you'),
+  Actor('r-ypsp', 'e-psp', 'bank', 'Your PSP', 'sponsor'),
+  Actor('r-npci', 'e-npci', 'hub', 'NPCI', 'switch'),
+  Actor('r-ppsp', 'e-psp', 'bank', 'Payee PSP', 'sponsor'),
+  Actor('r-papp', 'e-app', 'phone', 'Payee app', 'payee'),
+].join('');
+
+const recoActors = [
+  Actor('d-app', 'e-app', 'phone', 'Your app', 'you'),
+  Actor('d-rem', 'e-rem', 'bank', 'Your bank', 'remitter'),
+  Actor('d-npci', 'e-npci', 'hub', 'NPCI', 'switch'),
+  Actor('d-ben', 'e-ben', 'bank', 'Payee bank', 'beneficiary'),
+].join('');
+---
+
+<StoryPage title={title} description={deck} og_type="article" og_image="/og/reads/upi-architecture.png">
+  <ScrollProgress />
+  <article class="read">
+    <nav class="folio" aria-label="Section">
+      <a href="/economy">Economy</a><span class="dot" aria-hidden="true">&middot;</span><a href="/economy/read">Read</a>
+    </nav>
+    <header class="head">
+      <p class="kicker">How it works &middot; The rails &middot; {readingMinutes('upi-architecture')} min read{dataThrough('upi-architecture') ? ` · data through ${dataThrough('upi-architecture')}` : ''}</p>
+      <h1>{title}</h1>
+      <p class="deck">{deck}</p>
+      <p class="subtext">{subtext}</p>
+      <div class="toolbar"><ReaderControls /><ShareButtons title={title} variant="icon" /></div>
+    </header>
+
+    <div class="prose">
+
+      <figure class="stripfig">
+        <div class="tstrip" set:html={stripEmpty}></div>
+        <figcaption>The five moments of a UPI payment as you experience them. Everything between your PIN and the result happens out of sight.</figcaption>
+      </figure>
+
+      <p>Several times a day, most of us pay the same way. You hold your phone up to a printed
+        code, check the name that appears, enter the amount, key in a PIN, and a green tick says it
+        is done. On
+        the other side, someone&rsquo;s phone buzzes to say the money has arrived. Start to finish,
+        two or three seconds.</p>
+      <p>Those five moments, the scan, the name and amount, the PIN, the tick, and the buzz on the
+        other side, are the whole payment as you ever see it. Everything else is hidden. Between the
+        scan and the tick your instruction runs through a short chain of separate organisations, each
+        checking one thing and handing the result to the next, all of it finishing before you have
+        looked up from the screen. The app on your phone is only the first link, and it never touches
+        your money.</p>
+      <p>It is worth knowing how much rides on this quiet handover. In
+        <span class="liveM">June 2026</span> alone UPI carried more than
+        <span class="liveT">2,272 crore</span> payments, more than any other real-time payment system
+        in the world.<sup class="c"><a href="#r5">5</a></sup></p>
+      <p>This piece fills in the gap between the scan and the green tick. We follow a single payment
+        down the chain, one party at a time: who hands it to whom, what each one checks, and where
+        it can fail. At every stop we also look at how that part has changed. The diagram below is
+        the whole cast, and we begin at the top, with the part you are holding.</p>
+
+      <figure class="diagram hubfig flowfig">
+        <div class="hub flow-area" set:html={hubHtml}></div>
+        <div class="hubctl">
+          <p class="stepcap" aria-live="polite"></p>
+          <div class="hbtns">
+            <button class="hb prev" type="button" aria-label="Previous step">&#8249; Prev</button>
+            <button class="hb play" type="button">&#9654; Watch</button>
+            <button class="hb next" type="button" aria-label="Next step">Next &#8250;</button>
+          </div>
+        </div>
+        <figcaption>Every actor in one payment. NPCI sits in the middle and trades request-and-reply
+          messages with all four legs. The receiver&rsquo;s side mirrors yours.</figcaption>
+      </figure>
+
+      <h2>The app</h2>
+      <p>The first part is the one you already know: <span class="e e-app">the app</span>. PhonePe,
+        Google Pay, Paytm, or one of a dozen others. It is easy to take the app for the payment
+        system itself, but its actual job is narrow. In the system&rsquo;s own language it is a
+        Third-Party Application Provider: it gathers your intent &mdash; pay this person, this amount
+        &mdash; shows you who you are about to pay, and collects your PIN through a secure pad it
+        cannot read into.
+        Then it hands the instruction on. It never sees your PIN, holds none of your money, and carries
+        no banking licence.<sup class="c"><a href="#r1">1</a></sup></p>
+      <p>This thin layer is where almost all of UPI&rsquo;s competition is fought, and the contest is
+        lopsided. Two apps, <span class="e e-app">PhonePe</span> and <span class="e e-app">Google Pay</span>,
+        between them carry about four-fifths of every UPI payment; everyone else divides the
+        rest.<sup class="c"><a href="#r10">10</a></sup> That duopoly has held for years. What moves is
+        the order beneath it.</p>
+      <p>Watch the ranking over the years. A newcomer, <span class="e e-app">super.money</span>,
+        launched by Flipkart in 2024, reaches the top five in under a year,
+        pulling users in with guaranteed cashback.<sup class="c"><a href="#r8">8</a></sup><sup class="c"><a href="#r10">10</a></sup>
+        The two apps at the top barely shift; the floor below them never stops rearranging.</p>
+
+      <figure class="chartfig">
+        <div class="chart" id="fig-app" style="height:420px"></div>
+        <figcaption>Rank of the leading UPI apps by yearly transaction volume. Source: NPCI app
+          statistics.<sup class="c"><a href="#r10">10</a></sup></figcaption>
+      </figure>
+
+      <p>For all that competition, there is one thing none of these apps can do on their own: reach
+        the payment network. For that, each of them has to stand behind a bank.</p>
+
+      <h2>The sponsor</h2>
+      <p>Because <span class="e e-app">the app</span> holds no licence
+        and no direct line to the payment network, it has to borrow both from a partner bank called a
+        Payment Service Provider, or <span class="e e-psp">PSP</span>, its sponsor. The sponsor does the
+        things the app cannot: it connects to the central system, it issues the UPI address that stands
+        for you, and it is the party that first tied your phone to your bank account when you set
+        UPI up.<sup class="c"><a href="#r1">1</a></sup></p>
+      <p>That address is more revealing than it looks. The suffix on a UPI ID, the part after the
+        <span class="mono">@</span>, names the sponsor bank, not the app you are using. An address
+        ending in <span class="mono">@ybl</span> sits on Yes Bank; one ending in
+        <span class="mono">@okaxis</span> sits on Axis. PhonePe&rsquo;s handles run on Yes Bank,
+        Axis and ICICI; Google Pay&rsquo;s on Axis, HDFC, ICICI and State
+        Bank.<sup class="c"><a href="#r7">7</a></sup></p>
+      <p>Most of the big apps now sit on several sponsor banks at once rather than one, mainly for
+        resilience: spread across banks, a single bank&rsquo;s outage cannot take the whole app
+        offline, and no one sponsor has to carry all of the app&rsquo;s volume.<sup class="c"><a href="#r7">7</a></sup>
+        The sponsor banks get a quieter benefit of their own. When a payer and a payee happen to sit on
+        the same sponsor, that bank resolves both addresses in its own books and skips the
+        network&rsquo;s central directory &mdash; faster, and it saves the resolution fee of about a
+        paisa.<sup class="c"><a href="#r7">7</a></sup></p>
+      <p>So what actually leaves your phone is not money. It is a request assembled by the app and
+        signed by your sponsor bank. Three of the five moments you see live here: the scan, the name
+        and amount, and your PIN. The name is the network confirming who holds the address you scanned, your one
+        chance to catch a wrong payee before any money moves. The PIN is captured and encrypted by a
+        certified component on your phone; the app passing it along never learns
+        it.<sup class="c"><a href="#r1">1</a></sup></p>
+
+      <figure class="diagram seqfig flowfig leg-req">
+        <div class="seq flow-area">
+          <div class="seqactors" set:html={legActors}></div>
+        </div>
+        <div class="hubctl">
+          <p class="stepcap" aria-live="polite"></p>
+          <div class="hbtns">
+            <button class="hb prev" type="button" aria-label="Previous step">&#8249; Prev</button>
+            <button class="hb play" type="button">&#9654; Watch</button>
+            <button class="hb next" type="button" aria-label="Next step">Next &#8250;</button>
+          </div>
+        </div>
+        <figcaption>From a QR scan to a signed pay request. The verified payee name comes back before
+          you pay; your PIN is encrypted inside the common library (<code>Creds type=&ldquo;MPIN&rdquo;</code>),
+          never seen by the app. Source: NPCI UPI API specification.<sup class="c"><a href="#r2">2</a></sup></figcaption>
+      </figure>
+
+      <p>From here the request has left your hands entirely. Everything after this happens among the
+        banks and the switch, and it begins at the one place every payment must pass through.</p>
+
+      <h2>The hub</h2>
+      <p>Every payment, whatever app or bank it starts from, converges on a single point: the central
+        switch run by <span class="e e-npci">NPCI</span>, the non-profit that operates UPI; there is
+        only one. Its first task is translation. The address
+        you are paying belongs to the recipient&rsquo;s own sponsor bank, so the switch routes the
+        request there and that bank resolves the handle into a real account before any money
+        moves.<sup class="c"><a href="#r2">2</a></sup></p>
+      <p>Then it moves the money, and the order is fixed. The switch asks
+        <span class="e e-rem">your bank</span> to debit you first. Your bank is the only party that
+        can open the sealed PIN from your phone, so it is here, and only here, that your PIN is
+        checked: your bank verifies it, confirms the balance, takes the money, and replies. Only once
+        that debit is confirmed does the switch ask the
+        <span class="e e-ben">payee&rsquo;s bank</span> to credit them, and wait for that
+        confirmation in turn. The money always leaves before it arrives, never the other way
+        round.<sup class="c"><a href="#r2">2</a></sup></p>
+
+      <figure class="diagram seqfig flowfig leg-money">
+        <div class="seq flow-area">
+          <div class="seqactors" set:html={moveActors}></div>
+        </div>
+        <div class="hubctl">
+          <p class="stepcap" aria-live="polite"></p>
+          <div class="hbtns">
+            <button class="hb prev" type="button" aria-label="Previous step">&#8249; Prev</button>
+            <button class="hb play" type="button">&#9654; Watch</button>
+            <button class="hb next" type="button" aria-label="Next step">Next &#8250;</button>
+          </div>
+        </div>
+        <figcaption>Inside the switch. NPCI debits your bank first and waits for confirmation before
+          asking the payee&rsquo;s bank to credit; the money always leaves before it arrives.
+          Source: NPCI UPI API specification.<sup class="c"><a href="#r2">2</a></sup></figcaption>
+      </figure>
+
+      <p>What comes back to you is not handed over by the switch directly. NPCI returns the outcome
+        to the two sponsor banks, and each sponsor passes it on to its app. Your sponsor tells your
+        app the payment went through and you see the green tick; the payee&rsquo;s sponsor tells the
+        payee&rsquo;s app and their phone shows the money received.<sup class="c"><a href="#r2">2</a></sup></p>
+
+      <figure class="diagram seqfig flowfig leg-result">
+        <div class="seq flow-area">
+          <div class="seqactors" set:html={resultActors}></div>
+        </div>
+        <div class="hubctl">
+          <p class="stepcap" aria-live="polite"></p>
+          <div class="hbtns">
+            <button class="hb prev" type="button" aria-label="Previous step">&#8249; Prev</button>
+            <button class="hb play" type="button">&#9654; Watch</button>
+            <button class="hb next" type="button" aria-label="Next step">Next &#8250;</button>
+          </div>
+        </div>
+        <figcaption>The result comes home through the sponsors, not straight from the switch: your PSP
+          shows payment sent on your screen, the payee&rsquo;s PSP raises their received.
+          Source: NPCI UPI API specification.<sup class="c"><a href="#r2">2</a></sup></figcaption>
+      </figure>
+
+      <p>The switch itself publishes almost nothing about its own work, because there is nothing to
+        compare it against. There is only one of it. Its scale shows up instead as the sheer total it
+        carries.</p>
+
+      <figure class="statfig">
+        <div class="bigstat">
+          <span class="n liveT">2,272 crore</span>
+          <span class="l">UPI payments in <span class="liveM">June 2026</span>, up from a few million a month at launch in 2016</span>
+        </div>
+      </figure>
+
+      <p>The real money-moving, though, happens at the two ends: the bank that debits the payer and
+        the bank that credits the payee. You would expect the busiest banks on each side to be much
+        the same.</p>
+
+      <h2>The banks</h2>
+      <p>They are not the same banks. Rank the busiest banks on the
+        <span class="e e-rem">paying</span> side and the busiest on the
+        <span class="e e-ben">receiving</span> side, then join each bank to itself across the two:
+        the orders do not line up.</p>
+
+      <figure class="chartfig">
+        <div class="chart" id="fig-bank" style="height:440px"></div>
+        <figcaption>Each bank&rsquo;s rank when paying vs when receiving, latest 12 months. Source:
+          NPCI member-bank data.<sup class="c"><a href="#r10">10</a></sup></figcaption>
+      </figure>
+
+      <p>On the paying side the order is the one you would guess. State Bank of India leads by a wide
+        margin, the other large consumer banks behind it, much as their customer numbers would suggest.
+        On the receiving side the order falls apart. One private bank,
+        <span class="e e-ben">Yes Bank</span>, sits far out in front, taking a share of incoming
+        payments that no bank comes near on the paying side, holding near two-fifths of all
+        incoming UPI.<sup class="c"><a href="#r6">6</a></sup><sup class="c"><a href="#r10">10</a></sup>
+        The same Yes Bank is an also-ran at paying: it barely originates payments, yet it receives
+        more than anyone.</p>
+      <p>The reason runs back to the sponsor layer, and it starts with what UPI has become. Most UPI
+        payments are no longer people paying people; they are people paying shops. The two lines
+        crossed in 2022 and have moved apart ever since.<sup class="c"><a href="#r10">10</a></sup></p>
+
+      <figure class="chartfig">
+        <div class="chart" id="fig-p2m" style="height:340px"></div>
+        <figcaption>Share of UPI payments by count: <span class="e e-ben">merchant</span> vs
+          <span class="e e-rem">person-to-person</span>, monthly. Merchants passed people in
+          August 2022. Source: NPCI.<sup class="c"><a href="#r10">10</a></sup></figcaption>
+      </figure>
+
+      <p>A shop&rsquo;s UPI code is issued by a sponsor bank
+        just as your handle is. For the largest merchant apps that sponsor is, overwhelmingly, Yes
+        Bank.<sup class="c"><a href="#r7">7</a></sup> So when you scan a PhonePe code at a store, the
+        credit lands first at Yes Bank, the bank behind the code, and the shopkeeper is paid out
+        afterwards from the merchant app&rsquo;s pooled account.<sup class="c"><a href="#r6">6</a></sup>
+        &ldquo;Beneficiary bank&rdquo; here does not mean the shopkeeper&rsquo;s own bank. It means
+        the bank that sponsors the code.</p>
+
+      <h2>Where it breaks</h2>
+      <p>No system running at this size works every time, and what sets UPI apart is how precisely it
+        records the times it does not. Every declined payment is filed under one of two
+        headings.<sup class="c"><a href="#r3">3</a></sup></p>
+      <p>The first is a business decline: a wrong PIN, a short balance, a daily limit reached. You
+        understand these the instant they happen, because the app tells you why and the cause sits on
+        your side of the screen. The second is a <span class="e e-fail">technical decline</span>:
+        somewhere in the chain, a bank&rsquo;s systems or the switch itself, a step could not be
+        completed. This is the failure that surfaces as a message about the bank&rsquo;s server,
+        &ldquo;Bank server down&rdquo; or &ldquo;your bank&rsquo;s server didn&rsquo;t respond,
+        please try again&rdquo;, with nothing on your side to explain
+        it.<sup class="c"><a href="#r3">3</a></sup></p>
+      <p>Set the two against each other over the years and a clear divergence appears. Lately about
+        one payment in ten is declined, but fewer than one in three hundred fails because of the
+        rail itself. And the gap is widening. Technical declines have fallen year after year, from
+        more than one in a hundred to fewer than one in three hundred, as the banks and the switch
+        were hardened. Business declines have not fallen; they have
+        risen.<sup class="c"><a href="#r10">10</a></sup></p>
+
+      <figure class="chartfig">
+        <div class="chart" id="fig-decline" style="height:340px"></div>
+        <figcaption>Remitter-side decline rate, technical vs business, by year. Source: NPCI
+          member-bank data.<sup class="c"><a href="#r10">10</a></sup></figcaption>
+      </figure>
+
+      <p>So the rail grows more reliable even as the payments that fail increasingly fail for reasons
+        that have nothing to do with it. The everyday breakdown is not the machine giving way; it is
+        the machine enforcing one of its own rules.</p>
+      <p>This runs against what the outages suggest. UPI has gone dark across the country for hours at
+        a time, and those days are real and remembered.<sup class="c"><a href="#r9">9</a></sup> But
+        they are rare. On an ordinary day a payment almost never fails because the system broke. It
+        fails because of a limit reached, a balance too low, or a single wrong digit.</p>
+      <p>And then there is a third case, neither a clean success nor a clean decline: the payment the
+        system itself cannot immediately call.</p>
+
+      <h2>The safety net</h2>
+      <p>Remember that the money always leaves before it arrives. Almost always the arrival is
+        confirmed in the same moment, and you never know there was a gap at all. But every so often
+        the confirmation does not come back in time. The payee&rsquo;s bank may have credited the
+        account and failed to report it, or it may not have credited at all, and for a short while
+        the network genuinely cannot tell which. A payment caught in that state has its own name: it
+        is <em>deemed</em>, meaning the credit is
+        unconfirmed.<sup class="c"><a href="#r2">2</a></sup> This is the moment your app stops short
+        of the green tick and says, instead, that the payment is processing. Your money has left, and
+        no one can yet say whether it landed.</p>
+      <p>The system is built for exactly this. Your app does not sit and guess. After about ninety
+        seconds it can quietly ask the network for the true status, and it is allowed only a few such
+        checks, because apps that hammered this one question have themselves brought UPI
+        down.<sup class="c"><a href="#r9">9</a></sup> You are not asked to do anything; the asking
+        happens for you.</p>
+      <p>Behind that, NPCI runs its own reconciliation. It keeps querying both banks until it has a
+        definite answer, and posts one of two verdicts: the credit did happen, so the payment stands,
+        or it did not, so the debit is reversed.<sup class="c"><a href="#r9">9</a></sup></p>
+
+      <figure class="diagram seqfig flowfig leg-deemed">
+        <div class="seq flow-area">
+          <div class="seqactors" set:html={recoActors}></div>
+        </div>
+        <div class="hubctl">
+          <p class="stepcap" aria-live="polite"></p>
+          <div class="hbtns">
+            <button class="hb prev" type="button" aria-label="Previous step">&#8249; Prev</button>
+            <button class="hb play" type="button">&#9654; Watch</button>
+            <button class="hb next" type="button" aria-label="Next step">Next &#8250;</button>
+          </div>
+        </div>
+        <figcaption>When a payment is left pending, your app quietly checks the status and NPCI
+          auto-reconciles, ending with the money either confirmed or reversed to you, guaranteed
+          within a day. Sources: NPCI UPI API spec, UDIR (OC-98), RBI TAT
+          circular.<sup class="c"><a href="#r9">9</a></sup><sup class="c"><a href="#r4">4</a></sup></figcaption>
+      </figure>
+
+      <p>And if it must be reversed, the timing is not left to goodwill. The money has to return to
+        you within a day for a transfer, a few days for a merchant payment, with a hundred-rupee
+        daily penalty on the bank if it is
+        late.<sup class="c"><a href="#r4">4</a></sup> The system cannot always promise to get a
+        payment right in the moment, so the rules promise to make it right afterwards.</p>
+      <p>Payments stuck this way were never common, and the reconciliation machinery around them has
+        only tightened since.</p>
+
+      <figure class="stripfig">
+        <div class="tstrip" set:html={stripFilled}></div>
+        <figcaption>The same five moments, with the gap filled in: the hidden relay spans app,
+          sponsor, hub, and banks.</figcaption>
+      </figure>
+
+      <p>Which returns us to where we began: the scan, the name and amount, the PIN, the green tick,
+        and a phone buzzing on the other side. Those five moments are still all you see. Behind those few seconds are
+        seven separate companies and banks, passing a message down a line and back, checking it
+        at every step, wrapped in rules written so that even when it fails, it fails in your favour.
+        The next time the tick appears, you will know what it took.</p>
+
+      <ShareButtons title={title} />
+
+      <nav class="folio folio-end" aria-label="More in this dispatch">
+        <a href="/economy/play/off-by-how-much/">Game: Off by How Much?</a><span class="dot" aria-hidden="true">&middot;</span><a href="/economy/explore/payments">Dashboard: India Payments</a>
+      </nav>
+
+      <h2 id="refs-h">Sources</h2>
+      <ol class="refs">
+        <li id="r1">NPCI, PSP and TPAP roles; PIN handling and common library. <a href="https://razorpay.com/blog/differences-between-a-payment-service-provider-psp-third-party-upi-app-tpap/">Razorpay</a>; <a href="https://pay.google.com/intl/en_in/about/external/npci/">Google Pay / NPCI</a>.</li>
+        <li id="r2">UPI message flow (ReqPay debit then credit; deemed result code; PSP notification). <a href="https://www.npci.org.in/PDF/npci/upi/Product-Booklet.pdf">NPCI UPI Procedural Guidelines / Product Booklet</a>.</li>
+        <li id="r3">Technical vs business decline, definitions and targets. <a href="https://www.npci.org.in/PDF/npci/upi/circular/2022/UPI-OC-149-Reduction-of-business-decline-in-UPI.pdf">NPCI OC-149</a>.</li>
+        <li id="r4">Failed-transaction auto-reversal and penalty timeline. <a href="https://www.rbi.org.in/Scripts/NotificationUser.aspx?Id=11693">RBI TAT circular, 2019</a>.</li>
+        <li id="r5">UPI as the world&rsquo;s largest real-time payment system. <a href="https://www.pib.gov.in/PressReleasePage.aspx?PRID=2200569">PIB / IMF</a>; <a href="https://www.aciworldwide.com/real-time-payments-report">ACI Worldwide</a>.</li>
+        <li id="r6">Beneficiary-bank concentration and merchant escrow. <a href="https://economictimes.indiatimes.com/tech/technology/four-banks-bag-bulk-of-upi-beneficiary-payments/articleshow/122234250.cms">The Economic Times</a>.</li>
+        <li id="r7">Sponsor banks, @handle suffixes, and the on-us efficiency. <a href="https://www.thepaintedstork.com/p/71-yes-and-axis-bank-the-banks-powering">The Painted Stork</a>.</li>
+        <li id="r8">super.money&rsquo;s growth. <a href="https://www.business-standard.com/companies/news/flipkart-walmart-supermoney-fresh-investment-upi-app-125092300349_1.html">Business Standard</a>.</li>
+        <li id="r9">Deemed transactions, status checks, UDIR reconciliation, and polling-driven outages. <a href="https://razorpay.com/blog/all-you-need-to-know-about-npci-led-udir/">Razorpay (UDIR)</a>; <a href="https://inc42.com/buzz/upi-outage-npci-directs-banks-to-limit-check-transaction-api-usage/">Inc42 (NPCI outage guidance, 2025)</a>.</li>
+        <li id="r10">Transaction, app, bank and decline figures. NPCI ecosystem statistics, processed by Time Series of India.</li>
+      </ol>
+    </div>
+  </article>
+</StoryPage>
+
+<script is:inline>
+  // Touchpoint strips reveal the first time they scroll into view (not at page
+  // load, where the closing strip would finish before the reader reached it).
+  // Kept INLINE — no bundle, no echarts import — so `.play` is added right after
+  // parse: the blank start state never lingers while the heavy chart module loads.
+  (function () {
+    var run = function () {
+      document.querySelectorAll('.tstrip').forEach(function (strip) {
+        var io = new IntersectionObserver(function (entries, obs) {
+          entries.forEach(function (e) { if (e.isIntersecting) { strip.classList.add('play'); obs.disconnect(); } });
+        }, { threshold: 0.35 });
+        io.observe(strip);
+      });
+    };
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', run);
+    else run();
+  })();
+</script>
+
+<script>
+  import { initFlow, initSeq } from '../../../lib/diagrams/engine';
+  import * as echarts from 'echarts';
+  import { buildPanel, readTokens, fmt } from '../../../lib/dashboards/runtime';
+  import type { Row, CtrlState, Tokens, PanelSpec } from '../../../lib/dashboards/runtime';
+  import { dataUrl } from '../../../lib/data-url';
+
+  type Data = { appRace: Row[]; bankFlow: Row[]; decline: Row[]; throughput: { volume_mn: number; label: string } };
+  type P2mData = { shareRows: Row[]; stats: { crossDate: string } };
+
+  // === Diagrams ===
+  initFlow(document.querySelector<HTMLElement>('.hubfig'), [
+    { from: 'a-yapp', to: 'a-ypsp', key: 'you pay', label: '1 · You scan and pay; your app hands it to your PSP' },
+    { from: 'a-ypsp', to: 'a-npci', key: 'request', label: '2 · Your PSP sends the request to NPCI' },
+    { from: 'a-npci', to: 'a-ppsp', key: 'find payee', label: '3 · NPCI finds the payee’s PSP' },
+    { from: 'a-npci', to: 'a-ybank', key: 'debit', label: '4 · Your bank debits you' },
+    { from: 'a-npci', to: 'a-pbank', key: 'credit', label: '5 · The payee’s bank is credited' },
+    { from: 'a-ppsp', to: 'a-papp', key: 'notify', label: '6 · The payee is notified; the result travels back to you' },
+  ]);
+
+  initSeq(document.querySelector<HTMLElement>('.leg-req'), [
+    { from: 's-app', to: 's-app', self: true, label: 'scan QR', touch: true, full: '1 · You scan, and the app reads the upi://pay link: payee VPA, amount, reference' },
+    { from: 's-app', to: 's-psp', label: 'validate address', full: '2 · Your PSP asks to validate the payee address (skipped for a signed QR or cached merchant)' },
+    { from: 's-psp', to: 's-npci', label: 'resolve VPA', full: '3 · NPCI maps the @handle to the payee’s own PSP, which holds the account' },
+    { from: 's-npci', to: 's-psp', label: 'verified name', full: '4 · The payee’s PSP looks up the name on the account and returns it to your PSP' },
+    { from: 's-psp', to: 's-app', label: 'name', touch: true, full: '5 · Your app shows you the verified name; you see exactly who you are paying before committing to any amount' },
+    { from: 's-app', to: 's-app', self: true, label: 'amount + PIN', touch: true, full: '6 · You enter the amount (or confirm the one in the QR) and your PIN; the embedded common library encrypts the PIN with your bank’s key, and the app never sees it' },
+    { from: 's-app', to: 's-psp', label: 'confirm + creds', full: '7 · The app hands the confirmed payment and encrypted credential to your PSP' },
+    { from: 's-psp', to: 's-npci', label: 'pay request', full: '8 · Your PSP builds and signs the pay request (ReqPay, type=PAY) and submits it to NPCI' },
+  ]);
+
+  initSeq(document.querySelector<HTMLElement>('.leg-money'), [
+    { from: 'm-npci', to: 'm-npci', self: true, label: 'request arrives', full: '1 · Your signed pay request reaches the switch (via your PSP), and the money movement begins' },
+    { from: 'm-npci', to: 'm-rem', label: 'debit request', full: '2 · NPCI asks your bank to debit you; your bank alone decrypts and checks your PIN and balance, then debits' },
+    { from: 'm-rem', to: 'm-npci', label: 'debit done', full: '3 · Your bank confirms the debit. The money has now left your account' },
+    { from: 'm-npci', to: 'm-ben', label: 'credit request', full: '4 · Only now does NPCI ask the payee’s bank to credit them, resolving the @handle to the real account inside that bank' },
+    { from: 'm-ben', to: 'm-npci', label: 'credit done', full: '5 · The payee’s bank confirms the credit. The money has arrived' },
+  ]);
+
+  initSeq(document.querySelector<HTMLElement>('.leg-result'), [
+    { from: 'r-npci', to: 'r-ypsp', label: 'result', full: '1 · The switch returns the outcome to your sponsor bank (your PSP)' },
+    { from: 'r-ypsp', to: 'r-yapp', label: 'payment sent', touch: true, full: '2 · Your sponsor tells your app the payment went through, and you see payment sent' },
+    { from: 'r-npci', to: 'r-ppsp', label: 'credit advice', full: '3 · The switch notifies the payee’s sponsor bank of the credit' },
+    { from: 'r-ppsp', to: 'r-papp', label: 'received', touch: true, full: '4 · The payee’s sponsor tells their app, and their phone shows the money received' },
+  ]);
+
+  initSeq(document.querySelector<HTMLElement>('.leg-deemed'), [
+    { from: 'd-npci', to: 'd-npci', self: true, label: 'deemed', full: '1 · The credit isn’t confirmed in time, so NPCI marks the payment “deemed”: the money has left your account, but whether it arrived is unknown' },
+    { from: 'd-app', to: 'd-npci', label: 'status check', full: '2 · Your app shows the payment pending and quietly checks the status for you after about 90 seconds; only a few checks are allowed' },
+    { from: 'd-npci', to: 'd-ben', label: 'auto-check', full: '3 · NPCI also reconciles on its own, auto-checking the payee’s bank for the true outcome' },
+    { from: 'd-ben', to: 'd-npci', label: 'credited or not', full: '4 · The payee’s bank reports the truth: the credit either did happen, so the payment stands, or it did not, so it must be reversed' },
+    { from: 'd-npci', to: 'd-rem', label: 'reverse if not', full: '5 · If it failed, NPCI tells your bank to reverse the debit' },
+    { from: 'd-rem', to: 'd-app', label: 'refunded', full: '6 · Your bank returns the money, guaranteed within a day (a few days for merchants), with ₹100/day if it is late. Either way, you are made whole' },
+  ]);
+
+  // === Charts ===
+  const appSpec: PanelSpec = { id: 'app', title: '', chart: 'bump', encoding: { x: 'period', series: 'app', y: 'volume_mn' } };
+  const declineSpec: PanelSpec = { id: 'd', title: '', chart: 'line', staticAxis: true, encoding: { x: 'year', series: 'kind', y: 'decline_pct' } };
+  const p2mSpec: PanelSpec = { id: 'p2m', title: '', chart: 'line', staticAxis: true, encoding: { x: 'date', series: 'kind', y: 'share_pct' } };
+
+  // Merchant rides the beneficiary gold (the Yes Bank side of the story), P2P the
+  // remitter green, so the chart's colours agree with the section's entity coding.
+  function p2mOption(p2m: P2mData, t: Tokens) {
+    const o: any = buildPanel(p2mSpec, p2m.shareRows, { metric: 'volume_cr' } as CtrlState, t);
+    const col: Record<string, string> = { Merchant: t.palette[5], 'Person-to-person': t.palette[2] };
+    o.series = o.series.map((s: any) => {
+      const c = col[s.name]; if (!c) return s;
+      return { ...s, lineStyle: { ...(s.lineStyle || {}), color: c }, itemStyle: { ...(s.itemStyle || {}), color: c } };
+    });
+    o.series[0] = { ...o.series[0], markLine: { silent: true, symbol: 'none', data: [{ xAxis: p2m.stats.crossDate }], lineStyle: { color: t.subtle, type: 'dashed' }, label: { formatter: 'Aug 22', color: t.subtle, fontFamily: t.mono, fontSize: 10 } } };
+    return o;
+  }
+
+  function bumpOption(rows: Row[], t: Tokens) {
+    const o: any = buildPanel(appSpec, rows, { metric: 'volume_cr' } as CtrlState, t);
+    if (typeof window !== 'undefined' && window.innerWidth < 560) {
+      o.grid = { ...o.grid, left: 44, right: 96 };
+      o.series.forEach((s: any) => {
+        const last = s.data.length - 1;
+        s.data.forEach((d: any, i: number) => { if (i !== last && d?.label) d.label = { show: false }; });
+        if (s.label?.rich) { s.label.rich.n.fontSize = 10; if (s.label.rich.r) s.label.rich.r.fontSize = 10; }
+      });
+    }
+    return o;
+  }
+
+  function slopeOption(rows: Row[], t: Tokens) {
+    const narrow = typeof window !== 'undefined' && window.innerWidth < 560;
+    const n = rows.length;
+    const gut = narrow ? 88 : 122;
+    const nf = narrow ? 10 : 11, vf = narrow ? 9 : 10;
+    const rankBy = (f: string) => {
+      const m = new Map<string, number>();
+      [...rows].sort((a, b) => (Number(b[f]) || 0) - (Number(a[f]) || 0)).forEach((d, i) => m.set(String(d.bank), i + 1));
+      return m;
+    };
+    const lR = rankBy('remitter_mn'), rR = rankBy('beneficiary_mn');
+    const HL: Record<string, string> = { 'Yes Bank': t.palette[5], SBI: t.palette[2] };
+    const head = { color: t.subtle, fontFamily: t.mono, fontSize: narrow ? 10 : 11, fontWeight: 600 as const };
+    const series = rows.map((d) => {
+      const k = String(d.bank);
+      const a = lR.get(k)!, b = rR.get(k)!;
+      const on = k in HL;
+      const color = on ? HL[k] : t.subtle;
+      return {
+        name: k, type: 'line' as const, symbol: 'circle', symbolSize: on ? (narrow ? 8 : 10) : (narrow ? 5 : 7),
+        data: [
+          { value: a, label: { position: 'left' as const, formatter: `{n|${k}}\n{v|${fmt('volume_cr', Number(d.remitter_mn) / 10)}}` } },
+          { value: b, label: { position: 'right' as const, formatter: `{n|${k}}\n{v|${fmt('volume_cr', Number(d.beneficiary_mn) / 10)}}` } },
+        ],
+        label: { show: true, rich: {
+          n: { color: on ? t.text : t.subtle, fontFamily: t.mono, fontSize: nf, lineHeight: nf + 3, fontWeight: on ? 700 : 400 },
+          v: { color: t.subtle, fontFamily: t.mono, fontSize: vf, lineHeight: vf + 3 },
+        } },
+        lineStyle: { width: on ? 3 : 1.5, color }, itemStyle: { color },
+        emphasis: { focus: 'series' as const }, z: on ? 4 : 1,
+      };
+    });
+    return {
+      backgroundColor: 'transparent', textStyle: { fontFamily: t.mono, color: t.subtle },
+      title: [{ text: 'PAYING', left: 14, top: 4, textStyle: head }, { text: 'RECEIVING', right: 14, top: 4, textStyle: head }],
+      grid: { left: gut, right: gut, top: 36, bottom: 14 },
+      tooltip: { trigger: 'item' as const, formatter: (o: any) => `<strong>${o.seriesName}</strong>` },
+      xAxis: { type: 'category' as const, data: ['paying', 'receiving'], boundaryGap: true, show: false },
+      yAxis: { type: 'value' as const, inverse: true, min: 0.5, max: n + 0.5, show: false },
+      series,
+    };
+  }
+
+  function declineOption(rows: Row[], t: Tokens) {
+    const o: any = buildPanel(declineSpec, rows, { metric: 'volume_cr' } as CtrlState, t);
+    const col: Record<string, string> = { Technical: t.palette[4], Business: t.palette[5] };
+    o.series = o.series.map((s: any) => {
+      const c = col[s.name]; if (!c) return s;
+      return { ...s, lineStyle: { ...(s.lineStyle || {}), color: c }, itemStyle: { ...(s.itemStyle || {}), color: c } };
+    });
+    return o;
+  }
+
+  // Tap-to-highlight, matching the dashboards/reads: tap a series to focus it
+  // (the rest recede), tap the same series again — or tap blank space — to bring
+  // them all back. We drive ECharts' emphasis ourselves so a touch tap can't
+  // strand one series in focus with no mouse-out to clear it.
+  function tapHighlight(inst: echarts.ECharts) {
+    let active: string | null = null;
+    const clear = () => { inst.dispatchAction({ type: 'downplay' }); active = null; };
+    inst.on('click', (p: any) => {
+      if (!p || !p.seriesName) return;
+      if (active === p.seriesName) { clear(); return; }
+      inst.dispatchAction({ type: 'downplay' });
+      inst.dispatchAction({ type: 'highlight', seriesName: p.seriesName });
+      active = p.seriesName;
+    });
+    inst.getZr().on('click', (e: any) => { if (!e.target) clear(); });
+    return () => { active = null; };
+  }
+
+  (async () => {
+    const [data, p2m] = (await Promise.all([
+      fetch(dataUrl('/data/economy/read-upi-architecture.json')).then((r) => r.json()),
+      fetch(dataUrl('/data/economy/reads/shops-vs-people.json')).then((r) => r.json()),
+    ])) as [Data, P2mData];
+
+    const mounts: { el: HTMLElement; opt: () => any }[] = [];
+    const add = (id: string, opt: () => any) => { const el = document.getElementById(id); if (el) mounts.push({ el, opt }); };
+    add('fig-app',     () => bumpOption(data.appRace, readTokens()));
+    add('fig-p2m',     () => p2mOption(p2m, readTokens()));
+    add('fig-bank',    () => slopeOption(data.bankFlow, readTokens()));
+    add('fig-decline', () => declineOption(data.decline, readTokens()));
+    const charts = mounts.map((m) => ({ ...m, inst: echarts.init(m.el), shown: false }));
+    const resetHi = charts.map((c) => tapHighlight(c.inst));
+
+    const cr = data.throughput.volume_mn / 10;
+    const liveText = () => {
+      document.querySelectorAll('.liveT').forEach((el) => (el.textContent = fmt('volume_cr', cr)));
+      document.querySelectorAll('.liveM').forEach((el) => (el.textContent = data.throughput.label));
+    };
+
+    // First view = a slow, gentle grow-in; theme/units changes are updates, so
+    // redraw quickly without replaying the long animation.
+    const drawn = (c: typeof charts[number], slow: boolean) =>
+      c.inst.setOption({ ...c.opt(), animationDuration: slow ? 1500 : 280, animationEasing: 'cubicOut' }, true);
+
+    // Theme/units changes redraw only charts already on screen — nothing animates
+    // off-screen, and the first paint stays the reader's grow-in moment.
+    const rerender = () => {
+      charts.forEach((c, i) => { if (c.shown) { drawn(c, false); resetHi[i](); } });
+      liveText();
+    };
+    charts.forEach((c) => new ResizeObserver(() => c.inst.resize()).observe(c.el));
+    new MutationObserver(rerender).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'data-units'] });
+
+    // Draw (and so animate) each chart the first time it scrolls into view, so the
+    // grow-in plays for the reader instead of off-screen at page load.
+    const io = new IntersectionObserver((entries) => {
+      for (const e of entries) {
+        if (!e.isIntersecting) continue;
+        const c = charts.find((ch) => ch.el === e.target);
+        if (c && !c.shown) { c.shown = true; drawn(c, true); io.unobserve(c.el); }
+      }
+    }, { threshold: 0.2 });
+    charts.forEach((c) => io.observe(c.el));
+
+    liveText();
+    document.fonts?.ready.then(rerender);
+  })();
+</script>
+
+<style>
+  .read { max-width: 720px; margin-inline: auto; }
+  .folio { font: var(--tsoi-text-byline); font-weight: 500; font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; padding: 4px 0; margin-bottom: calc(var(--tsoi-spacing-unit) * 2); }
+  .folio a { color: var(--tsoi-color-primary-text); text-decoration: none; }
+  .folio a:hover { text-decoration: underline; }
+  .folio .dot { color: var(--tsoi-color-on-surface-variant); padding-inline: 5px; }
+  /* Same register as the opening folio nav, at the other end of the page:
+     this is navigation, not a call to action. ShareButtons sits between it and
+     the closing paragraph, so nothing is appended directly to the prose. */
+  .folio-end { margin-top: calc(var(--tsoi-spacing-unit) * 3); margin-bottom: calc(var(--tsoi-spacing-unit) * 3); padding-top: calc(var(--tsoi-spacing-unit) * 2); border-top: 1px solid var(--tsoi-color-outline-variant); }
+  .head { margin-bottom: calc(var(--tsoi-spacing-unit) * 4); }
+  .kicker { margin: 0 0 var(--tsoi-spacing-unit); font: var(--tsoi-text-byline); font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; color: var(--tsoi-color-primary-text); }
+  .head h1 { margin: 0; font: var(--tsoi-text-headline-lg); letter-spacing: var(--tsoi-text-headline-lg-tracking); }
+  .deck { margin: var(--tsoi-spacing-unit) 0 0; font: var(--tsoi-text-deck); font-size: 17px; color: var(--tsoi-color-on-surface-variant); }
+  @media (max-width: 600px) { .head h1 { font-size: 20px; line-height: 1.25; } .deck { font-size: 15px; } }
+  .subtext { margin: calc(var(--tsoi-spacing-unit) * 0.75) 0 0; font: var(--tsoi-text-body); font-size: 15px; color: var(--tsoi-color-on-surface-variant); }
+  .toolbar { display: flex; align-items: center; gap: calc(var(--tsoi-spacing-unit) * 2); flex-wrap: wrap; margin-top: calc(var(--tsoi-spacing-unit) * 2); }
+
+  .prose :global(p) { font: var(--tsoi-text-body); font-size: calc(17px * var(--tsoi-reading-scale, 1)); line-height: 1.7; margin: 0 0 calc(var(--tsoi-spacing-unit) * 2.5); }
+  .prose :global(h2) { font: var(--tsoi-text-headline-md); font-size: 22px; margin: calc(var(--tsoi-spacing-unit) * 5) 0 calc(var(--tsoi-spacing-unit) * 1.5); }
+  .prose :global(em) { font-style: italic; }
+  .mono { font-family: var(--tsoi-font-mono); font-size: 0.92em; }
+  code { font-family: var(--tsoi-font-mono); font-size: 0.88em; }
+  .liveT { font-variant-numeric: tabular-nums; white-space: nowrap; }
+  sup.c { font-size: 0.62em; vertical-align: super; line-height: 0; }
+  sup.c a { color: var(--tsoi-color-primary-text); text-decoration: none; padding: 0 1px; }
+
+  /* entity colour system — shared by prose keywords and diagram nodes.
+     --ent drives non-text marks (icon strokes, the underline mix below) and
+     stays on the raw chart palette. --ent-text is the same hue for the two
+     places it colors actual TEXT (.e keyword spans, .inode .k labels): the
+     chart tokens read fine as small strokes/fills but fall to 2.2-3.8:1 as
+     10-17px text on cream, so text-bearing entities alias the -text variants
+     (global.css) instead. app/on-surface/on-surface-variant already clear
+     4.5:1 as text, so those alias straight through unchanged. */
+  :global(.e-app)  { --ent: var(--tsoi-color-app); --ent-text: var(--tsoi-color-app); }
+  :global(.e-psp)  { --ent: var(--tsoi-color-chart-2); --ent-text: var(--tsoi-color-chart-2-text); }
+  :global(.e-npci) { --ent: var(--tsoi-color-chart-1); --ent-text: var(--tsoi-color-chart-1-text); }
+  :global(.e-rem)  { --ent: var(--tsoi-color-chart-3); --ent-text: var(--tsoi-color-chart-3-text); }
+  :global(.e-ben)  { --ent: var(--tsoi-color-chart-6); --ent-text: var(--tsoi-color-chart-6-text); }
+  :global(.e-fail) { --ent: var(--tsoi-color-chart-5); --ent-text: var(--tsoi-color-chart-5); }
+  :global(.e-sec)  { --ent: var(--tsoi-color-on-surface); --ent-text: var(--tsoi-color-on-surface); }
+  :global(.e-obj)  { --ent: var(--tsoi-color-on-surface-variant); --ent-text: var(--tsoi-color-on-surface-variant); }
+  .prose :global(.e) { color: var(--ent-text); font-weight: 600; border-bottom: 2px solid color-mix(in srgb, var(--ent) 35%, transparent); }
+
+  figure { margin: calc(var(--tsoi-spacing-unit) * 4) 0; }
+  .diagram, .chartfig { width: min(880px, 94vw); margin-inline: calc((100% - min(880px, 94vw)) / 2); }
+  figcaption { font: var(--tsoi-text-byline); font-size: 13.5px; color: var(--tsoi-color-on-surface-variant); margin-top: var(--tsoi-spacing-unit); line-height: 1.6; }
+  .flowfig figcaption { text-align: center; font-size: 14px; max-width: 62ch; margin-inline: auto; margin-top: calc(var(--tsoi-spacing-unit) * 1.5); }
+  .chartfig .chart { width: 100%; border: 1px solid var(--tsoi-color-outline-variant); border-radius: var(--tsoi-radius-lg); background: var(--tsoi-color-surface-container-low); }
+
+  .statfig .bigstat { display: flex; flex-direction: column; gap: 4px; padding: calc(var(--tsoi-spacing-unit) * 2.5); border-left: 4px solid var(--tsoi-color-primary); background: var(--tsoi-color-surface-container-low); }
+  .bigstat .n { font: var(--tsoi-text-metric-xl); color: var(--tsoi-color-primary-text); }
+  .bigstat .l { font: var(--tsoi-text-body); color: var(--tsoi-color-on-surface-variant); }
+
+  /* ---- shared flow diagram (badge + wire + controls) ---- */
+  /* --dgm-scale ties the diagram's text to the reader's A−/A+ size control, the
+     same var the prose uses. Capped on phones (below) so the labels grow a little
+     but never overflow the tight mobile layout. */
+  .flowfig { width: 100%; max-width: 820px; margin-inline: auto; --dgm-scale: var(--tsoi-reading-scale, 1); }
+  .flowfig :global(.badge) { flex: none; width: 46px; height: 46px; display: grid; place-items: center; background: transparent; }
+  .flowfig :global(.inode .ic) { width: 23px; height: 23px; stroke: var(--ent); fill: none; stroke-width: 1.6; stroke-linejoin: round; stroke-linecap: round; }
+  .flowfig :global(.inode .tx) { position: relative; z-index: 2; display: flex; flex-direction: column; gap: 1px; padding: 2px 6px; border-radius: 5px; background: var(--tsoi-color-surface-container-low); }
+  .flowfig :global(.inode .k) { font: var(--tsoi-text-headline-sm); font-size: calc(14px * var(--dgm-scale)); color: var(--ent-text); white-space: nowrap; }
+  .flowfig :global(.inode .s) { font: var(--tsoi-text-byline); font-size: calc(11.5px * var(--dgm-scale)); color: var(--tsoi-color-on-surface-variant); white-space: nowrap; }
+  .flowfig :global(.wires) { position: absolute; inset: 0; z-index: 0; pointer-events: none; overflow: visible; }
+  .flowfig :global(.wire) { stroke: var(--tsoi-color-on-surface-variant); stroke-width: 1.6; fill: none; opacity: 0.85; visibility: hidden; }
+  .flowfig :global(.wire.on) { visibility: visible; }
+  .flowfig :global(.wire.active) { stroke-width: 2.4; opacity: 1; }
+  .flowfig :global(.lifeline) { stroke: var(--tsoi-color-outline); stroke-width: 1.2; stroke-dasharray: 3 4; }
+  .flowfig :global(.msglbl) { font-family: var(--tsoi-font-mono); font-size: calc(11px * var(--dgm-scale)); fill: var(--tsoi-color-on-surface-variant); visibility: hidden; }
+  /* hub wire labels sit on a tiny chip that masks the wire behind them */
+  .flowfig :global(.msglbl-bg) { fill: var(--tsoi-color-surface); stroke: var(--tsoi-color-outline-variant); stroke-width: 0.75; visibility: hidden; }
+  /* column-reverse: Prev/Watch/Next sit directly under the diagram and stay put;
+     the running caption flows below them, so its changing length never nudges the
+     buttons down (the mobile-layout bug we were fixing). */
+  .flowfig .hubctl { display: flex; flex-direction: column-reverse; align-items: center; gap: 12px; margin-top: 18px; }
+  .flowfig .stepcap { margin: 0; text-align: center; font: var(--tsoi-text-body); font-size: calc(15px * var(--dgm-scale)); line-height: 1.5; color: var(--tsoi-color-on-surface-variant); min-height: 3em; max-width: 50ch; }
+  .flowfig .hbtns { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+  .flowfig .hb { font: var(--tsoi-text-byline); font-size: 12.5px; letter-spacing: 0.04em; text-transform: uppercase; cursor: pointer; color: var(--tsoi-color-on-surface); background: transparent; border: 1px solid var(--tsoi-color-outline); border-radius: 2px; padding: 6px 14px; }
+  .flowfig .hb.play { color: var(--tsoi-color-primary-text); border-color: var(--tsoi-color-primary); }
+  .flowfig .hb:hover:not(:disabled) { border-color: var(--tsoi-color-primary); }
+  .flowfig .hb:disabled { opacity: 0.4; cursor: default; }
+
+  /* ---- hub layout (fig:0) ---- */
+  .hubfig .hub { position: relative; display: grid; align-items: start; justify-items: center;
+    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-areas: "yapp . papp" "ypsp npci ppsp" "ybank . pbank";
+    gap: 68px 14px; padding: calc(var(--tsoi-spacing-unit) * 3) calc(var(--tsoi-spacing-unit) * 2);
+    border: 1px solid var(--tsoi-color-outline-variant); border-radius: var(--tsoi-radius-lg); background: var(--tsoi-color-surface-container-low); }
+  .hubfig :global(.a-yapp) { grid-area: yapp; } .hubfig :global(.a-ypsp) { grid-area: ypsp; }
+  .hubfig :global(.a-ybank) { grid-area: ybank; } .hubfig :global(.a-npci) { grid-area: npci; }
+  .hubfig :global(.a-pbank) { grid-area: pbank; } .hubfig :global(.a-ppsp) { grid-area: ppsp; }
+  .hubfig :global(.a-papp) { grid-area: papp; }
+  .hubfig :global(.inode) { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; gap: 7px; text-align: center; }
+  .hubfig :global(.a-npci .badge) { width: 62px; height: 62px; }
+  .hubfig :global(.a-npci .ic) { width: 30px; height: 30px; }
+  /* NPCI badge is larger; nudge the 40px badges down so every badge in a row
+     shares a vertical centre and the connecting wires stay straight. */
+  .hubfig :global(.inode:not(.a-npci) .badge) { margin-top: 11px; }
+  @media (max-width: 480px) {
+    .hubfig .hub { gap: 52px 4px; padding-inline: var(--tsoi-spacing-unit); }
+    .hubfig :global(.badge) { width: 40px; height: 40px; }
+    .hubfig :global(.inode .ic) { width: 24px; height: 24px; }
+    .hubfig :global(.inode) { gap: 5px; }
+    .hubfig :global(.a-npci .badge) { width: 46px; height: 46px; }
+    .hubfig :global(.a-npci .ic) { width: 27px; height: 27px; }
+    .hubfig :global(.inode:not(.a-npci) .badge) { margin-top: 3px; }
+    .hubfig :global(.inode .tx) { max-width: 30vw; padding-inline: 3px; }
+    .hubfig :global(.inode .k) { font-size: calc(11.5px * var(--dgm-scale)); white-space: normal; line-height: 1.2; }
+    .hubfig :global(.inode .s) { font-size: calc(9.5px * var(--dgm-scale)); white-space: normal; line-height: 1.2; }
+  }
+
+  /* ---- sequence layout (fig:1, fig:2, fig:2b, fig:3) ---- */
+  .seqfig .seq { position: relative; padding: calc(var(--tsoi-spacing-unit) * 2.5) calc(var(--tsoi-spacing-unit) * 2);
+    border: 1px solid var(--tsoi-color-outline-variant); border-radius: var(--tsoi-radius-lg); background: var(--tsoi-color-surface-container-low); }
+  .seqfig .seqactors { display: flex; justify-content: space-between; align-items: flex-start; gap: 6px; position: relative; z-index: 1; }
+  .seqfig :global(.actor) { display: flex; }
+  .seqfig :global(.inode) { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; }
+  /* touchpoint cue: a moment you see (app-blue = your app) */
+  .seqfig :global(.msg.touch .msglbl) { fill: var(--tsoi-color-app); font-weight: 700; }
+  @media (max-width: 560px) {
+    /* cap the diagram text scale on phones: it can grow a little, but not enough
+       to overflow the tight sequence/hub layouts */
+    .flowfig { --dgm-scale: min(var(--tsoi-reading-scale, 1), 1.15); }
+    .seqfig .seq { padding-inline: var(--tsoi-spacing-unit); }
+    .seqfig .seqactors { gap: 3px; }
+    .seqfig :global(.inode .s) { display: none; }
+    .seqfig :global(.inode .k) { font-size: calc(11.5px * var(--dgm-scale)); }
+    .seqfig :global(.badge) { width: 34px; height: 34px; }
+    .seqfig :global(.inode .ic) { width: 17px; height: 17px; }
+    /* keep diagram + controls + caption within one screen on phones */
+    .flowfig .hubctl { margin-top: 12px; gap: 10px; }
+    .flowfig .stepcap { font-size: calc(13.5px * var(--dgm-scale)); line-height: 1.45; min-height: 3.6em; }
+    .flowfig .hb { padding: 5px 12px; font-size: 11.5px; }
+  }
+  @media (max-width: 400px) {
+    .seqfig :global(.badge) { width: 30px; height: 30px; }
+    .seqfig :global(.inode .ic) { width: 15px; height: 15px; }
+    .seqfig :global(.inode .k) { font-size: calc(10.5px * var(--dgm-scale)); }
+  }
+
+  /* ---- touchpoint strip (bookend) ---- */
+  /* narrow strip — scale its labels with the reader control, but cap tighter
+     than the flow diagrams since the band must fit 360px */
+  .stripfig { width: 100%; max-width: 360px; margin-inline: auto; --dgm-scale: min(var(--tsoi-reading-scale, 1), 1.2); }
+  .stripfig figcaption { text-align: center; }
+  .stripfig .hubctl { display: flex; flex-direction: column; align-items: center; gap: 14px; margin-top: 20px; }
+  .stripfig .stepcap { margin: 0; }
+  .stripfig .hbtns { display: flex; gap: 8px; justify-content: center; }
+  .stripfig .hb { font: var(--tsoi-text-byline); font-size: 12.5px; letter-spacing: 0.04em; text-transform: uppercase; cursor: pointer; color: var(--tsoi-color-on-surface); background: transparent; border: 1px solid var(--tsoi-color-outline); border-radius: 2px; padding: 6px 14px; }
+  .stripfig .hb.play { color: var(--tsoi-color-primary-text); border-color: var(--tsoi-color-primary); }
+  .stripfig .hb:hover:not(:disabled) { border-color: var(--tsoi-color-primary); }
+  .stripfig .hb:disabled { opacity: 0.4; cursor: default; }
+  /* Ambient text color var(--tsoi-color-outline) measured ~1.7:1 on this
+     card's cream — an outline token is tuned for hairline borders, not
+     readable text, and any child span here that doesn't set its own color
+     (most do, but this is the fallback every one of them relies on)
+     inherited it at that ratio. --on-surface-variant is the site's normal
+     muted-text floor and still reads quiet against the explicit on-surface
+     children (.tl, .leg-l) that sit right beside it. */
+  .tstrip { display: flex; flex-direction: column; align-items: center; padding: calc(var(--tsoi-spacing-unit) * 3) calc(var(--tsoi-spacing-unit) * 2); border: 1px solid var(--tsoi-color-outline-variant); border-radius: var(--tsoi-radius-lg); background: var(--tsoi-color-surface-container-low); color: var(--tsoi-color-on-surface-variant); }
+  .tstrip :global(.tstep) { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+  .tstrip :global(.tp-ic) { display: grid; place-items: center; width: 32px; height: 32px; }
+  .tstrip :global(.tp-ic .ic) { width: 26px; height: 26px; stroke: var(--ent); fill: none; stroke-width: 1.6; stroke-linejoin: round; stroke-linecap: round; }
+  .tstrip :global(.tl) { font: var(--tsoi-text-byline); font-size: calc(12.5px * var(--dgm-scale)); color: var(--tsoi-color-on-surface); letter-spacing: 0.01em; text-align: center; }
+  .tstrip :global(.tarrow) { display: block; width: 20px; height: 28px; margin: 2px 0; transform-origin: top center; }
+  .tstrip :global(.tband) { width: 100%; min-height: 48px; display: flex; align-items: center; justify-content: center; gap: 10px; padding: 11px 16px; border-radius: var(--tsoi-radius-md); position: relative; overflow: hidden; text-align: center; }
+  .tstrip :global(.tband.empty) { background: var(--tsoi-color-surface-container-high); color: var(--tsoi-color-on-surface-variant); }
+  .tstrip :global(.tband.empty)::before { content: ''; position: absolute; inset: 0; background: repeating-linear-gradient(45deg, transparent 0 7px, color-mix(in srgb, var(--tsoi-color-on-surface) 7%, transparent) 7px 8px); }
+  .tstrip :global(.tband .bicon) { position: relative; z-index: 1; display: grid; place-items: center; width: 22px; height: 22px; }
+  .tstrip :global(.tband .bicon .ic) { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 1.5; stroke-linejoin: round; stroke-linecap: round; }
+  .tstrip :global(.tband .bk) { position: relative; z-index: 1; font: var(--tsoi-text-byline); font-size: 12.5px; letter-spacing: 0.04em; }
+  .tstrip :global(.tband.filled) { background: var(--tsoi-color-surface-container-low); border: 1px dashed var(--tsoi-color-outline); color: var(--tsoi-color-on-surface); flex-wrap: wrap; gap: 6px 12px; }
+  .tstrip :global(.tband .bl) { font: var(--tsoi-text-byline); font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--tsoi-color-on-surface-variant); }
+  .tstrip :global(.tband .legs) { display: inline-flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; justify-content: center; }
+  .tstrip :global(.leg) { display: inline-flex; flex-direction: column; align-items: center; gap: 3px; }
+  .tstrip :global(.leg-ic) { display: grid; place-items: center; width: 22px; height: 22px; }
+  .tstrip :global(.leg-ic .ic) { width: 20px; height: 20px; stroke: var(--ent); fill: none; stroke-width: 1.6; stroke-linejoin: round; stroke-linecap: round; }
+  .tstrip :global(.leg-l) { font: var(--tsoi-text-byline); font-size: calc(11px * var(--dgm-scale)); color: var(--tsoi-color-on-surface); letter-spacing: 0.02em; }
+  .tstrip :global(.tband .legs .ch) { font-size: 13px; color: var(--tsoi-color-primary-text); }
+  .tstrip :global(.tbranch) { display: block; width: 100%; height: 28px; transform-origin: top center; }
+  .tstrip :global(.tresult) { display: flex; justify-content: space-around; width: 100%; }
+  .tstrip :global(.tres) { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+  .tstrip :global(.tres .tp-ic .ic) { width: 26px; height: 26px; stroke: var(--ent); fill: none; stroke-width: 1.6; stroke-linejoin: round; stroke-linecap: round; }
+  @keyframes tp-enter { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes tp-draw  { from { opacity: 0; transform: scaleY(0); } to { opacity: 1; transform: scaleY(1); } }
+  /* The strip reveals only once it scrolls into view: JS adds .play (see script).
+     Without .play the elements are simply shown, so no-JS stays a clean static
+     strip — and the reveal no longer burns itself out at page load before the
+     reader ever reaches it. */
+  /* With JS on, keep the strip's parts blank until it scrolls in (.play added),
+     so the reveal starts from nothing instead of flashing the finished strip. */
+  :global(html.js) .tstrip:not(.play) :global(.tstep),
+  :global(html.js) .tstrip:not(.play) :global(.tband),
+  :global(html.js) .tstrip:not(.play) :global(.tresult),
+  :global(html.js) .tstrip:not(.play) :global(.tarrow),
+  :global(html.js) .tstrip:not(.play) :global(.tbranch) { opacity: 0; }
+  .tstrip.play :global(.tstep), .tstrip.play :global(.tband), .tstrip.play :global(.tresult) { animation: tp-enter 0.4s ease both; }
+  .tstrip.play :global(.tarrow), .tstrip.play :global(.tbranch) { animation: tp-draw 0.3s ease both; }
+  .tstrip.play :global(> *:nth-child(1)) { animation-delay: 0s; }
+  .tstrip.play :global(> *:nth-child(2)) { animation-delay: 0.22s; }
+  .tstrip.play :global(> *:nth-child(3)) { animation-delay: 0.42s; }
+  .tstrip.play :global(> *:nth-child(4)) { animation-delay: 0.64s; }
+  .tstrip.play :global(> *:nth-child(5)) { animation-delay: 0.84s; }
+  .tstrip.play :global(> *:nth-child(6)) { animation-delay: 1.06s; }
+  .tstrip.play :global(> *:nth-child(7)) { animation-delay: 1.26s; }
+  .tstrip.play :global(> *:nth-child(8)) { animation-delay: 1.46s; }
+  @media (prefers-reduced-motion: reduce) { .tstrip.play :global(> *) { animation: none; } }
+
+  ol.refs { font: var(--tsoi-text-byline); font-size: 12px; line-height: 1.7; color: var(--tsoi-color-on-surface-variant); padding-left: 1.4em; margin-top: var(--tsoi-spacing-unit); }
+  /* Underlined, not color-only: matches the site's existing dotted-underline
+     offset convention (panel-chrome.ts's [data-info] tooltips), solid here
+     since these are real navigable links rather than a hover hint. */
+  ol.refs a { color: var(--tsoi-color-primary-text); text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 3px; }
+  ol.refs li { margin-bottom: 4px; }
+</style>

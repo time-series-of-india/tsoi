@@ -9,6 +9,10 @@ src/data/stats.json
 public/og/
 # spec-driven dashboard datasets (build-dashboard-data.mjs)
 public/data/economy/
+# local-only play-stats fixture (scripts/dev-play-stats.mjs) — in production
+# this route belongs to the play-score worker, and a shipped static file would
+# shadow the real histogram with invented numbers.
+public/api/play-stats/
 
 # dependencies
 node_modules/
@@ -29,3 +33,4 @@ pnpm-debug.log*
 
 # jetbrains setting folder
 .idea/
+standalone/

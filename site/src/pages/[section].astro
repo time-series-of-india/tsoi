@@ -1,0 +1,120 @@
+---
+// Landing for the not-yet-live sections (linked from the section nav).
+// Deliberately wordless: the section header, a dotted placeholder time-series,
+// and a small caption — no descriptive copy promising specifics we haven't
+// committed to. The one addition is a way OUT: a reader who lands here has hit
+// a dead end, and the only live section is one link away, so the page says so
+// rather than making them find the nav again.
+// "In the works" rather than "coming soon": the latter is marketing boilerplate
+// and reads as a launch date we haven't got.
+// Static paths for the four planned sections only; static routes like /about,
+// /data, /economy take precedence over this dynamic route.
+// Note: getStaticPaths runs before the frontmatter body, so the section data is
+// defined inside it and passed through props (blurb is meta-description only).
+import StoryPage from '../layouts/StoryPage.astro';
+import SectionHeader from '../components/editorial/SectionHeader.astro';
+
+export function getStaticPaths() {
+  const SECTIONS = {
+    environment: {
+      label: 'Environment',
+      blurb: 'Air quality, emissions, forest cover, rainfall and water — India’s environment, charted from official monitoring and ministry releases. In the works.',
+    },
+    infrastructure: {
+      label: 'Infrastructure',
+      blurb: 'Power, roads, railways, ports and telecom — the build-out of India, in the numbers the state itself publishes. In the works.',
+    },
+    demographics: {
+      label: 'Demographics',
+      blurb: 'Population, the census, migration and urbanisation — who India is and how that is changing, over time. In the works.',
+    },
+    governance: {
+      label: 'Governance',
+      blurb: 'Budgets, public schemes, elections and service delivery — how the state spends and performs, made legible. In the works.',
+    },
+  };
+  return Object.entries(SECTIONS).map(([section, data]) => ({ params: { section }, props: data }));
+}
+
+const { label, blurb } = Astro.props;
+---
+
+{/* noindex: these are wordless stubs — keep thin placeholder pages out of
+    search until the sections carry real content (also filtered from the
+    sitemap in astro.config.mjs). */}
+<StoryPage title={`${label} — Time Series of India`} description={blurb} noindex>
+  <SectionHeader label={label} />
+  <div class="soon">
+    <svg class="placeholder" viewBox="0 0 600 240" role="img" aria-label={`${label} — in the works`}>
+      <!-- axes -->
+      <line class="axis" x1="24" y1="16" x2="24" y2="208" />
+      <line class="axis" x1="24" y1="208" x2="584" y2="208" />
+      <!-- dashed gridlines -->
+      <line class="grid" x1="24" y1="64" x2="584" y2="64" />
+      <line class="grid" x1="24" y1="112" x2="584" y2="112" />
+      <line class="grid" x1="24" y1="160" x2="584" y2="160" />
+      <!-- dotted placeholder series -->
+      <polyline
+        class="series"
+        points="24,184 94,170 164,178 234,142 304,150 374,108 444,120 514,74 584,52"
+      />
+    </svg>
+    <p class="cap">In the works</p>
+    <p class="back"><a href="/economy/read">Read the Economy section &rarr;</a></p>
+  </div>
+</StoryPage>
+
+<style>
+  .soon {
+    max-width: 640px;
+    margin: calc(var(--tsoi-spacing-unit) * 5) auto;
+    text-align: center;
+  }
+  .placeholder {
+    width: 100%;
+    height: auto;
+    opacity: 0.7;
+  }
+  .placeholder .axis {
+    stroke: var(--tsoi-color-outline);
+    stroke-width: 1;
+  }
+  .placeholder .grid {
+    stroke: var(--tsoi-color-outline);
+    stroke-width: 1;
+    stroke-dasharray: 3 7;
+    opacity: 0.6;
+  }
+  .placeholder .series {
+    fill: none;
+    stroke: var(--tsoi-color-primary);
+    stroke-width: 2.5;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-dasharray: 1 9;
+  }
+  .cap {
+    margin: calc(var(--tsoi-spacing-unit) * 3) 0 0;
+    font: var(--tsoi-text-byline);
+    letter-spacing: var(--tsoi-text-byline-tracking);
+    text-transform: uppercase;
+    color: var(--tsoi-color-on-surface-variant);
+  }
+
+  /* The way out. Saffron, because on a page with nothing else on it this is
+     the only thing to do — it should look like the action it is. */
+  .back {
+    margin: calc(var(--tsoi-spacing-unit) * 1.5) 0 0;
+    font: var(--tsoi-text-byline);
+    font-weight: 500;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+  .back a {
+    color: var(--tsoi-color-primary-text);
+    text-decoration: none;
+  }
+  .back a:hover {
+    text-decoration: underline;
+  }
+</style>

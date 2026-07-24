@@ -73,7 +73,7 @@ const isFab = variant === 'fab';
     background: var(--tsoi-color-surface); border: 1px solid var(--tsoi-color-outline);
     padding: 5px 11px; border-radius: 2px; transition: color 0.12s, border-color 0.12s;
   }
-  .share-btn:hover { color: var(--tsoi-color-primary); border-color: var(--tsoi-color-primary); }
+  .share-btn:hover { color: var(--tsoi-color-primary-text); border-color: var(--tsoi-color-primary); }
   /* icon-only trigger (top toolbar + beats fab): a compact square, matching the
      deck's theme toggle at 30×30 */
   .share.is-icon .share-btn { width: 30px; height: 30px; padding: 0; justify-content: center; gap: 0; }
@@ -97,8 +97,8 @@ const isFab = variant === 'fab';
     background: none; color: var(--tsoi-color-on-surface-variant); transition: color 0.12s, background 0.12s;
   }
   .share-ic :global(svg) { width: 18px; height: 18px; }
-  .share-ic:hover { color: var(--tsoi-color-primary); background: var(--tsoi-color-surface-container-high); }
-  .share-copy.copied { color: var(--tsoi-color-primary); }
+  .share-ic:hover { color: var(--tsoi-color-primary-text); background: var(--tsoi-color-surface-container-high); }
+  .share-copy.copied { color: var(--tsoi-color-primary-text); }
 </style>
 
 <script>

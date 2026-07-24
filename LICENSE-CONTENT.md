@@ -12,10 +12,12 @@ and redistribute it under those terms.
 ## 2. Editorial & visual content — CC BY-NC-ND 4.0
 
 The **prose** (longform reads, beat copy, captions, the *About* and methodology
-text), the **chart and dashboard designs**, and the **generated cards/imagery**
-(e.g. the OG social cards) are:
+text), the **chart and dashboard designs**, the **game/puzzle text and design**
+(questions, hints, context copy, and the curated presentation of a round — not
+the underlying mechanic, see below), and the **generated cards/imagery** (e.g.
+the OG social cards) are:
 
-> © 2026 Prateek Gulati / Time Series of India, licensed under
+> © 2026 Time Series of India, licensed under
 > [**Creative Commons Attribution-NonCommercial-NoDerivatives 4.0 International
 > (CC BY-NC-ND 4.0)**](https://creativecommons.org/licenses/by-nc-nd/4.0/).
 
@@ -38,6 +40,16 @@ edition, for which commercial and derivative rights remain with the copyright
 holder (CC licenses are non-exclusive, so those rights can be separately granted
 to a publisher). Want to do something the license doesn't allow — a translation,
 a commercial reuse, a syndication? Ask; permission may well be granted.
+
+A note on games: a game's *rules* (guess a number, reveal the answer, score by
+how close you were) are not something copyright reaches, the same way no one
+owns "guess letters, get colored feedback" — rules and mechanics are ideas, and
+ideas aren't copyrightable. What this license covers is the specific,
+authored expression built on top of that idea: the exact questions, hints and
+context prose, which figures were chosen and how they're framed, and the
+puzzle's visual presentation. The game's *code* (the Astro component, the
+worker) is Apache-2.0, same as every other runtime — see the dashboard note
+below for the identical split applied there.
 
 Short quotation with attribution and a link, for review or commentary, is fine
 under ordinary fair-dealing/fair-use norms and needs no permission at all.

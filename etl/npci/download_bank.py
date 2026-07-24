@@ -4,7 +4,7 @@ import json
 import time
 from pathlib import Path
 
-from fetcher import fetch_all, iter_months, load_cached
+from fetcher import fetch_all, iter_months, load_cached, write_combined
 
 YEARS = [2022, 2023, 2024, 2025, 2026]
 TYPES = ["remitter", "beneficiary"]
@@ -12,7 +12,7 @@ TYPES = ["remitter", "beneficiary"]
 out_dir = Path(__file__).parent / "raw"
 out_dir.mkdir(exist_ok=True)
 
-all_records, skipped = [], []
+all_records, skipped, errors = [], [], []
 
 for year, month in iter_months(YEARS):
     for type_name in TYPES:
@@ -41,12 +41,13 @@ for year, month in iter_months(YEARS):
             print(f"  saved: {fname.name} ({len(results)} rows)")
         except Exception as e:
             print(f"  error: {year} {month} {type_name} — {e}")
-            skipped.append((year, month, type_name))
+            errors.append((year, month, type_name))
         time.sleep(0.5)
 
 combined = Path(__file__).parent / "all_data.json"
-with open(combined, "w") as f:
-    json.dump(all_records, f, indent=2)
+write_combined(combined, all_records, errors=len(errors))
 print(f"\nDone. {len(all_records)} records -> {combined}")
 if skipped:
     print(f"Skipped: {skipped}")
+if errors:
+    print(f"Fetch errors: {errors}")

@@ -1,0 +1,253 @@
+---
+// The game's card — a single sheet: the stacked-edge motif belongs to decks
+// (it states "many sheets"), and a game is one object you enter.
+//
+// The sibling read cards lead with a chart thumbnail, and a game card cannot:
+// its only images are reveal charts and every one is a spoiler. Competing on
+// type alone against a card with a picture is why this one read flat. So the
+// cover slot goes to the one piece of art the game IS allowed to show — its
+// own gauge — given real height, a ticked scale, and the true end labels of
+// round 1's slider. That range is not a spoiler (the player is handed it the
+// moment they start) and it does the work a thumbnail does: "somewhere
+// between 100 crore and 10,000 crore" is a span most readers can't intuit,
+// which is precisely the pitch.
+//
+// Geometry and motif are BORROWED FROM THE INTRO SCREEN this card opens: the
+// same landscape proportion (the intro card measures 560×442) at a smaller
+// size, and the same guess/actual gauge — held at the animation's first
+// frame, guess-pin parked at the far left. Clicking the card opens the intro,
+// where that pin runs its single pass. The card is the still; the screen it
+// opens is the motion. That continuity is the whole point: a player should
+// recognise the destination before it finishes loading.
+import { fmtCountProse } from '../../lib/units-prose';
+
+interface Props {
+  href: string;
+  kicker: string; // "The Numbers Game · Puzzle № 1"
+  isNew?: boolean; // truthful "New": shipped with the latest dispatch, self-expiring
+  title: string;
+  body?: string; // the game's pitch — rounds and mechanic
+  peek?: string; // Round 1's question — the hook, not a spoiler
+  peekLabel?: string;
+  cta?: string;
+  /** Round 1's slider range in ABSOLUTE counts — see the note above and the
+   *  markup below for why these travel as counts rather than as strings. */
+  scale?: { minCount: number; maxCount: number };
+}
+const {
+  href,
+  kicker,
+  isNew = false,
+  title,
+  body,
+  peek,
+  peekLabel = 'Round 1',
+  cta = 'Play',
+  scale,
+} = Astro.props;
+
+// Authored in Indian units, which is both the CSS default (`data-units` is
+// only set for 'intl') and the documented no-JS fallback for .num figures.
+const fallback = (n: number) => fmtCountProse(n, false, 'word');
+---
+
+<a class="game-card" href={href}>
+  <span class="kicker">
+    {isNew && <em class="new">New</em>}
+    {kicker}
+  </span>
+  <span class="gc-title">{title}</span>
+  {body && <span class="gc-body">{body}</span>}
+  <span class="cover">
+    <span class="gauge" aria-hidden="true">
+      <span class="ticks"></span>
+      <span class="track"></span>
+      <i class="pin-guess"></i>
+      <i class="pin-actual"></i>
+    </span>
+    {/* NOT aria-hidden like the gauge above it: these two labels carry real
+        information, and they are the card's only numbers. `.num[data-count]`
+        is the site-wide prose-figure contract — BaseLayout's applyProseUnits
+        rewrites them on load and again on every cr/bn toggle, so the card
+        tracks the masthead switch without any script of its own. */}
+    {scale && (
+      <span class="scale">
+        <span class="num" data-count={scale.minCount} data-style="word">{fallback(scale.minCount)}</span>
+        <span class="num" data-count={scale.maxCount} data-style="word">{fallback(scale.maxCount)}</span>
+      </span>
+    )}
+  </span>
+  {peek && (
+    <span class="peek">
+      <span class="peek-label">{peekLabel}</span>
+      &ldquo;{peek}&rdquo;
+    </span>
+  )}
+  <span class="go">{cta} &rarr;</span>
+</a>
+
+<style>
+  /* 560 / 442 = the intro card's measured proportion, held exactly so the
+     two read as the same object at two sizes. The card sizes itself from the
+     grid track (see play.astro's .rack), which caps it below 560 — "the same
+     card, slightly smaller". */
+  .game-card {
+    display: flex; flex-direction: column;
+    aspect-ratio: 560 / 442;
+    /* Without this the card can be WIDER than the column it sits in: a grid
+       item's automatic minimum size is its min-content size, and with an
+       aspect ratio that minimum is derived from the content's min-content
+       HEIGHT — so a tall-wrapping card demands height × 1.267 of width and
+       pushes the page sideways. The ratio still governs the card's own box;
+       it just no longer votes on how wide its column has to be. */
+    min-width: 0;
+    box-sizing: border-box;
+    padding: calc(var(--tsoi-spacing-unit) * 2.75) calc(var(--tsoi-spacing-unit) * 3);
+    border: 1px solid var(--tsoi-color-outline);
+    /* Saffron top rule — borrowed from the desk bars, not invented here. It's
+       the site's "this object has weight" mark, and it gives the card an
+       identity before a single word is read. */
+    border-top: 2px solid var(--tsoi-color-primary);
+    background: var(--tsoi-color-surface-container-low);
+    text-decoration: none; color: inherit;
+    transition: background 0.15s, border-color 0.15s;
+  }
+  .game-card:hover {
+    background: var(--tsoi-color-surface-container-high);
+    border-color: var(--tsoi-color-primary);
+  }
+
+  .kicker {
+    font: var(--tsoi-text-byline); font-weight: 500; letter-spacing: 0.1em;
+    text-transform: uppercase; color: var(--tsoi-color-primary-text);
+  }
+  .kicker .new {
+    font-style: normal;
+    padding: 1px 6px; margin-right: 6px;
+    border: 1px solid var(--tsoi-color-primary);
+    border-radius: var(--tsoi-radius-sm);
+  }
+  .gc-title {
+    margin-top: calc(var(--tsoi-spacing-unit) * 0.75);
+    font: var(--tsoi-text-headline-md);
+    letter-spacing: var(--tsoi-text-headline-md-tracking);
+    line-height: 1.2;
+    text-wrap: balance;
+  }
+  .game-card:hover .gc-title { color: var(--tsoi-color-primary-text); }
+  .gc-body {
+    margin: calc(var(--tsoi-spacing-unit) * 0.75) 0 0;
+    font: var(--tsoi-text-body);
+    color: var(--tsoi-color-on-surface-variant);
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  /* The intro screen's gauge, held at frame 0 — same geometry, same colours,
+     same two pins (see OffByHowMuch.astro's .intro-gauge). Static by design:
+     the motion belongs to the screen this card opens. */
+  /* `margin: auto 0` makes the cover absorb the card's free space above and
+     below in equal parts, so it sits in the true middle of the card whatever
+     the title and pitch wrap to — and the peek + CTA stay anchored to the
+     bottom edge. The card is fixed-ratio, so without this the slack all
+     pooled under the peek. */
+  .cover {
+    display: block;
+    margin: auto 0;
+    flex: none;
+  }
+  .gauge {
+    position: relative;
+    display: block;
+    height: 58px;
+  }
+  /* A ruled scale standing on the track — the slider the game presents, drawn
+     as the measuring instrument it is. Two gradient layers give it major and
+     minor marks like a real rule, which is what stops it reading as a fence:
+     the eye gets a rhythm instead of a row. Gradients rather than N elements
+     because the mark count should follow the card's width, not a number
+     picked here. Both layers sit on the baseline (`100%`) so the marks rise
+     from the track rather than hang above it, and the mask fades both ends so
+     the scale trails off instead of stopping on a hard edge. */
+  .gauge .ticks {
+    position: absolute; left: 0; right: 0; top: 0; height: 24px;
+    background-image:
+      repeating-linear-gradient(to right, var(--tsoi-color-outline) 0 1px, transparent 1px 55px),
+      repeating-linear-gradient(to right, var(--tsoi-color-outline) 0 1px, transparent 1px 11px);
+    background-size: 100% 100%, 100% 52%;
+    background-position: 0 100%, 0 100%;
+    background-repeat: repeat-x, repeat-x;
+    opacity: 0.5;
+    -webkit-mask-image: linear-gradient(to right, transparent, #000 10%, #000 90%, transparent);
+    mask-image: linear-gradient(to right, transparent, #000 10%, #000 90%, transparent);
+  }
+  .gauge .track {
+    position: absolute; left: 0; right: 0; top: 26px; height: 4px;
+    border-radius: var(--tsoi-radius-full);
+    background: var(--tsoi-color-surface-container-high);
+  }
+  .gauge i {
+    position: absolute; top: 21px; width: 14px; height: 14px;
+    border-radius: 50%; transform: translateX(-50%); display: block;
+  }
+  .gauge .pin-guess {
+    border: 2.5px solid var(--tsoi-color-on-surface-variant);
+    background: var(--tsoi-color-surface-container-low);
+    box-sizing: border-box;
+    left: 14%;
+  }
+  .gauge .pin-actual {
+    background: var(--tsoi-color-primary);
+    border: 2.5px solid var(--tsoi-color-surface-container-low);
+    box-sizing: content-box;
+    width: 11px; height: 11px;
+    left: 62%;
+  }
+  /* The card's own surface is the pins' ring colour; on hover the surface
+     changes, so the rings must follow or they read as halos. */
+  .game-card:hover .pin-guess { background: var(--tsoi-color-surface-container-high); }
+  .game-card:hover .pin-actual { border-color: var(--tsoi-color-surface-container-high); }
+
+  /* The scale's two ends, set like the game's own .scale-labels — mono,
+     small, quiet. These are the card's only figures, and they re-render with
+     the cr/bn toggle (see the .num spans in the markup). */
+  .scale {
+    display: flex; justify-content: space-between;
+    margin-top: 6px;
+    font: 500 11px var(--tsoi-font-mono);
+    color: var(--tsoi-color-on-surface-variant);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Round 1's question — the game teasing itself without spoiling anything */
+  .peek {
+    margin: calc(var(--tsoi-spacing-unit) * 1.25) 0 0;
+    padding-top: calc(var(--tsoi-spacing-unit) * 1.25);
+    border-top: var(--tsoi-rule-column) solid var(--tsoi-color-outline);
+    font: var(--tsoi-text-headline-sm);
+    letter-spacing: var(--tsoi-text-headline-sm-tracking);
+    line-height: 1.4;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .peek-label {
+    font: var(--tsoi-text-byline); letter-spacing: 0.06em; text-transform: uppercase;
+    color: var(--tsoi-color-on-surface-variant);
+    margin-right: 6px;
+  }
+  .go {
+    padding-top: calc(var(--tsoi-spacing-unit) * 1.5);
+    font: var(--tsoi-text-byline); font-weight: 500; letter-spacing: 0.06em;
+    text-transform: uppercase; color: var(--tsoi-color-primary-text);
+  }
+
+  /* At phone width the landscape ratio stops being a shape and becomes a
+     clamp: ~340px across leaves ~270px of height for a card whose kicker,
+     title, pitch, gauge, peek and CTA need more than that, and the ratio
+     would cut the CTA off. The proportion is the desktop reading — here the
+     card is simply as tall as it needs to be, exactly like the intro screen
+     it opens. */
+  @media (max-width: 600px) {
+    .game-card { aspect-ratio: auto; }
+  }
+</style>

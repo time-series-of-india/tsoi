@@ -1,7 +1,7 @@
 // Builds per-read datasets for the short-form Reads, from NPCI source JSON in
 // ../../etl/npci, into public/data/economy/reads/{slug}.json. Each read fetches
-// its own small file at runtime. (Parity caveat: reads raw NPCI JSON, not the DB;
-// tracked in TODO.md alongside the UPI-architecture generator.)
+// its own small file at runtime. (Parity caveat: reads raw NPCI JSON, not the
+// DB — same caveat as the UPI-architecture generator.)
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -23,35 +23,61 @@ const write = (slug, obj) => { writeFileSync(resolve(OUTDIR, `${slug}.json`), JS
     'Groceries and supermarkets': 'Groceries',
     'Fast food restaurants': 'Fast food',
     'Eating places and restaurants': 'Restaurants',
-    'Telecommunication services, including local and long distance calls, credit card calls, and faxes': 'Telecom',
-    'Telecommunication Services': 'Telecom',
     'Service stations (with or without ancillary services)': 'Fuel stations',
     'Drug stores and pharmacies': 'Pharmacies',
     'Cigar shops and stands': 'Tobacco shops',
     'Purchase of digital gold': 'Digital gold',
     'Dairies': 'Dairies', 'Bakeries': 'Bakeries',
   };
-  const shortMcc = (s) => SHORT[s] || String(s).replace(/\s*\(.*?\)\s*/g, '').replace(/,.*$/, '').trim();
+  // NPCI's telecom MCC description varies in wording and casing across months
+  const shortMcc = (s) => /^telecommunication services\b/i.test(String(s).trim()) ? 'Telecom'
+    : SHORT[s] || String(s).replace(/\s*\(.*?\)\s*/g, '').replace(/,.*$/, '').trim();
+  // NPCI's descriptions drift across months (casing runs Apr–Aug 2025, padding,
+  // outright renames: 5411 published as "Grocery Stores, Supermarkets" in Jan
+  // 2026). Grouping on the description splits one category into several, leaving
+  // holes in its series. The MCC code is the stable key: canonical label per
+  // code = its most frequent description across all months, then SHORT-mapped.
+  const rows = load('all_mcc.json');
+  const norm = (s) => String(s ?? '').replace(/\s+/g, ' ').trim();
+  const skip = (r, desc) => !r.mcc || String(r.mcc).trim() === '0' || !desc || /^(total|others)$/i.test(desc);
+  const freq = new Map(); // mcc code -> Map<description, row count>
+  for (const r of rows) {
+    const desc = norm(r.description);
+    if (skip(r, desc)) continue;
+    const m = freq.get(r.mcc) ?? new Map();
+    m.set(desc, (m.get(desc) ?? 0) + 1);
+    freq.set(r.mcc, m);
+  }
+  const canon = new Map(); // mcc code -> display category
+  for (const [mcc, m] of freq) canon.set(mcc, shortMcc([...m.entries()].sort((a, b) => b[1] - a[1])[0][0]));
   const agg = new Map();
-  for (const r of load('all_mcc.json')) {
-    // NPCI pads some months' descriptions with whitespace (seen May 2026).
-    const desc = r.description && String(r.description).trim();
-    if (!desc || /^total$/i.test(desc) || /^others$/i.test(desc)) continue;
+  for (const r of rows) {
+    const desc = norm(r.description);
+    if (skip(r, desc)) continue;
+    const cat = canon.get(r.mcc);
     const vol = num(r.volume_in_mn), val = num(r.value_in_cr);
     const date = `${r.year}-${String(MO[r.month] || 0).padStart(2, '0')}`;
-    const key = `${date}|${shortMcc(desc)}`;
-    if (!agg.has(key)) agg.set(key, { category: shortMcc(desc), date, volume_cr: 0, value_cr: 0 });
+    const key = `${date}|${cat}`;
+    if (!agg.has(key)) agg.set(key, { category: cat, date, volume_cr: 0, value_cr: 0 });
     const o = agg.get(key); o.volume_cr += (vol || 0) / 10; o.value_cr += (val || 0);
   }
   const out = [...agg.values()].map((o) => ({ ...o, volume_cr: +o.volume_cr.toFixed(2), value_cr: +o.value_cr.toFixed(2) }));
   writeFileSync(resolve(OUTDIR, '../mcc.json'), JSON.stringify({ rows: out }));
   console.log('mcc.json rows:', out.length);
 
-  // derive the "what India buys" read from the same data
-  const dates = [...new Set(out.map((r) => r.date))].sort();
-  const y0 = dates[0], lm = dates[dates.length - 1];
-  const volAt = (date) => { const m = {}; for (const r of out) if (r.date === date) m[r.category] = (m[r.category] || 0) + r.volume_cr; return m; };
-  const lmv = volAt(lm), y0v = volAt(y0);
+  // derive the "what India buys" read from the same data. Ranks use the
+  // unrounded aggregates: early-UPI monthly volumes are hundredths of a crore,
+  // so ranking the rounded dashboard rows is tie-break noise among zeros. Fast
+  // food recorded no UPI volume at all in 2017; its "early" rank comes from the
+  // first full year it registers (2018), summed across that year.
+  const rowsU = [...agg.values()];
+  const dates = [...new Set(rowsU.map((r) => r.date))].sort();
+  const lm = dates[dates.length - 1];
+  const volAt = (date) => { const m = {}; for (const r of rowsU) if (r.date === date) m[r.category] = (m[r.category] || 0) + r.volume_cr; return m; };
+  const volYear = (year) => { const m = {}; for (const r of rowsU) if (r.date.startsWith(year)) m[r.category] = (m[r.category] || 0) + r.volume_cr; return m; };
+  const years = [...new Set(dates.map((d) => d.slice(0, 4)))].sort();
+  const y0 = years.find((y) => (volYear(y)['Fast food'] || 0) > 0) ?? years[0];
+  const lmv = volAt(lm), y0v = volYear(y0);
   const totLm = Object.values(lmv).reduce((a, b) => a + b, 0);
   const FOODS = new Set(['Groceries', 'Fast food', 'Restaurants', 'Bakeries', 'Dairies']);
   const topCats = Object.entries(lmv).sort((a, b) => b[1] - a[1]).slice(0, 10)

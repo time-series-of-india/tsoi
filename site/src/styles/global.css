@@ -84,9 +84,22 @@
   --tsoi-color-outline: #C8B89A;
   --tsoi-color-outline-variant: #D8CEBC;
   --tsoi-color-primary: #CC5500;
+  /* Saffron as TEXT on a light ground. --primary itself measures only 3.8:1 on
+     #F5F0E5 — under the 4.5:1 AA floor, and most saffron text here is small
+     uppercase (kickers, nav, folio, source links). This darker cast reaches
+     5.2:1 while reading as the same accent. Use --primary for fills, rules,
+     borders and chart series; use this ONLY where saffron is text. */
+  --tsoi-color-primary-text: #A84600;
   --tsoi-color-on-primary: #F5F0E5;
   --tsoi-color-primary-container: #E87830;
   --tsoi-color-on-primary-container: #F5F0E5;
+  /* Page-bar strip (DesksView desks pages): the brand saffron, same as
+     --primary. Accepted AA deviation (decision 2026-07-19): white text on
+     #CC5500 reaches 4.31:1 against the 4.5:1 floor for the small on-pagebar
+     text; the darker #A84600 alternative passed but read too red, so the
+     brand color stays. --on-pagebar is pure white (cream only reached 3.8). */
+  --tsoi-color-pagebar: var(--tsoi-color-primary);
+  --tsoi-color-on-pagebar: #FFFFFF;
   --tsoi-color-secondary: #8A7060;
   --tsoi-color-on-secondary: #F5F0E5;
   --tsoi-color-error: #C04040;
@@ -99,6 +112,17 @@
   --tsoi-color-chart-4: #8040A0;
   --tsoi-color-chart-5: #C04040;
   --tsoi-color-chart-6: #C8960A;
+  /* Text-safe variants of the chart palette — used ONLY where a chart hue
+     colors actual prose (e.g. the UPI anatomy read's entity mentions/labels),
+     never for strokes, fills, borders or the chart series themselves (those
+     stay on --chart-N above). The chart colors read fine as small marks but
+     fall to 2.2-3.8:1 as 10-17px text on cream; these darker casts clear
+     4.5:1 against both light surfaces (#F5F0E5 / #F0EAE0). Only 1/2/3/6 exist
+     because those are the only chart hues used as text anywhere today. */
+  --tsoi-color-chart-1-text: #A84600; /* = --tsoi-color-primary-text */
+  --tsoi-color-chart-2-text: #20706B;
+  --tsoi-color-chart-3-text: #4E7414;
+  --tsoi-color-chart-6-text: #846200;
   /* UPI read — payment app entity hue (deliberately app-neutral blue, not a
      brand purple) */
   --tsoi-color-app: #3366B3;
@@ -168,26 +192,42 @@
 /* Dark theme (opt-in toggle, persisted in localStorage — never media-query driven).
    Values without a DESIGN.md entry are derived from the dark family; marked (derived). */
 [data-theme='dark'] {
-  /* Neutral warm-charcoal (Claude-like) — desaturated greys, not warm browns,
-     so the UI doesn't read yellow/orange. The saffron accent stays the only warm hue. */
-  --tsoi-color-background: #1A1918;
-  --tsoi-color-surface: #232220;
-  --tsoi-color-surface-dim: #1A1918;
-  --tsoi-color-surface-container: #232220;
-  --tsoi-color-surface-container-low: #1A1918;
-  --tsoi-color-surface-container-high: #2D2B28;
-  --tsoi-color-on-surface: #ECEAE5;
-  --tsoi-color-on-surface-variant: #A8A39B;
-  --tsoi-color-outline: #3A3733;
-  --tsoi-color-outline-variant: #2D2B28;
-  --tsoi-color-primary: #FF7B2C;
-  --tsoi-color-on-primary: #1A1918;
+  /* Slate — a cool, faintly blue charcoal (trial palette, being evaluated
+     against the other dark grounds). The neutrals carry a slight blue
+     undertone so the UI reads a touch more "markets"; saffron stays the only
+     warm hue and is lifted a shade (#FF8236) to hold up on the cooler ground.
+     Chart series are deliberately left on the previous values for now — a
+     separate pass will retune them against this ground. */
+  --tsoi-color-background: #14161A;
+  --tsoi-color-surface: #1D2026;
+  --tsoi-color-surface-dim: #14161A;
+  --tsoi-color-surface-container: #1D2026;
+  --tsoi-color-surface-container-low: #14161A;
+  --tsoi-color-surface-container-high: #272B33;
+  --tsoi-color-on-surface: #E8EAEE;
+  /* Reading text (.deck, prose, standfirst) and secondary labels both ride this
+     token. At the old #99A0AB it measured 6.9:1 on the #14161A ground versus
+     light's 9.4:1 — a dark-only deficit that OLED's true blacks hide but an LCD
+     (elevated black level) exposes as washed-out grey. #AEB5C0 restores ~8.8:1,
+     near parity with light, while staying in the cool blue-grey family and well
+     below --on-surface (15:1) so the hierarchy holds. */
+  --tsoi-color-on-surface-variant: #AEB5C0;
+  --tsoi-color-outline: #363B45;
+  --tsoi-color-outline-variant: #272B33;
+  --tsoi-color-primary: #FF8236;
+  /* Dark needs no darkening — saffron text already measures 7.3:1 on #14161A,
+     so this pins the same value as --primary. The token exists so components
+     can reference one "saffron as text" name across both themes. */
+  --tsoi-color-primary-text: #FF8236;
+  --tsoi-color-on-primary: #141310;
   --tsoi-color-primary-container: #CC5500; /* (derived) */
-  --tsoi-color-on-primary-container: #ECEAE5; /* (derived) */
-  --tsoi-color-secondary: #6E6860;
-  --tsoi-color-on-secondary: #ECEAE5; /* (derived) */
+  --tsoi-color-on-primary-container: #E8EAEE; /* (derived) */
+  --tsoi-color-pagebar: #CC5500; /* deep saffron — matches light; not the bright --primary */
+  --tsoi-color-on-pagebar: #F2ECE4;
+  --tsoi-color-secondary: #6E7480;
+  --tsoi-color-on-secondary: #E8EAEE; /* (derived) */
   --tsoi-color-error: #E05858; /* (derived: lifted for dark contrast) */
-  --tsoi-color-on-error: #1A1918; /* (derived) */
+  --tsoi-color-on-error: #141310; /* (derived) */
 
   /* Chart palette — same hue family at higher saturation (all derived per DESIGN.md note) */
   --tsoi-color-chart-1: #FF7B2C;
@@ -196,6 +236,14 @@
   --tsoi-color-chart-4: #A45CC8;
   --tsoi-color-chart-5: #E05858;
   --tsoi-color-chart-6: #E8B020;
+  /* Dark's chart hues already clear 4.5:1 as text against every dark surface
+     token (5.4-9.2:1, checked against background/surface/surface-container-high),
+     so the -text variants alias the chart tokens directly — no lightening
+     needed here, unlike light's darker casts above. */
+  --tsoi-color-chart-1-text: var(--tsoi-color-chart-1);
+  --tsoi-color-chart-2-text: var(--tsoi-color-chart-2);
+  --tsoi-color-chart-3-text: var(--tsoi-color-chart-3);
+  --tsoi-color-chart-6-text: var(--tsoi-color-chart-6);
   --tsoi-color-app: #6699E6; /* (derived: lifted blue for dark contrast) */
 
   --tsoi-color-freshness-warn: #E05858; /* (derived) */
@@ -248,6 +296,18 @@ iframe {
   max-width: 1280px;
   margin-inline: auto;
   padding-inline: var(--tsoi-margin-desktop);
+}
+
+/* Opt-in wide tier: prose keeps its 1280px measure (long lines hurt
+   readability), but data-dense dashboard surfaces have earned more room —
+   a 2-up chart grid marooned at 1280px on a 27" display wastes the desk.
+   Gated to ≥1600px so mid-size laptops (13"/15", ~1440px) render the base
+   .tsoi-container unchanged below the gate; only add this class where the
+   content is built to use the extra width. */
+@media (min-width: 1600px) {
+  .tsoi-container-wide {
+    max-width: 1760px;
+  }
 }
 
 .tsoi-grid {

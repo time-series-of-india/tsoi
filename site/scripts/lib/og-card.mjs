@@ -7,7 +7,9 @@
 // to match the proven recipe already used on the Pi.
 
 import { execFile } from 'node:child_process';
+import { existsSync } from 'node:fs';
 import { mkdtemp, writeFile, readFile, rm, mkdir } from 'node:fs/promises';
+import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { promisify } from 'node:util';
 import { join, resolve, dirname } from 'node:path';
@@ -54,15 +56,27 @@ export function esc(s) {
     .replace(/>/g, '&gt;');
 }
 
+// Chromium binary: CHROMIUM_PATH, else system chromium (Pi), else playwright's
+// bundled browser (Mac — used only as a path resolver, no API dependency).
+function chromiumBin() {
+  if (process.env.CHROMIUM_PATH) return process.env.CHROMIUM_PATH;
+  if (existsSync('/usr/bin/chromium')) return '/usr/bin/chromium';
+  try {
+    return createRequire(import.meta.url)('playwright').chromium.executablePath();
+  } catch {
+    return 'chromium';
+  }
+}
+
 // Render one full HTML document to `outPath` (a 1200×630 PNG) via headless
-// chromium. `mkdir`s the parent dir. Requires `chromium` on PATH.
+// chromium. `mkdir`s the parent dir.
 export async function renderCard(html, outPath) {
   await mkdir(dirname(outPath), { recursive: true });
   const dir = await mkdtemp(join(tmpdir(), 'og-'));
   const htmlPath = join(dir, 'card.html');
   try {
     await writeFile(htmlPath, html);
-    await execFileAsync('chromium', [
+    await execFileAsync(chromiumBin(), [
       '--headless', '--no-sandbox', '--hide-scrollbars', '--force-device-scale-factor=1',
       '--window-size=1200,630', '--default-background-color=00000000',
       `--screenshot=${outPath}`, `file://${htmlPath}`,

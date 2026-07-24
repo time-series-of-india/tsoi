@@ -7,6 +7,7 @@ import psycopg2
 from psycopg2 import sql
 from psycopg2.extras import execute_values
 from pathlib import Path
+from etl_util import connect, drop_exact_duplicates
 from normalize import normalize_bank_name
 
 SCHEMA_NAME = os.environ.get("SCHEMA_NAME", "economy_dev")
@@ -49,6 +50,8 @@ def aggregate_rows(rows):
         if len(group) == 1:
             result.append(group[0])
             continue
+        print(f"  merge: {bank} / {typ} / {date}: {len(group)} variant rows summed"
+              f" (vol={[r['volume_mn'] for r in group]})")
         vol = sum(_f(r["volume_mn"]) or 0 for r in group)
         dr  = sum(_f(r["debit_reversal_mn"]) or 0 for r in group)
         def wavg(col):
@@ -113,7 +116,7 @@ for f in sorted(raw_dir.glob("*.json")):
             "debit_reversal_success_pct": parse_num(r.get("debit_reversal_success_percent")),
         })
 
-rows = aggregate_rows(rows)
+rows = aggregate_rows(drop_exact_duplicates(rows))
 
 cols = ["bank_name","type_name","date","rank","volume_mn","approved_pct",
         "bd_pct","td_pct","deemed_approved_pct","debit_reversal_mn","debit_reversal_success_pct"]
@@ -126,10 +129,7 @@ print(f"Parsed {len(rows)} rows → {csv_path}")
 
 
 def load_to_db(rows):
-    conn = psycopg2.connect(
-        host="localhost", user="admin",
-        password=os.environ["DB_PASSWORD"], dbname="npci", port=5432
-    )
+    conn = connect()
     try:
         with conn:
             with conn.cursor() as cur:
@@ -191,10 +191,7 @@ print(f"\n--- Loading into {SCHEMA_NAME}.upi_bank_statistics ---")
 load_to_db(rows)
 
 print("\n--- Verification ---")
-conn = psycopg2.connect(
-    host="localhost", user="admin",
-    password=os.environ["DB_PASSWORD"], dbname="npci", port=5432
-)
+conn = connect()
 try:
     with conn.cursor() as cur:
         cur.execute(

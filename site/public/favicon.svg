@@ -1,9 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-label="Time Series of India">
   <style>
-    .bar{fill:#CC5500}
-    @media (prefers-color-scheme:dark){.bar{fill:#FF7B2C}}
+    .m{stroke:#CC5500}
+    @media (prefers-color-scheme:dark){.m{stroke:#FF7B2C}}
   </style>
-  <rect class="bar" x="18" y="56" width="16" height="26" rx="2"/>
-  <rect class="bar" x="42" y="40" width="16" height="42" rx="2"/>
-  <rect class="bar" x="66" y="24" width="16" height="58" rx="2"/>
+  <path class="m" d="M8 81 C 16 70, 23 59, 31 59 C 40 59, 43 75, 52 75 C 65 75, 77 43, 92 19" fill="none" stroke-width="13" stroke-linecap="round"/>
 </svg>

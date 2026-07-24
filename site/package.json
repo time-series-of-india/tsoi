@@ -7,6 +7,7 @@
   },
   "scripts": {
     "dev": "astro dev",
+    "prebuild": "node scripts/dev-play-stats.mjs --clean",
     "build": "astro build",
     "preview": "astro preview",
     "astro": "astro"

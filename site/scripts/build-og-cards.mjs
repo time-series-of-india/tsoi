@@ -1,19 +1,21 @@
 // Regenerates the per-content social cards (§C1 of pre-launch):
 //   public/og/reads/<slug>.png       — one per entry in src/lib/reads-index.ts
-//   public/og/dashboards/<slug>.png  — one per spec in src/lib/dashboards/specs.ts
+//   public/og/dashboards/all.png     — the unified "India Payments" dashboard page
+//   public/og/play/off-by-how-much.png — the one game
 //
 //   node scripts/build-og-cards.mjs
 //
 // Each card is the EDITORIAL left-aligned layout: wordmark, short saffron rule,
 // big left-aligned title, deck, and a "A READ · SOURCE …" footer — on the same
 // broadsheet palette + repo fonts as the fallback card. 1200×630, headless
-// chromium. Run from site/. Requires `chromium` on PATH. Driven off the same
-// registries the pages render from, so every new read/dashboard gets a card free.
+// chromium. Run from site/. Requires `chromium` on PATH. Driven off the reads
+// registry, so every new read gets a card free; the dashboard and game cards
+// are one-offs (there's exactly one of each to link out to) and are listed
+// by hand below.
 
 import { resolve } from 'node:path';
 import { TOKENS, PUBLIC_DIR, fontCss, renderCard, esc } from './lib/og-card.mjs';
 import { READS } from '../src/lib/reads-index.ts';
-import { DASHBOARDS } from '../src/lib/dashboards/specs.ts';
 
 const { PAPER, INK, INK_VARIANT, SAFFRON, MUTED } = TOKENS;
 
@@ -25,7 +27,7 @@ function titleSize(title) {
   return 56;
 }
 
-async function cardHtml({ title, deck, footer }) {
+async function cardHtml({ title, deck, footer, motif = '' }) {
   return `<!doctype html><html><head><meta charset="utf-8"><style>
 ${await fontCss()}
 *{margin:0;padding:0;box-sizing:border-box;}
@@ -48,6 +50,7 @@ html,body{width:1200px;height:630px;}
 <div class="rule"></div>
 <div class="title">${esc(title)}</div>
 <div class="deck">${esc(deck)}</div>
+${motif}
 <div class="footer">${esc(footer)}</div>
 </div></body></html>`;
 }
@@ -64,13 +67,34 @@ for (const r of READS) {
   count++;
 }
 
-for (const d of DASHBOARDS) {
-  const out = resolve(PUBLIC_DIR, 'og/dashboards', `${d.slug}.png`);
-  await renderCard(await cardHtml({
-    title: d.title,
-    deck: d.description,
-    footer: 'Interactive Dashboard · Data: RBI · NPCI',
-  }), out);
+const ONE_OFFS = [
+  {
+    out: resolve(PUBLIC_DIR, 'og/dashboards', 'all.png'),
+    title: 'India Payments',
+    deck: 'Every payments desk on one page: headline totals, bank performance, apps, merchant categories and states, from official RBI and NPCI data.',
+    footer: 'Interactive Dashboards · Data: RBI · NPCI',
+  },
+  {
+    out: resolve(PUBLIC_DIR, 'og/play', 'off-by-how-much.png'),
+    title: 'Off by How Much?',
+    deck: 'Four rounds of guessing against real Indian payments data. Slide, commit, and see how far off you are.',
+    footer: 'A Game · Data: RBI · NPCI',
+    // The game's own visual, frozen: the slider scale with a guess (hollow)
+    // and the answer (filled), the gap between them being the game.
+    motif: `<svg width="620" height="64" viewBox="0 0 620 64" style="margin-top:44px">
+      ${Array.from({ length: 40 }, (_, i) => {
+        const x = 10 + i * 15.4, major = i % 5 === 0;
+        return `<line x1="${x}" y1="${32 - (major ? 12 : 7)}" x2="${x}" y2="${32 + (major ? 12 : 7)}" stroke="${MUTED}" stroke-width="2" opacity="${major ? 0.55 : 0.3}"/>`;
+      }).join('')}
+      <line x1="4" y1="32" x2="616" y2="32" stroke="${MUTED}" stroke-width="3" opacity="0.5"/>
+      <circle cx="178" cy="32" r="15" fill="${PAPER}" stroke="${INK_VARIANT}" stroke-width="6"/>
+      <circle cx="420" cy="32" r="16" fill="${SAFFRON}"/>
+    </svg>`,
+  },
+];
+
+for (const { out, title, deck, footer, motif } of ONE_OFFS) {
+  await renderCard(await cardHtml({ title, deck, footer, motif }), out);
   console.log(`wrote ${out}`);
   count++;
 }

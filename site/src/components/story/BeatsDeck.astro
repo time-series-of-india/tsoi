@@ -1,8 +1,14 @@
 ---
-// Beats renderer: an ordered deck of insight cards. Mobile = full-height
-// scroll-snap swipe; desktop = a vertical sequence with the
-// text beside the chart. Each beat's chart is built lazily (on scroll-into-view)
+// Deck renderer (the Play format): an ordered deck of insight cards. One
+// mobile-first card layout at every viewport — on phones the deck IS the
+// screen (full-height scroll-snap swipe); on desktop the same deck renders
+// inside a portrait frame centred on the page like a card on a table, with
+// the remaining cards visibly stacked behind it (the stack depletes as you
+// advance — it IS the progress indicator). One layout means one chart size
+// everywhere. Each beat's chart is built lazily (on scroll-into-view)
 // through the dashboard runtime (buildPanel) from the deck's tiny dataset.
+import { existsSync } from 'node:fs';
+import { resolve } from 'node:path';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import ShareButtons from '../editorial/ShareButtons.astro';
 import type { BeatDeck } from '../../lib/beats';
@@ -10,6 +16,11 @@ import type { BeatDeck } from '../../lib/beats';
 interface Props { deck: BeatDeck; home?: boolean }
 const { deck, home = false } = Astro.props;
 const cardCount = deck.beats.length + 2; // intro + beats + outro
+// The deck's cover chart (Card 1's, captured by scripts/build-deck-thumbs.mjs)
+// on the intro card: the rack card and the intro are the same object — you
+// tapped the card, now you're holding it. Absent thumbs degrade to type-only.
+const coverBase = `/thumbs/play/${deck.slug}`;
+const hasCover = existsSync(resolve(process.cwd(), `public/thumbs/play/${deck.slug}.png`));
 // As the home page the deck is indexable with the site title; otherwise it's a
 // noindex sub-page. Branding is held back until the outro either way.
 const pageTitle = home ? "Time Series of India — India's public data, charted and explained" : `${deck.title} — TSOI`;
@@ -19,7 +30,7 @@ const pageDesc = home
 ---
 
 <BaseLayout title={pageTitle} description={pageDesc} noindex={!home}>
-  <a class="back" id="skip-link" href="/economy">{home ? 'Skip to Reads →' : '‹ Economy'}</a>
+  <a class="back" id="skip-link" href={home ? '/economy/read' : '/economy/play'}>{home ? 'Skip to Read →' : '‹ Play'}</a>
   <ShareButtons title={deck.title} variant="fab" />
   <button type="button" class="theme-fab" data-tsoi-theme-toggle aria-label="Toggle dark mode">
     <svg class="icon-moon" viewBox="0 0 16 16" width="14" height="14" fill="currentColor" aria-hidden="true"><path d="M11 1a7 7 0 1 0 4 12.5A8 8 0 0 1 11 1z"></path></svg>
@@ -29,12 +40,25 @@ const pageDesc = home
     {Array.from({ length: cardCount }).map((_, i) => <span class={`dot${i === 0 ? ' active' : ''}`} data-dot={i}></span>)}
   </div>
 
+  <div class="stage">
+  <div class="frame">
+    <!-- the rest of the deck, physically behind the current card; the script
+         hides sheets as cards are consumed -->
+    <span class="sheet s3" aria-hidden="true"></span>
+    <span class="sheet s2" aria-hidden="true"></span>
+    <span class="sheet s1" aria-hidden="true"></span>
   <main class="deck" id="deck">
     <section class="beat intro" data-card="0">
       <div class="beat-text">
-        <p class="kicker">Economy · Beats</p>
+        <p class="kicker">Economy · Play</p>
         <h1 class="title">{deck.title}</h1>
         <p class="standfirst">{deck.deck}</p>
+        {hasCover && (
+          <div class="intro-cover">
+            <img class="t-light" src={`${coverBase}.png`} alt="" loading="eager" />
+            <img class="t-dark" src={`${coverBase}-dark.png`} alt="" loading="eager" />
+          </div>
+        )}
         <span class="rule" aria-hidden="true"></span>
         <p class="hint">Scroll to begin ↓</p>
       </div>
@@ -48,6 +72,7 @@ const pageDesc = home
           <p class="body" set:html={b.body}></p>
         </div>
         <div class="beat-chart" id={`beat-${b.id}`} data-chart={b.panel.chart}></div>
+        {deck.source && <p class="source">{deck.source}</p>}
       </section>
     ))}
 
@@ -55,10 +80,10 @@ const pageDesc = home
       <div class="beat-text">
         <p class="kicker">The end</p>
         <h2 class="brand">Time Series of India</h2>
-        <p class="standfirst">India’s public data, charted and explained. That’s the deck — keep going: the reads add the context, the dashboards let you dig in yourself.</p>
+        <p class="standfirst">India’s public data, charted and explained. That’s the deck — keep going: the reads add the context, Explore lets you dig into the numbers yourself.</p>
         <div class="ctas">
-          <a class="cta" href="/economy">Explore the Reads →</a>
-          <a class="cta ghost" href="/economy/dashboards">Open the dashboards →</a>
+          <a class="cta" href="/economy/read">Keep reading →</a>
+          <a class="cta ghost" href="/economy/explore">Explore the data →</a>
         </div>
       </div>
       <div class="outro-flow" aria-hidden="true">
@@ -89,6 +114,9 @@ const pageDesc = home
       </div>
     </section>
   </main>
+    <span class="counter" aria-hidden="true"><span id="card-now">1</span>&#8202;/&#8202;{cardCount}</span>
+  </div>
+  </div>
 
   <script type="application/json" id="deck-data" set:html={JSON.stringify(deck)} />
 
@@ -118,20 +146,37 @@ const pageDesc = home
   .dot.active { background: var(--tsoi-color-primary); transform: scale(1.35); }
 
   /* height is driven by the JS `--app-height` (a grow-only pixel value tracking
-     innerHeight); 100svh is the pre-JS fallback. See the script for why not dvh. */
-  .deck { height: var(--app-height, 100svh); overflow-y: scroll; scroll-snap-type: y mandatory; scroll-behavior: smooth; }
+     innerHeight); 100svh is the pre-JS fallback. See the script for why not dvh.
+     On phones the frame IS the viewport; desktop shrinks it to a portrait card
+     (see the 880px block). The sheets/counter exist only in the desktop frame. */
+  .frame { position: relative; z-index: 0; height: var(--app-height, 100svh); }
+  .sheet, .counter { display: none; }
+  /* No native scrolling: the script pages the deck one card per gesture
+     (wheel / keys / swipe). Native scroll-snap can't coexist with the sticky
+     card-cover mechanic — a pinned card's snap position is its DISPLACED
+     position, which always equals the current scroll offset, so snapping
+     backward becomes a no-op (any upward scroll re-snaps to where it was). */
+  .deck { height: 100%; overflow-y: hidden; touch-action: none; }
   .beat {
-    /* scroll-snap-stop: always stops a fast flick at the next card instead of
-       letting momentum skip two ahead (one card per swipe). */
-    min-height: var(--app-height, 100svh); scroll-snap-align: start; scroll-snap-stop: always; box-sizing: border-box;
+    /* position: sticky is the card mechanic: the current card pins at the top
+       of the frame and the NEXT card slides up OVER it — card covers card,
+       like dealing off the stack behind the frame — instead of the two cards
+       sharing the frame mid-swipe as one continuous sheet. Each card's opaque
+       background is what makes the cover clean. Paging back plays the same
+       cover in reverse. 100% = the frame's height (viewport on phones, the
+       portrait card on desktop). */
+    position: sticky; top: 0;
+    background: var(--tsoi-color-background);
+    min-height: 100%; box-sizing: border-box;
     display: flex; flex-direction: column; justify-content: center;
     gap: calc(var(--tsoi-spacing-unit) * 2);
     padding: 72px clamp(20px, 6vw, 72px) 56px;
   }
+  /* the incoming card's leading edge */
   .beat + .beat { border-top: var(--tsoi-rule-column) solid var(--tsoi-color-outline); }
 
   .beat-text { max-width: 56ch; }
-  .kicker { margin: 0 0 var(--tsoi-spacing-unit); font: var(--tsoi-text-byline); font-weight: 500; letter-spacing: var(--tsoi-text-byline-tracking); text-transform: uppercase; color: var(--tsoi-color-primary); }
+  .kicker { margin: 0 0 var(--tsoi-spacing-unit); font: var(--tsoi-text-byline); font-weight: 500; letter-spacing: var(--tsoi-text-byline-tracking); text-transform: uppercase; color: var(--tsoi-color-primary-text); }
   .title { margin: 0; font: var(--tsoi-text-headline-lg); letter-spacing: var(--tsoi-text-headline-lg-tracking); }
   .headline { margin: 0; font: var(--tsoi-text-headline-md); letter-spacing: var(--tsoi-text-headline-md-tracking); }
   .brand { margin: 0; font: var(--tsoi-text-headline-xl); letter-spacing: var(--tsoi-text-headline-xl-tracking); color: var(--tsoi-color-on-surface); }
@@ -139,12 +184,20 @@ const pageDesc = home
   .hint { margin-top: calc(var(--tsoi-spacing-unit) * 3); font: var(--tsoi-text-byline); text-transform: uppercase; letter-spacing: var(--tsoi-text-byline-tracking); color: var(--tsoi-color-on-surface-variant); }
 
   .beat-chart { width: 100%; flex: 1 1 auto; min-height: 260px; }
+  /* attribution caption — the legal load-bearing line; keep it visible but quiet */
+  .source { margin: 0; font: var(--tsoi-text-byline); letter-spacing: var(--tsoi-text-byline-tracking); text-transform: uppercase; color: var(--tsoi-color-on-surface-variant); }
   .intro .beat-text, .outro .beat-text { max-width: 60ch; }
 
   /* intro cover: a tight, vertically-centred editorial title block — no
      illustration. A short accent rule separates the standfirst from the scroll
      cue. Whitespace is intentional here, not wasted. */
   .intro { justify-content: center; }
+  /* the deck's cover chart, quiet under the standfirst */
+  .intro-cover { margin: calc(var(--tsoi-spacing-unit) * 3) 0 0; max-width: 300px; }
+  .intro-cover img { width: 100%; display: block; }
+  .intro-cover .t-dark { display: none; }
+  :global(html[data-theme='dark']) .intro-cover .t-light { display: none; }
+  :global(html[data-theme='dark']) .intro-cover .t-dark { display: block; }
   .intro .rule {
     display: block; width: 40px; height: 2px; background: var(--tsoi-color-primary);
     margin: calc(var(--tsoi-spacing-unit) * 3) 0 0;
@@ -201,35 +254,52 @@ const pageDesc = home
   }
 
   .ctas { display: flex; gap: var(--tsoi-spacing-unit); flex-wrap: wrap; margin-top: calc(var(--tsoi-spacing-unit) * 2.5); }
+  /* Accepted AA deviation (2026-07-19): white on light's #CC5500 fill is
+     4.31:1 against the 4.5:1 floor; the passing darker saffron read too red,
+     so the brand fill stays. */
   .cta { font: var(--tsoi-text-label-caps); letter-spacing: 0.04em; text-transform: uppercase; text-decoration: none; padding: 10px 16px; border-radius: 2px; background: var(--tsoi-color-primary); color: #fff; }
   @media (max-width: 600px) { .ctas { flex-direction: column; align-items: stretch; } .cta { text-align: center; padding: 12px 16px; } }
   .cta.ghost { background: var(--tsoi-color-background); color: var(--tsoi-color-on-surface); border: 1px solid var(--tsoi-color-outline); }
 
-  /* Desktop deck renders a subtle notch larger than the base px scale — the
-     broadsheet cover type ran small on wide screens. `zoom` reproduces a browser
-     zoom — verified in Chromium + Firefox to neither oscillate the width media
-     query nor add horizontal scroll. Under zoom `100svh` grows by the same
-     factor, so the full-height scroll-snap cards would overspill; the deck's
-     height JS divides `--app-height` by the computed zoom to compensate (see the
-     script). Tune the factor here. */
-  @media (min-width: 1200px) {
-    :global(html) { zoom: 1.1; }
-  }
-
   @media (min-width: 880px) {
-    /* Desktop keeps the same one-card-per-swipe scroll-snap as mobile (the base
-       .deck/.beat rules), but lays each beat out as two columns: chart beside
-       the text. */
-    .beat { max-width: 1200px; margin-inline: auto; width: 100%; box-sizing: border-box;
-      flex-direction: row; align-items: center; gap: clamp(28px, 5vw, 72px); }
-    .beat-text { flex: 0 0 38%; }
-    .beat-chart { flex: 1 1 auto; height: min(58vh, 540px); min-height: 320px; }
-    /* intro is a single-column, vertically-centred editorial cover (distinct
-       from the two-column content beats): a clean title block, no illustration. */
-    .intro { flex-direction: column; align-items: center; justify-content: center; text-align: left; }
-    .outro { flex-direction: column; align-items: center; justify-content: center; text-align: center; }
-    .outro .ctas { justify-content: center; }
-    .intro .beat-chart, .outro .beat-chart { display: none; }
+    /* The deck as an object on the table: a portrait frame centred on the
+       page, the same mobile-first card layout inside — one layout, one chart
+       size, at every viewport (this replaced the old desktop two-column +
+       zoom treatment when Beats became Play). The sheets behind the frame are
+       the rest of the deck: the script hides one per card consumed, so the
+       stack itself is the progress indicator; the dots yield to it here and
+       a small counter carries the exact position. */
+    .stage { display: grid; place-items: center; height: var(--app-height, 100svh); }
+    .frame {
+      width: min(430px, 92vw);
+      height: min(calc(var(--app-height, 100svh) - 112px), 720px);
+      border: 1px solid var(--tsoi-color-outline);
+      background: var(--tsoi-color-background);
+    }
+    .beat { padding: 48px 26px 40px; }
+    .beat-chart { min-height: 240px; }
+    .dots { display: none; }
+    .sheet {
+      display: block; position: absolute; inset: 0; z-index: -1;
+      border: 1px solid var(--tsoi-color-outline);
+      background: var(--tsoi-color-background);
+      transition: opacity 0.35s ease, transform 0.35s ease;
+    }
+    .sheet.s1 { transform: translate(7px, 7px); }
+    .sheet.s2 { transform: translate(14px, 14px); }
+    .sheet.s3 { transform: translate(21px, 21px); }
+    /* a consumed sheet slides under the card and fades — the one orchestrated
+       motion the advance gets */
+    .sheet.gone { opacity: 0; transform: translate(0, 0); }
+    .counter {
+      display: block; position: absolute; top: calc(100% + 10px); right: 0;
+      font: var(--tsoi-text-byline); letter-spacing: 0.08em;
+      font-variant-numeric: tabular-nums;
+      color: var(--tsoi-color-on-surface-variant);
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .sheet { transition: none; }
   }
 </style>
 
@@ -257,9 +327,9 @@ const pageDesc = home
     const root = document.documentElement;
     let appH = 0;
     const grow = () => {
-      // Under the desktop `zoom` (see <style>), `100svh` and innerHeight are in
-      // physical px but the card lays out in zoomed coordinates — divide by the
-      // computed zoom so a card fills exactly one screen (z = 1 when unzoomed).
+      // The old desktop zoom treatment is gone (the deck renders in a portrait
+      // frame now), but dividing by computed zoom stays: it's 1 today and keeps
+      // the height honest if a zoom ever returns.
       const z = parseFloat(getComputedStyle(root).zoom) || 1;
       const h = window.innerHeight / z;
       if (h > appH) { appH = h; root.style.setProperty('--app-height', h + 'px'); }
@@ -286,8 +356,50 @@ const pageDesc = home
   const dataEl = document.getElementById('deck-data');
   if (dataEl) {
     const deck: BeatDeck = JSON.parse(dataEl.textContent!);
+
+    // Progress UI first — the dots, the counter and the depleting sheet stack
+    // must track the swipe even if the dataset fetch below ever fails; only
+    // the charts depend on the data.
+    const dots = [...document.querySelectorAll<HTMLElement>('.dot')];
+    const counterNow = document.getElementById('card-now');
+    const sheets = [1, 2, 3].map((n) => document.querySelector<HTMLElement>(`.sheet.s${n}`));
+    const totalCards = deck.beats.length + 2; // intro + beats + outro
+    const deckEl = document.getElementById('deck')!;
+    let ensureBeat: ((idx: number) => void) | null = null; // set once data loads
+    let lastIdx = -1;
+    const setCard = (idx: number) => {
+      if (idx === lastIdx) return;
+      lastIdx = idx;
+      dots.forEach((d, i) => d.classList.toggle('active', i === idx));
+      if (counterNow) counterNow.textContent = String(idx + 1);
+      // the stack depletes: sheet n stays while at least n cards remain
+      // ahead — advancing consumes the nearest sheet (it slides under the
+      // card and fades; see the .sheet.gone transition)
+      const remaining = totalCards - 1 - idx;
+      sheets.forEach((s, i) => s?.classList.toggle('gone', remaining < i + 1));
+      ensureBeat?.(idx);
+    };
+    // Cards are position: sticky (the next card covers the pinned current
+    // one), so IntersectionObserver can't pick the top card — a covered card
+    // never leaves the viewport. Scroll math can: each card owns exactly one
+    // frame-height of scroll range.
+    let scrollRaf = 0;
+    const onScroll = () => {
+      cancelAnimationFrame(scrollRaf);
+      scrollRaf = requestAnimationFrame(() => {
+        const h = deckEl.clientHeight || 1;
+        setCard(Math.max(0, Math.min(totalCards - 1, Math.round(deckEl.scrollTop / h))));
+      });
+    };
+    deckEl.addEventListener('scroll', onScroll, { passive: true });
+    setCard(0);
+
     (async () => {
       const data = (await fetch(deck.dataset).then((r) => r.json())) as Record<string, Row[]>;
+      if (deck.beats.some((b) => b.panel.chart === 'choropleth')) {
+        const geo = await fetch('/maps/india_states.json').then((r) => r.json());
+        echarts.registerMap('india', geo);
+      }
       const charts: Record<string, echarts.ECharts> = {};
       // Beats are narrative cards, not tools: the legend is a key, not a control.
       // Freeze legend selection so a tap can't strand a series with no way back.
@@ -355,21 +467,11 @@ const pageDesc = home
         }
       };
 
-      const dots = [...document.querySelectorAll<HTMLElement>('.dot')];
-      const deckEl = document.getElementById('deck')!;
-      const io = new IntersectionObserver(
-        (entries) => {
-          for (const e of entries) {
-            if (!e.isIntersecting) continue;
-            const idx = +(e.target as HTMLElement).dataset.card!;
-            dots.forEach((d, i) => d.classList.toggle('active', i === idx));
-            const beat = deck.beats[idx - 1]; // card 0 = intro
-            if (beat) ensure(beat);
-          }
-        },
-        { root: deckEl, threshold: 0.5 }
-      );
-      deckEl.querySelectorAll('.beat').forEach((c) => io.observe(c));
+      ensureBeat = (idx) => {
+        const beat = deck.beats[idx - 1]; // card 0 = intro
+        if (beat) ensure(beat);
+      };
+      ensureBeat(lastIdx); // the card already on screen when the data arrived
 
       new MutationObserver(rerender).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'data-units'] });
       document.fonts?.ready.then(rerender);
@@ -382,5 +484,64 @@ const pageDesc = home
     if ((e.target as HTMLElement).matches('input,textarea,select,[contenteditable]')) return;
     (document.getElementById('skip-link') as HTMLAnchorElement)?.click();
   });
+
+  // The pager: one card per gesture, every input. The deck doesn't scroll
+  // natively (see the .deck CSS for why snap can't drive the sticky cover);
+  // wheel, arrows/space and touch swipes each advance or rewind exactly one
+  // card via a smooth programmatic scroll — which is the design anyway
+  // ("one card per swipe"). Reduced motion jumps instantly.
+  {
+    const deckEl = document.getElementById('deck');
+    if (deckEl) {
+      const reduce = matchMedia('(prefers-reduced-motion: reduce)');
+      const cards = deckEl.querySelectorAll('.beat').length;
+      let current = 0;
+      const goTo = (idx: number) => {
+        current = Math.max(0, Math.min(cards - 1, idx));
+        deckEl.scrollTo({
+          top: current * deckEl.clientHeight,
+          behavior: reduce.matches ? 'auto' : 'smooth',
+        });
+      };
+      const page = (dir: number) => goTo(current + dir);
+
+      document.addEventListener('keydown', (e) => {
+        if ((e.target as HTMLElement).matches('input,textarea,select,[contenteditable]')) return;
+        if (e.key === 'ArrowDown' || e.key === 'PageDown' || e.key === ' ') { e.preventDefault(); page(1); }
+        else if (e.key === 'ArrowUp' || e.key === 'PageUp') { e.preventDefault(); page(-1); }
+      });
+
+      // one card per wheel gesture, anywhere on the page (the stage around
+      // the desktop frame included); the debounce absorbs trackpad momentum
+      let lastWheel = 0;
+      document.addEventListener(
+        'wheel',
+        (e) => {
+          if (Math.abs(e.deltaY) < 10) return; // momentum-tail noise
+          const now = Date.now();
+          if (now - lastWheel < 650) return;
+          lastWheel = now;
+          page(Math.sign(e.deltaY));
+        },
+        { passive: true }
+      );
+
+      // swipe: distance decides on release (touch-action: none frees us from
+      // fighting native panning)
+      let touchY = 0;
+      deckEl.addEventListener('touchstart', (e) => { touchY = e.touches[0].clientY; }, { passive: true });
+      deckEl.addEventListener(
+        'touchend',
+        (e) => {
+          const dy = touchY - e.changedTouches[0].clientY;
+          if (Math.abs(dy) > 48) page(dy > 0 ? 1 : -1);
+        },
+        { passive: true }
+      );
+
+      // keep the current card aligned when the frame's height changes
+      addEventListener('resize', () => deckEl.scrollTo({ top: current * deckEl.clientHeight }));
+    }
+  }
 </script>
 </BaseLayout>

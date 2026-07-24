@@ -1,3 +1,507 @@
 ---
-return Astro.redirect('/economy/beats', 301);
+// The dispatch front page. TSOI ships in thematic releases; each one is a
+// numbered dispatch (src/lib/dispatches.ts) and this page presents the latest
+// like a Sunday paper's front page: edition line, the read as the lead
+// story, the deck/dashboards as secondary cards, previous dispatches as a
+// compact stack. Every item deep-links straight to content — this page IS the
+// index-with-context, so nothing routes through a format index first.
+// The current dispatch is bound in a frame (saffron accent + hairline) so the
+// muted stack cards below read as smaller instances of the same object.
+// The fold is a motif, not a mechanic: the below-the-fold blocks self-unfold
+// in ~600ms on load (prefers-reduced-motion gets it instantly); never a gate.
+import { existsSync } from 'node:fs';
+import { resolve } from 'node:path';
+import StoryPage from '../layouts/StoryPage.astro';
+import FormatMotif from '../components/editorial/FormatMotif.astro';
+import GameCard from '../components/play/GameCard.astro';
+import DashCard from '../components/explore/DashCard.astro';
+import { DISPATCH_LIST, FORMAT_LABELS, type DispatchFormat } from '../lib/dispatches';
+import { SECTION_LABELS, THEME_LABELS } from '../lib/themes';
+import { readingMinutes } from '../lib/reading-time';
+import { dataThrough } from '../lib/data-through';
+import obhm from '../data/play/off-by-how-much.json';
+
+const [latest, ...previous] = DISPATCH_LIST;
+const [lead, ...secondary] = latest.items;
+
+// Every item shows its true face at card scale: the game wears the Play
+// format's own card (the same landscape card the rack shows, and the same
+// proportion as the intro screen it opens), the dashboards wear the Explore
+// format's landscape screenshot card. Shape codes format site-wide — read =
+// wide banner across the top, then the game beside the dashboards below.
+// Decks are retired: their URLs stay alive but nothing lists them any more.
+const gameItems = secondary.filter((it) => it.format === 'game');
+const otherItems = secondary.filter((it) => it.format !== 'game');
+
+// The game card's gauge labels + Round 1 peek come from the game's own data,
+// exactly as the Play rack builds them (see economy/play.astro for why the
+// range is not a spoiler and why it travels as absolute counts).
+const currentPuzzle = obhm.puzzles.find((p) => p.n === obhm.current)!;
+const round1 = currentPuzzle.rounds[0] as {
+  q: string;
+  min?: number;
+  max?: number;
+  countScale?: number;
+};
+const gameScale =
+  round1.countScale && round1.min != null && round1.max != null
+    ? { minCount: round1.min * round1.countScale, maxCount: round1.max * round1.countScale }
+    : undefined;
+
+// Cover art from the committed /thumbs captures; absent thumbs degrade to
+// text cards (the rule inside DashCard), so a new item never breaks
+// the front page before its thumbs run.
+const coverOf = (dir: string, href: string) => {
+  const slug = href.split('/').pop()!;
+  return existsSync(resolve(process.cwd(), `public/thumbs/${dir}/${slug}.png`))
+    ? `/thumbs/${dir}/${slug}`
+    : undefined;
+};
+
+// The dispatch's manifest — "1 read · 1 deck · 2 dashboards" — so the head
+// declares everything the dispatch contains at zero scroll (on mobile the
+// lead otherwise owns the first screen and the dispatch reads as just a read).
+// Manifest order mirrors the page's own reading order (lead, then the row).
+const FORMAT_ORDER: DispatchFormat[] = ['read', 'beat-deck', 'game', 'dashboard', 'comic'];
+const manifest = FORMAT_ORDER.flatMap((f) => {
+  const n = latest.items.filter((it) => it.format === f).length;
+  return n ? [`${n} ${FORMAT_LABELS[f].toLowerCase()}${n > 1 ? 's' : ''}`] : [];
+}).join(' · ');
+
+const editionMonth = (iso: string) =>
+  new Date(`${iso}T00:00:00`).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+
+// Lead-story meta (reading time + data freshness) applies when the lead is a read.
+const leadSlug = lead.href.split('/').pop()!;
+// For a read, "N min read" already names the format — no "Read · 16 min read".
+const leadMeta =
+  lead.format === 'read'
+    ? [
+        `${readingMinutes(leadSlug)} min read`,
+        ...(dataThrough(leadSlug) ? [`data through ${dataThrough(leadSlug)}`] : []),
+      ].join(' · ')
+    : FORMAT_LABELS[lead.format];
 ---
+
+<StoryPage
+  homeH1
+  title="Time Series of India"
+  description={`India's official public data, translated into charted reads, swipeable decks and live dashboards — released as numbered dispatches. Latest: ${THEME_LABELS[latest.theme]}.`}
+>
+  <!-- ── the current dispatch, bound as one object ─────────────────────── -->
+  <section class="dispatch">
+    <!-- edition line only — the lead story is the dispatch's pitch; a
+         standfirst here just paraphrased the lead blurb one screen apart -->
+    <header class="edition-head">
+      <p class="edition-line">
+        Dispatch No. {latest.edition} &middot; {editionMonth(latest.date)} &middot; {THEME_LABELS[latest.theme]}
+      </p>
+      <p class="edition-manifest">{manifest}</p>
+    </header>
+
+    <!-- lead story: the read gets the big slot -->
+    <a class="lead" href={lead.href}>
+      {lead.thumb && (
+        <span class="cover">
+          <img class="t-light" src={`${lead.thumb}.png`} alt="" loading="eager" />
+          <img class="t-dark" src={`${lead.thumb}-dark.png`} alt="" loading="eager" />
+        </span>
+      )}
+      <span class="lead-body">
+        <span class="tag">{SECTION_LABELS[latest.section]} &middot; {THEME_LABELS[latest.theme]} &middot; {leadMeta}</span>
+        <FormatMotif format={lead.format} unlabelled />
+        <h2 class="lead-title">{lead.title}</h2>
+        <span class="lead-deck">{lead.blurb}</span>
+        <span class="lead-cta">Read the story <span aria-hidden="true">&rarr;</span></span>
+      </span>
+    </a>
+
+    <div class="below-fold">
+      <!-- secondary cards: the rest of the dispatch -->
+      <p class="list-label">Also in this dispatch</p>
+      <div class:list={['item-row', { 'no-game': gameItems.length === 0 }]}>
+        {gameItems.map((it) => (
+          <GameCard
+            href={it.href}
+            kicker={`${FORMAT_LABELS[it.format]} · Puzzle № ${obhm.current}`}
+            title={it.title}
+            body={it.blurb}
+            peek={round1.q}
+            scale={gameScale}
+          />
+        ))}
+        {otherItems.length > 0 && (
+          <div class="item-col">
+            {otherItems.map((it) => (
+              <DashCard
+                href={it.href}
+                kicker={`${FORMAT_LABELS[it.format]}${it.meta ? ` · ${it.meta}` : ''}`}
+                title={it.title}
+                body={it.blurb}
+                cover={it.format === 'dashboard' ? coverOf('explore', it.href) : undefined}
+                cta={it.format === 'dashboard' ? 'Open the dashboard' : 'Open'}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  </section>
+
+  <!-- ── the stack: previous dispatches, compact cards ─────────────────── -->
+  {previous.length > 0 && (
+    <section class="stack">
+      <p class="list-label">Previous dispatches</p>
+      {previous.map((d) => {
+        const cover = d.items.find((it) => it.thumb);
+        return (
+        <article class:list={['stack-card', { 'has-cover': !!cover }]}>
+          {cover && (
+            <a class="stack-cover" href={cover.href} aria-label={cover.title}>
+              <img class="t-light" src={`${cover.thumb}.png`} alt="" loading="lazy" />
+              <img class="t-dark" src={`${cover.thumb}-dark.png`} alt="" loading="lazy" />
+            </a>
+          )}
+          <div class="stack-head">
+            <span class="stack-kicker">Dispatch No. {d.edition} &middot; {editionMonth(d.date)}</span>
+            <span class="stack-theme">{THEME_LABELS[d.theme]}</span>
+          </div>
+          <ul class="stack-items">
+            {d.items.map((it) => (
+              <li>
+                <a href={it.href}>
+                  <FormatMotif format={it.format} meta={it.meta} />
+                  <span class="stack-title">{it.title}</span>
+                  <span class="stack-arrow" aria-hidden="true">&rarr;</span>
+                </a>
+              </li>
+            ))}
+          </ul>
+        </article>
+        );
+      })}
+    </section>
+  )}
+</StoryPage>
+
+<style>
+  /* ── the dispatch frame: same anatomy as a stack card, rendered large ──── */
+  .dispatch {
+    padding: calc(var(--tsoi-spacing-unit) * 3) calc(var(--tsoi-spacing-unit) * 3.5)
+      calc(var(--tsoi-spacing-unit) * 3.5);
+    border: var(--tsoi-rule-column) solid var(--tsoi-color-outline);
+    border-left: 4px solid var(--tsoi-color-primary);
+  }
+
+  /* ── edition head ─────────────────────────────────────────────────────── */
+  .edition-head {
+    text-align: center;
+    padding-bottom: calc(var(--tsoi-spacing-unit) * 1.75);
+    border-bottom: var(--tsoi-rule-section) solid var(--tsoi-color-on-surface);
+  }
+  .edition-line {
+    margin: 0;
+    font: var(--tsoi-text-label-caps);
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--tsoi-color-primary-text);
+  }
+  /* the manifest: the dispatch declares its contents at zero scroll */
+  .edition-manifest {
+    margin: 6px 0 0;
+    font: var(--tsoi-text-byline); letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--tsoi-color-on-surface-variant);
+  }
+
+  /* ── lead story ───────────────────────────────────────────────────────── */
+  .lead {
+    display: grid;
+    /* the cover column is sized to the picture, not the other way round: the
+       capture is portrait (720×824), so at 360px tall it wants ~315px of
+       width and no more. A wider column just parks empty surface beside it. */
+    grid-template-columns: minmax(0, 0.36fr) 1fr;
+    margin-top: calc(var(--tsoi-spacing-unit) * 2.25);
+    /* no border-left here: the .dispatch frame around this whole section
+       already carries the identical 4px saffron rule, so the lead doesn't
+       repeat the "current dispatch" mark — one draw of it is enough. */
+    background: var(--tsoi-color-surface-container-low);
+    text-decoration: none;
+    color: inherit;
+    transition: background 0.15s;
+  }
+  .lead:hover { background: var(--tsoi-color-surface-container-high); }
+  .lead .cover {
+    display: flex; align-items: center; justify-content: center;
+    overflow: hidden;
+    padding: calc(var(--tsoi-spacing-unit) * 2.5) 0;
+    background: var(--tsoi-color-surface-container-low);
+    border-right: var(--tsoi-rule-column) solid var(--tsoi-color-outline);
+  }
+  /* 320px: the cover is a DIAGRAM, and a diagram that can't be read is just a
+     texture — so this is capped well above the ~250px floor where the step
+     labels ("name & amount", "the part you never see") go to mush. It trades
+     a bit of the size headroom 360px had (the capture is 720×824, so 360 was
+     close to its native 2× size) for a tighter banner: the lead's right
+     column only fills about half the banner's height at 1440px, leaving wide
+     empty bands beside the text, and 320 slims the whole banner down without
+     getting near the legibility floor. The height it costs is bought back by
+     the fold rule below: the lead may own the first screen, never more. */
+  .lead .cover img {
+    width: auto; max-width: 100%; height: 100%; max-height: 320px;
+    object-fit: contain; display: block;
+  }
+  /* theme-swapped thumbnails: both ship; CSS picks one (see economy/index). */
+  .lead .cover .t-dark { display: none; }
+  :global(html[data-theme='dark']) .lead .cover .t-light { display: none; }
+  :global(html[data-theme='dark']) .lead .cover .t-dark { display: block; }
+  .lead-body {
+    display: flex; flex-direction: column; justify-content: center;
+    padding: calc(var(--tsoi-spacing-unit) * 2) calc(var(--tsoi-spacing-unit) * 3.5);
+  }
+  .tag {
+    font: var(--tsoi-text-byline); font-weight: 500; letter-spacing: 0.1em;
+    text-transform: uppercase; color: var(--tsoi-color-primary-text);
+  }
+  .lead-title {
+    margin: calc(var(--tsoi-spacing-unit) * 1.25) 0 0;
+    font: var(--tsoi-text-headline-xl);
+    letter-spacing: var(--tsoi-text-headline-xl-tracking);
+  }
+  .lead:hover .lead-title { color: var(--tsoi-color-primary-text); }
+  .lead-deck {
+    max-width: 64ch;
+    margin: calc(var(--tsoi-spacing-unit) * 1.25) 0 0;
+    font: var(--tsoi-text-deck);
+    letter-spacing: var(--tsoi-text-deck-tracking);
+    color: var(--tsoi-color-on-surface-variant);
+    /* three lines is the pitch; past that the lead starts eating the row
+       below it, which is the one thing the fold rule forbids */
+    display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .lead-cta {
+    margin: calc(var(--tsoi-spacing-unit) * 1.75) 0 0;
+    font: var(--tsoi-text-byline); font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase;
+    color: var(--tsoi-color-primary-text);
+  }
+  .lead-cta span { display: inline-block; transition: transform 0.15s; }
+  .lead:hover .lead-cta span { transform: translateX(3px); }
+
+  /* ── secondary cards ──────────────────────────────────────────────────── */
+  .list-label {
+    margin: calc(var(--tsoi-spacing-unit) * 2) 0 calc(var(--tsoi-spacing-unit) * 1.25);
+    font: var(--tsoi-text-byline); letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--tsoi-color-on-surface-variant);
+  }
+  .stack > .list-label { margin-top: calc(var(--tsoi-spacing-unit) * 5); }
+  /* Second row of the dispatch: the game beside the dashboards. The game card
+     holds a fixed 560/442 proportion (GameCard.astro — the intro screen's own
+     shape), so its column is the narrow one and its width therefore sets the
+     row's height; the dashboards take the wider remainder and stretch to meet
+     it. Geometry serves the dispatch, never the reverse: a dispatch without a
+     game falls back to a plain grid of wide cards (.no-game). */
+  .item-row {
+    display: grid;
+    /* 400px floor on the game column: below that the card's own content
+       (kicker, title, pitch, gauge, peek, CTA) needs more height than the
+       ratio allows at that width, and the card stops being the shape it is
+       everywhere else. The dashboard yields the width instead.
+       0.75/1.25: the game is deliberately the SMALLER, less load-bearing
+       object of the pair — size is hierarchy, and the dashboard is the data
+       centerpiece, so it gets the wider column. 0.7/1.3 was tried once
+       before and reverted as "stranded" (the dashboard's screenshot showed
+       its full control bar then, making the card read tall and heavy next
+       to a narrow game card) — but that judgment predates cropping the desk
+       bar out of the dashboard capture (build-dashboard-thumbs.mjs), which
+       shallows the card considerably. 0.75 was chosen fresh after that crop,
+       not as a half-step back toward 0.85. */
+    grid-template-columns: minmax(400px, 0.75fr) minmax(0, 1.25fr);
+    gap: calc(var(--tsoi-spacing-unit) * 3);
+    /* start, not stretch: the game card carries a fixed 560/442 ratio, so a
+       stretched height would set its WIDTH — it grows out of its own column
+       and the row overflows. The row's depth is the game card's; the
+       dashboards keep their own. */
+    align-items: start;
+  }
+  .item-col {
+    display: flex; flex-direction: column;
+    gap: calc(var(--tsoi-spacing-unit) * 3);
+    min-width: 0;
+  }
+  /* Flat, equal-weight cards on the front page. The lead read is a plain
+     filled card with no outer edge, and here the game and dashboard match it:
+     the game drops its full outline box (it read heavy and boxy beside the
+     borderless read) and both drop their own saffron seam. The one saffron
+     "current dispatch" mark this section carries is the .dispatch frame's
+     left rule, drawn once — repeating it per card is the weight-asymmetry
+     between sibling formats the card design language rules out. Scoped to the
+     front page on purpose: the shared components keep their edges where they
+     stand alone (GameCard on the Play rack, DashCard nowhere else yet). */
+  .item-row :global(.game-card) { border: none; }
+  .item-row :global(.dash-card) { border-left: none; }
+  /* The dashboard wears its screenshot across the top here, not in DashCard's
+     default side strip: a landscape shot in a narrow side slot is cropped to
+     a vertical slice through the panels and reads as a rendering fault.
+     No aspect-ratio and `height: auto` — the image is shown WHOLE at its own
+     proportion (the capture is ~2.12:1: desk bar, the three stat tiles, and
+     both chart panels), so nothing is cut and nothing has to be re-tuned here
+     if build-dashboard-thumbs.mjs ever reframes the capture. */
+  .item-col :global(.dash-card) { grid-template-columns: minmax(0, 1fr); }
+  .item-col :global(.da-cover) {
+    aspect-ratio: auto;
+    border-right: none;
+    border-bottom: var(--tsoi-rule-column) solid var(--tsoi-color-outline);
+  }
+  .item-col :global(.da-cover img) { height: auto; }
+  .item-row.no-game { grid-template-columns: 1fr; }
+  .item-row.no-game .item-col { display: grid; grid-template-columns: repeat(2, 1fr); }
+  /* format marks (FormatMotif) — spacing/colour is contextual */
+  .lead-body :global(.motif) { margin-top: calc(var(--tsoi-spacing-unit) * 1.25); }
+
+  /* ── previous dispatches (the stack): compact cards, muted accents ────── */
+  .stack-card {
+    display: grid;
+    grid-template-columns: minmax(220px, 0.35fr) 1fr;
+    column-gap: var(--tsoi-column-gutter);
+    padding: calc(var(--tsoi-spacing-unit) * 2.5) calc(var(--tsoi-spacing-unit) * 3.5);
+    border: var(--tsoi-rule-column) solid var(--tsoi-color-outline);
+    border-left: 4px solid var(--tsoi-color-outline);
+    background: var(--tsoi-color-surface-container-low);
+    transition: border-color 0.15s;
+  }
+  /* the lead read's cover strip lends the card its colour */
+  .stack-card.has-cover {
+    grid-template-columns: 132px minmax(200px, 0.32fr) 1fr;
+    align-items: center;
+  }
+  .stack-cover { display: flex; align-items: center; justify-content: center; }
+  .stack-cover img {
+    max-width: 100%; max-height: 150px;
+    object-fit: contain; display: block;
+  }
+  .stack-cover .t-dark { display: none; }
+  :global(html[data-theme='dark']) .stack-cover .t-light { display: none; }
+  :global(html[data-theme='dark']) .stack-cover .t-dark { display: block; }
+  .stack-card:hover { border-left-color: var(--tsoi-color-primary); }
+  .stack-card + .stack-card { margin-top: calc(var(--tsoi-spacing-unit) * 2); }
+  .stack-kicker {
+    display: block;
+    font: var(--tsoi-text-byline); font-weight: 500; letter-spacing: 0.1em;
+    text-transform: uppercase; color: var(--tsoi-color-on-surface-variant);
+  }
+  .stack-theme {
+    display: block;
+    margin-top: var(--tsoi-spacing-unit);
+    font: var(--tsoi-text-headline-lg);
+    letter-spacing: var(--tsoi-text-headline-lg-tracking);
+  }
+  .stack-items { margin: 0; padding: 0; list-style: none; }
+  .stack-items li + li { border-top: var(--tsoi-rule-column) solid var(--tsoi-color-outline); }
+  .stack-items a {
+    display: flex; align-items: center; gap: calc(var(--tsoi-spacing-unit) * 1.5);
+    padding: var(--tsoi-spacing-unit) 0;
+    text-decoration: none; color: inherit;
+  }
+  /* the format mark stands in for the text label here (sr-only label ships
+     with it); muted like everything else in the stack */
+  .stack-items :global(.motif) {
+    flex: none;
+    color: var(--tsoi-color-on-surface-variant);
+  }
+  .stack-title {
+    font: var(--tsoi-text-body);
+    letter-spacing: var(--tsoi-text-body-tracking);
+  }
+  .stack-items a:hover .stack-title { color: var(--tsoi-color-primary-text); }
+  .stack-items a:hover :global(.motif) { color: var(--tsoi-color-primary); }
+  .stack-arrow {
+    margin-left: auto;
+    font: var(--tsoi-text-byline);
+    color: var(--tsoi-color-primary-text);
+    opacity: 0;
+    transition: opacity 0.15s;
+  }
+  .stack-items a:hover .stack-arrow { opacity: 1; }
+
+  /* ── the fold: a ~600ms self-unfold on load, never a gate ─────────────── */
+  @media (prefers-reduced-motion: no-preference) {
+    .lead { animation: settle 0.4s ease-out both; }
+    .below-fold { animation: unfold 0.6s cubic-bezier(0.22, 1, 0.36, 1) 0.15s both; }
+    .stack { animation: unfold 0.6s cubic-bezier(0.22, 1, 0.36, 1) 0.25s both; }
+  }
+  @keyframes settle {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  @keyframes unfold {
+    from { opacity: 0; transform: translateY(14px); }
+    to { opacity: 1; transform: none; }
+  }
+
+  /* ── responsive ───────────────────────────────────────────────────────── */
+  /* ipad-portrait tier (768–1023px, the site's own tablet breakpoint — see
+     global.css): the game and dashboard stay side by side, but the game
+     becomes the SMALLER of the pair (0.82/1.18) rather than the desktop
+     0.75/1.25 — and, crucially, it drops its 560/442 ratio here. At desktop
+     the ratio holds because the column is wide enough to fill; at tablet
+     widths that same ratio left the card taller than its content, pooling
+     empty space around the gauge and making the game read oversized. Letting
+     the card fall to its content height (aspect-ratio: auto, the same relief
+     the phone tier and the shared component's ≤600px rule already use) keeps
+     it compact and lets the dashboard beside it keep enough width for its
+     screenshot to read. */
+  @media (min-width: 768px) and (max-width: 1023px) {
+    .item-row { grid-template-columns: minmax(0, 0.82fr) minmax(0, 1.18fr); gap: calc(var(--tsoi-spacing-unit) * 2.5); }
+    .item-row.no-game { grid-template-columns: minmax(0, 1fr); }
+    .item-row.no-game .item-col { grid-template-columns: minmax(0, 1fr); }
+    .item-col { gap: calc(var(--tsoi-spacing-unit) * 2.5); }
+    /* fill the column and sit at its content height — no fixed ratio, no cap */
+    .item-row > :global(.game-card) { aspect-ratio: auto; max-width: none; }
+  }
+
+  @media (max-width: 767px) {
+    /* phones stack the whole row to one column; the game card keeps a 480px
+       cap (the same the play rack uses) and left-aligns. The shared
+       component already drops its ratio at ≤600px, so the card is content
+       height here too. */
+    .item-row,
+    .item-row.no-game { grid-template-columns: minmax(0, 1fr); row-gap: calc(var(--tsoi-spacing-unit) * 2.5); }
+    .item-row.no-game .item-col { grid-template-columns: minmax(0, 1fr); }
+    .item-col { gap: calc(var(--tsoi-spacing-unit) * 2.5); }
+    .item-row > :global(.game-card) { max-width: 480px; justify-self: start; }
+    .dispatch { padding: calc(var(--tsoi-spacing-unit) * 2) calc(var(--tsoi-spacing-unit) * 1.75); }
+    .lead { grid-template-columns: 1fr; margin-top: calc(var(--tsoi-spacing-unit) * 2.5); }
+    .lead .cover {
+      border-right: none;
+      border-bottom: var(--tsoi-rule-column) solid var(--tsoi-color-outline);
+      padding: calc(var(--tsoi-spacing-unit) * 3) 0 calc(var(--tsoi-spacing-unit) * 2);
+    }
+    /* the same legibility floor as desktop, traded against the phone's much
+       shorter screen: 250px still resolves the diagram's step labels, and
+       leaves the game card's top edge showing under the fold */
+    .lead .cover img { max-height: 250px; }
+    .lead-body { padding: calc(var(--tsoi-spacing-unit) * 2.5); }
+    .lead-title { font: var(--tsoi-text-headline-lg); letter-spacing: var(--tsoi-text-headline-lg-tracking); }
+    .lead-deck { -webkit-line-clamp: 2; }
+    /* Every item keeps its true face on phones too — the game card carries the
+       gauge that IS its pitch and the dashboard its screenshot, and neither
+       survives being flattened into a text row. They stack under the lead in
+       one column: the read still leads by position and by size (it owns the
+       first screen alone), the other two follow at card scale. Fitting all
+       three inside one 700px screen would need every card shrunk past the
+       point of being readable, so the row below the fold is allowed to
+       scroll — the fold is a motif, not a mechanic. The stacking itself
+       (minmax(0, 1fr), not 1fr — a bare 1fr track floors at the game card's
+       min-content width and the page scrolls sideways) is set above, in the
+       1023px tier this phone width also falls under.
+       */
+    .stack-card,
+    .stack-card.has-cover {
+      grid-template-columns: 1fr;
+      row-gap: calc(var(--tsoi-spacing-unit) * 1.5);
+      padding: calc(var(--tsoi-spacing-unit) * 2.5);
+    }
+    .stack-cover img { max-height: 120px; }
+    .stack-theme { font: var(--tsoi-text-headline-md); letter-spacing: var(--tsoi-text-headline-md-tracking); }
+  }
+</style>

@@ -1,0 +1,21 @@
+---
+// One prebuilt page per released puzzle — the share-URL target (today: just
+// /1). Astro prefers this more-specific static segment over the sibling
+// [deck].astro route, so off-by-how-much/ wins there; verified in the build
+// output alongside /economy/play/payments/ still emitting.
+import OffByHowMuch from '../../../../components/play/OffByHowMuch.astro';
+import gameData from '../../../../data/play/off-by-how-much.json';
+
+export function getStaticPaths() {
+  return gameData.puzzles.map((p) => ({ params: { puzzle: String(p.n) } }));
+}
+
+const puzzle = gameData.puzzles.find((p) => String(p.n) === Astro.params.puzzle)!;
+---
+
+<OffByHowMuch
+  game={{ title: gameData.title, seriesKicker: gameData.seriesKicker, current: gameData.current }}
+  puzzle={puzzle}
+  puzzleNo={puzzle.n}
+  isCurrent={puzzle.n === gameData.current}
+/>

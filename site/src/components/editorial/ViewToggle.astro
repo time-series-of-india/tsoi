@@ -1,14 +1,17 @@
 ---
-// The Beats ⇄ Reads ⇄ Dashboards switch shared by the Economy list views.
-// Single source so the three surfaces stay in lockstep. Stays a horizontal
-// segmented control at every width (equal-width segments on phones), rather
-// than collapsing into three stacked full-width bars.
-interface Props { active: 'beats' | 'reads' | 'dashboards' }
+// The Play ⇄ Read ⇄ Explore switch shared by the Economy list views — the
+// three format tabs, all verbs. Single source so the three surfaces stay in
+// lockstep. Rides the SectionHeader row itself, folded into the section rule
+// via its `actions` slot, right-aligned against the label/hairline/date on
+// desktop. Stays a horizontal segmented control at every width (equal-width
+// segments on phones, dropping to its own full-width line rather than
+// collapsing into three stacked bars).
+interface Props { active: 'play' | 'read' | 'explore' }
 const { active } = Astro.props;
 const items = [
-  { key: 'beats', label: 'Beats', href: '/economy/beats' },
-  { key: 'reads', label: 'Reads', href: '/economy' },
-  { key: 'dashboards', label: 'Dashboards', href: '/economy/dashboards' },
+  { key: 'play', label: 'Play', href: '/economy/play' },
+  { key: 'read', label: 'Read', href: '/economy/read' },
+  { key: 'explore', label: 'Explore', href: '/economy/explore' },
 ] as const;
 ---
 
@@ -30,7 +33,6 @@ const items = [
     border: 1px solid var(--tsoi-color-outline);
     border-radius: 2px;
     overflow: hidden;
-    margin-bottom: calc(var(--tsoi-spacing-unit) * 3);
   }
   .vt {
     font: var(--tsoi-text-byline);
@@ -45,6 +47,9 @@ const items = [
   }
   .vt + .vt { border-left: 1px solid var(--tsoi-color-outline); }
   .vt:hover:not(.active) { color: var(--tsoi-color-on-surface); background: var(--tsoi-color-surface-container-high); }
+  /* Accepted AA deviation (2026-07-19): white on light's #CC5500 fill is
+     4.31:1 against the 4.5:1 floor; the passing darker saffron read too red,
+     so the brand fill stays. */
   .vt.active { background: var(--tsoi-color-primary); color: #fff; }
 
   @media (max-width: 600px) {

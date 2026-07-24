@@ -1,0 +1,1055 @@
+---
+// The game itself: one puzzle (four rounds) played start to finish in a
+// single centred column. Ported from a validated static prototype — the
+// round flow, scoring bands, slider math and hand-rolled SVG charts below
+// are a faithful port of that prototype's logic, re-skinned onto the site's
+// design tokens (the prototype was single-theme paper; this must hold up in
+// both themes) and re-plumbed so puzzle content comes from JSON instead of
+// a hardcoded ROUNDS array. Both routes (canonical + numbered) render this
+// same component; puzzleNo/isCurrent are what tell the two apart.
+import StoryPage from '../../layouts/StoryPage.astro';
+
+interface Props {
+  game: { title: string; seriesKicker: string; current: number };
+  // `puzzle` crosses the JSON-import boundary as a plain data blob (see
+  // src/data/play/off-by-how-much.json) — loosely typed here on purpose; the
+  // client engine below re-parses and re-types it strictly after JSON.parse,
+  // which is the copy that actually drives the game logic.
+  puzzle: any;
+  puzzleNo: number;
+  isCurrent: boolean;
+}
+
+const { game, puzzle, puzzleNo, isCurrent } = Astro.props;
+
+const title = `${game.title} №${puzzleNo} — Time Series of India`;
+// No play-time estimate anywhere in the game's copy: it sets a clock running
+// in the reader's head, and a puzzle you linger over isn't one you played wrong.
+const description = `Guess ${puzzle.rounds.length} real numbers from India's payment systems before the data reveals the answer.`;
+
+const CANONICAL = '/economy/play/off-by-how-much/';
+// Domain, no protocol, no № — this is the one place the numbered page's
+// address is spelled out for players to share (see the client script's
+// buildShareText for why № never appears in that string).
+const shareUrl = `timeseriesofindia.com/economy/play/off-by-how-much/${puzzleNo}`;
+
+// Everything the client engine needs, handed across the server/client
+// boundary as inert JSON (a <script type="application/json"> tag, not
+// define:vars — the payload is too big/nested for vars' string-only rules).
+const payload = {
+  rounds: puzzle.rounds,
+  puzzleNo,
+  isCurrent,
+  primer: puzzle.primer,
+  shareUrl,
+};
+---
+
+<StoryPage title={title} description={description} og_type="article" og_image="/og/play/off-by-how-much.png">
+  <article class="obhm">
+    <!-- folio, not a back button: states where the game lives, never where
+         the reader came from (same convention as the read pages). -->
+    <nav class="folio" aria-label="Section">
+      <a href="/economy">Economy</a><span class="dot" aria-hidden="true">&middot;</span><a href="/economy/play">Play</a>
+    </nav>
+
+    <header class="masthead">
+      <p class="kicker">{game.seriesKicker} &middot; Puzzle №&thinsp;{puzzleNo}</p>
+      <div class="dots" id="obhm-dots" aria-hidden="true"></div>
+    </header>
+
+    {!isCurrent && (
+      <p class="archive-note"><a href={CANONICAL}>Today&rsquo;s puzzle is #{game.current} &rarr;</a></p>
+    )}
+
+    <main id="obhm-stage"></main>
+
+    <p class="footer-note">{puzzle.dataNote}</p>
+  </article>
+
+  <div class="obhm-tip" id="obhm-tip" role="status" aria-hidden="true"></div>
+
+  <script type="application/json" id="obhm-payload" set:html={JSON.stringify(payload)} />
+</StoryPage>
+
+<style is:global>
+  /* Scoped by hand (.obhm prefix) rather than Astro's automatic scoping:
+     almost every element here is injected by the client script below via
+     innerHTML, and Astro's scope attribute only lands on markup present at
+     render time — a scoped <style> would silently miss all of it. */
+  .obhm {
+    /* Light theme deepens the prototype's teal for contrast on the cream
+       ground (deliberate deviation from the flatter site chart-2); dark
+       theme uses the site's own chart-2 so it sits with the rest of the
+       chart palette instead of carrying a bespoke hue into dark mode. */
+    --obhm-teal: #0A968A;
+    /* ── intro gauge timing — the two knobs worth tuning by hand ──────────
+       --obhm-gauge-duration : the whole out-and-back run (was 3.7s, which
+                               read as sluggish for a decorative element)
+       --obhm-gauge-delay    : pause after paint before it starts moving
+       The 30% / 70% split between the two legs lives in @keyframes
+       obhm-wander below and scales with the duration, so changing the
+       duration alone keeps the out-fast / back-slow character. Tweak these
+       live on the .obhm element in devtools to find your pace. */
+    --obhm-gauge-duration: 2.1s;
+    --obhm-gauge-delay: 0.15s;
+    max-width: 560px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: calc(var(--tsoi-spacing-unit) * 2.25);
+  }
+  html[data-theme='dark'] .obhm {
+    --obhm-teal: var(--tsoi-color-chart-2);
+  }
+
+  .obhm .folio { font: var(--tsoi-text-byline); font-weight: 500; font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; padding: 4px 0; }
+  .obhm .folio a { color: var(--tsoi-color-primary-text); text-decoration: none; }
+  .obhm .folio a:hover { text-decoration: underline; }
+  .obhm .folio .dot { color: var(--tsoi-color-on-surface-variant); padding-inline: 5px; }
+
+  .obhm .masthead {
+    text-align: center;
+    border-bottom: var(--tsoi-rule-section) solid var(--tsoi-color-on-surface);
+    padding-bottom: calc(var(--tsoi-spacing-unit) * 1.25);
+    display: flex; flex-direction: column; gap: var(--tsoi-spacing-unit);
+  }
+
+  .obhm .dots { display: flex; gap: 7px; justify-content: center; }
+  /* scoped under .dots — the folio's "·" separator also wears class "dot" */
+  .obhm .dots .dot { width: 7px; height: 7px; border-radius: var(--tsoi-radius-full); background: var(--tsoi-color-outline); transition: background 0.3s; }
+  .obhm .dots .dot.on { background: var(--tsoi-color-primary); }
+  .obhm .dots .dot.done { background: var(--tsoi-color-on-surface-variant); }
+
+  .obhm .archive-note { margin: 0; text-align: center; font: var(--tsoi-text-byline); letter-spacing: 0.06em; }
+  .obhm .archive-note a { color: var(--tsoi-color-primary-text); text-decoration: none; }
+  .obhm .archive-note a:hover { text-decoration: underline; }
+
+  .obhm .card {
+    background: var(--tsoi-color-surface-container-low);
+    border: 1px solid var(--tsoi-color-outline);
+    border-radius: var(--tsoi-radius-lg);
+    padding: calc(var(--tsoi-spacing-unit) * 2.75) calc(var(--tsoi-spacing-unit) * 2.5);
+    display: flex; flex-direction: column; gap: calc(var(--tsoi-spacing-unit) * 2);
+  }
+
+  .obhm .kicker { margin: 0; font: var(--tsoi-text-byline); font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; color: var(--tsoi-color-primary-text); }
+  .obhm .kicker.quiet { color: var(--tsoi-color-on-surface-variant); }
+
+  .obhm h1 { font: var(--tsoi-text-headline-xl); letter-spacing: var(--tsoi-text-headline-xl-tracking); margin: 0; text-wrap: balance; }
+  .obhm h2 { font: var(--tsoi-text-headline-md); letter-spacing: var(--tsoi-text-headline-md-tracking); margin: 0; text-wrap: balance; }
+  .obhm .sub { color: var(--tsoi-color-on-surface-variant); margin: 0; font: var(--tsoi-text-deck); }
+
+  .obhm .primer-line { margin: 0; font: var(--tsoi-text-byline); letter-spacing: 0.08em; text-transform: uppercase; color: var(--tsoi-color-on-surface-variant); }
+  .obhm .primer-line a { color: var(--tsoi-color-primary-text); text-decoration: none; }
+  .obhm .primer-line a:hover { text-decoration: underline; }
+
+  .obhm .played-note { margin: 0; font: var(--tsoi-text-byline); color: var(--tsoi-color-on-surface-variant); }
+
+  .obhm .rules { display: flex; flex-direction: column; gap: calc(var(--tsoi-spacing-unit) * 1.25); margin: 0; padding: 0; list-style: none; }
+  .obhm .rules li { display: flex; gap: 10px; align-items: baseline; font: var(--tsoi-text-body); }
+  .obhm .rules .n { font: 500 12px var(--tsoi-font-mono); color: var(--tsoi-color-primary-text); flex: none; }
+
+  .obhm button { font: 600 15px var(--tsoi-font-body); cursor: pointer; border-radius: var(--tsoi-radius-md); border: 1px solid transparent; padding: 12px 22px; transition: background 0.15s, transform 0.05s; }
+  .obhm button:active { transform: translateY(1px); }
+  /* --primary-text, not --primary: 15px/600 cream (--on-primary) text on
+     light's #CC5500 fill measures 3.80:1, under the 4.5:1 AA floor (15px
+     bold-weight-600 doesn't clear WCAG's large-text bold cutoff at 18.66px,
+     so it needs the small-text 4.5:1 floor). Dark's --primary-text equals
+     --primary, so no change there. */
+  .obhm .btn-primary { background: var(--tsoi-color-primary); color: #fff; }
+  .obhm .btn-primary:hover { background: var(--tsoi-color-primary-container); }
+  .obhm .btn-primary:disabled { background: var(--tsoi-color-outline); color: var(--tsoi-color-on-surface-variant); cursor: default; }
+  .obhm .btn-ghost { background: transparent; border-color: var(--tsoi-color-outline); color: var(--tsoi-color-on-surface); }
+  .obhm .btn-ghost:hover { background: var(--tsoi-color-surface-container-high); }
+
+  .obhm .readout { font: 500 40px/1 var(--tsoi-font-mono); text-align: center; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+  .obhm .readout small { font-size: 17px; color: var(--tsoi-color-on-surface-variant); letter-spacing: 0; }
+  /* USD relatability line under the readout, and the tiny endpoint tags. Faint
+     on purpose: a scale for non-Indian players, not part of the number itself.
+     `:empty` collapses it on non-rupee rounds so it costs no vertical space. */
+  .obhm .usd-note { font: 500 14px/1 var(--tsoi-font-mono); text-align: center; color: var(--tsoi-color-on-surface-variant); opacity: 0.9; margin-top: 6px; letter-spacing: 0; font-variant-numeric: tabular-nums; }
+  .obhm .usd-note:empty { display: none; }
+  .obhm .scale-labels .usd { font-size: 10px; font-weight: 500; opacity: 0.85; letter-spacing: 0; }
+
+  .obhm input[type='range'] { -webkit-appearance: none; appearance: none; width: 100%; height: 36px; background: transparent; margin: 0; }
+  .obhm input[type='range']::-webkit-slider-runnable-track { height: 6px; border-radius: var(--tsoi-radius-full); background: var(--tsoi-color-surface-container-high); }
+  .obhm input[type='range']::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 26px; height: 26px; margin-top: -10px;
+    border-radius: 50%; background: var(--tsoi-color-primary); border: 3px solid var(--tsoi-color-background);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+  }
+  .obhm input[type='range']::-moz-range-track { height: 6px; border-radius: var(--tsoi-radius-full); background: var(--tsoi-color-surface-container-high); }
+  .obhm input[type='range']::-moz-range-thumb {
+    width: 20px; height: 20px; border-radius: 50%; background: var(--tsoi-color-primary);
+    border: 3px solid var(--tsoi-color-background); box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+  }
+  .obhm input[type='range']:focus-visible { outline: 2px solid var(--tsoi-color-primary); outline-offset: 4px; border-radius: var(--tsoi-radius-md); }
+
+  .obhm .scale-labels { display: flex; justify-content: space-between; font: 500 11px var(--tsoi-font-mono); color: var(--tsoi-color-on-surface-variant); }
+
+  .obhm .ab { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  /* `color` is not inherited by <button> — without it these choice buttons
+     fall back to the UA's `buttontext` (black), which vanished against the
+     dark theme's surface. The other buttons here all set a colour via their
+     .btn-* class; this one had none. */
+  .obhm .ab button { background: var(--tsoi-color-background); color: var(--tsoi-color-on-surface); border: 1.5px solid var(--tsoi-color-outline); padding: 16px 12px; display: flex; flex-direction: column; gap: 4px; align-items: center; border-radius: var(--tsoi-radius-lg); }
+  .obhm .ab button .name { font: var(--tsoi-text-headline-sm); }
+  .obhm .ab button .hint { font: 400 12.5px var(--tsoi-font-body); color: var(--tsoi-color-on-surface-variant); }
+  .obhm .ab button[aria-pressed='true'] { border-color: var(--tsoi-color-primary); background: var(--tsoi-color-surface-container-high); }
+
+  .obhm .verdict { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  /* Chip fills are fixed hexes in both themes (small chips with light text,
+     not meant to track the theme swap) — except the 1-pt "Off" tier, which IS
+     the accent and rides --primary/--on-primary so it stays correctly paired
+     in dark mode too (dark's primary is a brighter saffron with a dark
+     on-primary). Selector keys on the bucket's slug, not its name — see the
+     Bucket interface for why the two are separate. */
+  .obhm .chip { font: 600 12px var(--tsoi-font-body); letter-spacing: 0.06em; text-transform: uppercase; padding: 5px 11px; border-radius: var(--tsoi-radius-full); color: #F5F0E5; }
+  .obhm .chip.off { color: var(--tsoi-color-on-primary); }
+  .obhm .gap { font: 500 13px var(--tsoi-font-mono); color: var(--tsoi-color-on-surface-variant); }
+  .obhm .answer-line { font: var(--tsoi-text-headline-lg); letter-spacing: var(--tsoi-text-headline-lg-tracking); margin: 0; }
+  .obhm .answer-line em { font-style: normal; color: var(--tsoi-color-primary-text); }
+
+  .obhm .gauge { position: relative; height: 64px; }
+  .obhm .gauge .track { position: absolute; left: 0; right: 0; top: 30px; height: 4px; border-radius: var(--tsoi-radius-full); background: var(--tsoi-color-surface-container-high); }
+  .obhm .gauge .pin { position: absolute; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 2px; transition: left 0.8s cubic-bezier(0.2, 0.8, 0.2, 1); }
+  .obhm .gauge .pin i { width: 12px; height: 12px; border-radius: 50%; border: 2.5px solid var(--tsoi-color-background); display: block; }
+  .obhm .gauge .pin span { font: 500 10px var(--tsoi-font-mono); color: var(--tsoi-color-on-surface-variant); white-space: nowrap; }
+  .obhm .gauge .pin.you { top: 10px; }
+  .obhm .gauge .pin.act { top: 27px; }
+  .obhm .gauge .pin.you i { background: var(--tsoi-color-on-surface-variant); }
+  .obhm .gauge .pin.act i { background: var(--tsoi-color-primary); }
+
+  .obhm figure { margin: 0; display: flex; flex-direction: column; gap: 8px; }
+  .obhm figcaption { font: var(--tsoi-text-byline); letter-spacing: 0.1em; text-transform: uppercase; color: var(--tsoi-color-on-surface-variant); }
+  .obhm .chart-box { overflow-x: auto; }
+  .obhm svg text { font: 500 11px var(--tsoi-font-mono); fill: var(--tsoi-color-on-surface-variant); }
+  .obhm svg text.val { fill: var(--tsoi-color-on-surface); }
+
+  .obhm .context { margin: 0; border-left: 3px solid var(--tsoi-color-primary); padding-left: 12px; color: var(--tsoi-color-on-surface-variant); font: var(--tsoi-text-body); }
+
+  /* The intro's animated gauge — the game's own reveal mechanic as cover
+     art: a hollow guess-pin travelling the track and settling beside a steady
+     saffron actual-pin. Decorative, wordless, and honest about what the game
+     is. It runs ONCE on arrival and then rests: a loop reads as a busy
+     background element and pulls the eye off the CTA, while a single pass
+     reads as the gauge doing its one job. `forwards` holds the final frame so
+     the pin stays where it landed instead of snapping back to `left`.
+     Reduced-motion gets the same two pins at rest (the static motif).
+
+     The card on /economy/play wears the SAME gauge at its resting start
+     frame (see GameCard.astro's .motif-gauge) — the landing card is the
+     animation's frame 0 and clicking it plays the motion through. */
+  .obhm .intro-gauge { position: relative; height: 44px; }
+  .obhm .intro-gauge .track { position: absolute; left: 2%; right: 2%; top: 20px; height: 4px; border-radius: var(--tsoi-radius-full); background: var(--tsoi-color-surface-container-high); }
+  .obhm .intro-gauge i { position: absolute; top: 15px; width: 14px; height: 14px; border-radius: 50%; transform: translateX(-50%); display: block; }
+  .obhm .intro-gauge .pin-guess {
+    border: 2.5px solid var(--tsoi-color-on-surface-variant);
+    background: var(--tsoi-color-surface-container-low);
+    box-sizing: border-box;
+    left: 14%;
+    animation: obhm-wander var(--obhm-gauge-duration) cubic-bezier(0.45, 0, 0.25, 1)
+      var(--obhm-gauge-delay) 1 forwards;
+  }
+  .obhm .intro-gauge .pin-actual {
+    background: var(--tsoi-color-primary);
+    border: 2.5px solid var(--tsoi-color-surface-container-low);
+    box-sizing: content-box;
+    width: 11px; height: 11px;
+    left: 62%;
+  }
+  /* Two legs, not three: a quick sweep out to the far end, then one long
+     unhurried return that stops just short of the saffron pin. The overshoot-
+     and-correct third leg it replaced read as dithering; two legs read as a
+     guess made and then talked down, ending on the gap the game is named for.
+     The return covers twice the distance of the outward dash, so it gets
+     proportionally more of the timeline (30% out, 70% back). These are
+     percentages, so the split rides whatever --obhm-gauge-duration is set to
+     and the out-fast / back-slower character survives a speed change. */
+  @keyframes obhm-wander {
+    0% { left: 14%; }
+    30% { left: 84%; }
+    100% { left: 50%; }
+  }
+
+  /* padding-top was 0.5 units, which sat the first link almost on the rule.
+     2 units gives the block room to read as its own section rather than an
+     afterthought crowding the divider. */
+  .obhm .finale-links { display: flex; flex-direction: column; gap: 10px; align-items: center; padding-top: calc(var(--tsoi-spacing-unit) * 2); border-top: var(--tsoi-rule-column) solid var(--tsoi-color-outline); margin-top: calc(var(--tsoi-spacing-unit) * 0.5); }
+  .obhm .finale-links a { font: 600 13px var(--tsoi-font-body); text-decoration: none; text-align: center; }
+  /* The lead-in is a label, not the destination — muting it lets the saffron
+     title carry the link, so the eye lands on where it's going. */
+  .obhm .finale-links .ln-label { color: var(--tsoi-color-on-surface-variant); font-weight: 400; }
+  .obhm .finale-links .ln-title { color: var(--tsoi-color-primary-text); }
+  .obhm .finale-links a:hover .ln-title { text-decoration: underline; }
+
+  .obhm .score-big { font: var(--tsoi-text-masthead); text-align: center; }
+  .obhm .score-big small { font-size: 22px; color: var(--tsoi-color-on-surface-variant); }
+
+  /* The finale's on-page score visual: a literal mini bar chart of the game
+     (height = points, verdict colours, empty track for zero) — this REPLACES
+     the flat emoji row the prototype used here. Emoji exist only in the
+     copy-to-clipboard share string built in the script below, never in this
+     markup (see the tofu-rule note there). */
+  .obhm .score-bars { display: flex; justify-content: center; align-items: flex-end; gap: 10px; height: 54px; }
+  .obhm .score-bars .col { width: 16px; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; background: var(--tsoi-color-surface-container-high); border-radius: var(--tsoi-radius-sm); overflow: hidden; }
+  .obhm .score-bars .fill { width: 100%; }
+
+  .obhm .percentile-line { text-align: center; color: var(--tsoi-color-primary-text); font: var(--tsoi-text-body); margin: 0; min-height: 1.4em; }
+
+  .obhm .footer-note { text-align: center; font-size: 12px; color: var(--tsoi-color-on-surface-variant); margin: 0; }
+  .obhm .row { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+
+  .obhm-tip {
+    position: fixed; pointer-events: none; z-index: 9; opacity: 0; white-space: nowrap;
+    background: var(--tsoi-color-on-surface); color: var(--tsoi-color-background);
+    font: 500 12px var(--tsoi-font-mono); padding: 5px 9px; border-radius: var(--tsoi-radius-md);
+    transition: opacity 0.12s;
+  }
+
+  .obhm .fade { animation: obhm-fade 0.35s ease; }
+  @keyframes obhm-fade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+  @media (prefers-reduced-motion: reduce) {
+    .obhm *, .obhm-tip { transition: none !important; animation: none !important; }
+    /* Killing the animation would strand the guess-pin at its 14% start
+       frame, reading as an unrelated dot rather than a near-miss. Park it at
+       the position the motion settles on so the still frame states the same
+       thing the animation does: a guess, close but not on the number. */
+    .obhm .intro-gauge .pin-guess { left: 50%; }
+  }
+</style>
+
+<script>
+  // Engine, ported from the validated prototype. Differences from the
+  // prototype are all deliberate (see the build notes this shipped with):
+  // rounds come from JSON (so `fmt` is a lookup table, not a function),
+  // charts gained an optional display-string label, and the finale's share
+  // format + first-completion bookkeeping + beacon are new.
+  import { fmtCountProse } from '../../lib/units-prose';
+
+  interface RoundLink { href: string; label: string; }
+  type ChartRow = (string | number)[];
+  // `countScale` marks a chart whose values are COUNTS expressed in some
+  // multiple (1e9 = the data is in billions). When present the values are
+  // real quantities, so the labels and the caption's "{u}" are derived per
+  // the reader's cr/bn choice rather than baked into the JSON.
+  interface ChartSpec { kind: 'cols' | 'bars'; cap: string; data: ChartRow[]; countScale?: number; }
+  interface RoundBase {
+    q: string;
+    hint?: string;
+    answer: string;
+    context: string;
+    chart: ChartSpec;
+  }
+  interface SliderRound extends RoundBase {
+    type: 'log' | 'lin';
+    min: number; max: number; start: number; unit?: string; pre?: boolean;
+    // 'count' rounds carry no `unit` — the unit word IS the reader's cr/bn
+    // choice, so it is derived at render time from `countScale` (the round's
+    // values × countScale = an absolute number of transactions).
+    fmt: 'b1' | 'pct0' | 'inr0' | 'count'; countScale?: number; actual: number;
+  }
+  interface AbChoice { name: string; hint: string; }
+  interface AbRound extends RoundBase {
+    type: 'ab';
+    a: AbChoice; b: AbChoice; correct: 'a' | 'b';
+  }
+  type Round = SliderRound | AbRound;
+
+  interface Payload {
+    rounds: Round[];
+    puzzleNo: number;
+    isCurrent: boolean;
+    primer: RoundLink;
+    shareUrl: string;
+  }
+  // `slug` exists because the names are no longer all single words — deriving
+  // a class from name.toLowerCase() would emit class="chip way off", i.e. two
+  // classes, and silently lose the chip styling on the 0-pt tier.
+  interface Bucket { name: string; slug: string; pts: number; color: string; }
+  interface Result { round: Round; guess: unknown; bucket: Bucket; }
+  interface PlayedRecord { pts: number[]; total: number; at: string; }
+
+  const dataEl = document.getElementById('obhm-payload');
+  const payload = JSON.parse(dataEl?.textContent || '{}') as Payload;
+  const ROUNDS = payload.rounds;
+  const MAX_SCORE = ROUNDS.length * 3;
+
+  const stage = document.getElementById('obhm-stage')!;
+  const dotsEl = document.getElementById('obhm-dots')!;
+  const tip = document.getElementById('obhm-tip') as HTMLElement;
+
+  // ---- units: the reader's cr/bn choice, read live off <html data-units> ----
+  // Set inline by BaseLayout before first paint, so a render-time read is
+  // always correct. The game has no toggle of its own (the game surface stays
+  // spare) but the masthead's does, and it's reachable mid-game — so a flip
+  // has to re-render whatever is on stage, the same way the read pages
+  // re-run applyProseUnits.
+  const isIntl = () => document.documentElement.dataset.units === 'intl';
+
+  // The screen currently on stage, as a closure that rebuilds it from scratch
+  // in the current units. Screens with no unit-bearing text (intro, finale,
+  // A/B rounds) set this to null — re-rendering them would be pure churn, and
+  // for the intro it would restart the gauge animation.
+  //
+  // Rebuilding rather than patching text nodes: the reveal card's SVG charts
+  // have to be redrawn anyway (their labels and captions are units-dependent),
+  // so re-running the screen's own render path is both simpler and guaranteed
+  // to stay consistent with the first render.
+  let redraw: (() => void) | null = null;
+  new MutationObserver(() => redraw?.()).observe(document.documentElement, {
+    attributes: true,
+    attributeFilter: ['data-units'],
+  });
+
+  // ---- formatters (declarative — JSON can't carry functions) ----
+  const FMT: Record<string, (v: number) => string> = {
+    b1: (v) => (v >= 30 ? v.toFixed(0) : v.toFixed(1)),
+    // percent to a tenth, but never a fake ".0" — the answer may be 79.5 and
+    // the pin labels must not round it to a value the answer line contradicts
+    pct0: (v) => {
+      const t = Math.round(v * 10) / 10;
+      return Number.isInteger(t) ? String(t) : t.toFixed(1);
+    },
+    inr0: (v) => Math.round(v).toLocaleString('en-IN'),
+  };
+
+  // A count round's number and unit word, split so the readout can set the
+  // unit in its own smaller type. fmtCountProse hands back one string
+  // ("22.7 billion" / "2,270 crore"); the split is on the first space that
+  // follows the digits, which both wordings share.
+  function countParts(r: SliderRound, v: number): { num: string; unit: string } {
+    const s = fmtCountProse(v * (r.countScale ?? 1), isIntl(), 'word');
+    const m = s.match(/^([\d,.]+)\s+(.+)$/);
+    return m ? { num: m[1], unit: ` ${m[2]}` } : { num: s, unit: '' };
+  }
+
+  // ---- USD relatability helper (rupee rounds only) ----
+  // A tiny "≈$1.4" beside the endpoints and the live readout, so a non-Indian
+  // player has a scale for the rupee amount. Kept deliberately faint (see the
+  // .usd / .usd-note rules) — background for the curious, never the headline.
+  // Puzzle cards are frozen (not refreshed monthly), so a static rate is fine
+  // and matches the fixed-window figures. ~₹86/$ is mid-2026.
+  const INR_PER_USD = 86;
+  const usdStr = (inr: number) => {
+    const d = inr / INR_PER_USD;
+    const s = d < 1 ? d.toFixed(2) : d < 10 ? d.toFixed(1) : String(Math.round(d));
+    return `≈$${s}`;
+  };
+  const hasUsd = (r: SliderRound) => r.fmt === 'inr0';
+  const usdTag = (r: SliderRound, v: number) =>
+    hasUsd(r) ? ` <i class="usd">${usdStr(v)}</i>` : '';
+
+  // Count tokens in prose: "{c:50000000}" -> "5 crore" / "50 million", flipping
+  // with the reader's cr/bn choice. Context lines are re-rendered on a units
+  // toggle (paintReveal is the round's redraw), so this stays in sync.
+  const proseCount = (s: string) =>
+    s.replace(/\{c:(\d+)\}/g, (_, n) => fmtCountProse(+n, isIntl(), 'word'));
+
+  const fmtNum = (r: SliderRound, v: number) =>
+    r.fmt === 'count' ? countParts(r, v).num : FMT[r.fmt](v);
+  const fmtUnit = (r: SliderRound, v: number) =>
+    r.fmt === 'count' ? countParts(r, v).unit : (r.unit ?? '');
+  const fmtFull = (r: SliderRound, v: number) => {
+    const n = fmtNum(r, v);
+    return r.pre ? `${fmtUnit(r, v)}${n}` : `${n}${fmtUnit(r, v)}`;
+  };
+
+  // ---- slider mapping: the 0..SCALE input range <-> the round's real value ----
+  const SCALE = 1000;
+  const toVal = (r: SliderRound, t: number) =>
+    r.type === 'log'
+      ? Math.exp(Math.log(r.min) + ((Math.log(r.max) - Math.log(r.min)) * t) / SCALE)
+      : r.min + ((r.max - r.min) * t) / SCALE;
+  const toT = (r: SliderRound, v: number) =>
+    r.type === 'log'
+      ? (SCALE * (Math.log(v) - Math.log(r.min))) / (Math.log(r.max) - Math.log(r.min))
+      : (SCALE * (v - r.min)) / (r.max - r.min);
+
+  // ---- scoring ----
+  // One metaphor the whole way down: these are all target/shooting words, so
+  // the ladder reads as a single scale. (It used to run Bullseye/Close/Warm/
+  // Cold, which spliced a target metaphor onto the hot-and-cold guessing game
+  // halfway through.) "Wide" and "way off" are also what you'd say about a
+  // missed shot, and they answer the question in the game's title directly.
+  const BUCKETS: Bucket[] = [
+    { name: 'Bullseye', slug: 'bullseye', pts: 3, color: '#6A9A20' },
+    { name: 'Close', slug: 'close', pts: 2, color: '#C8960A' },
+    { name: 'Off', slug: 'off', pts: 1, color: 'var(--tsoi-color-primary)' },
+    { name: 'Way off', slug: 'way-off', pts: 0, color: '#4A3C2C' },
+  ];
+  function scoreRound(r: Round, guess: unknown): Bucket {
+    if (r.type === 'ab') return guess === r.correct ? BUCKETS[0] : BUCKETS[3];
+    const g = guess as number;
+    if (r.type === 'lin') {
+      const d = Math.abs(g - r.actual);
+      return d <= 3 ? BUCKETS[0] : d <= 8 ? BUCKETS[1] : d <= 20 ? BUCKETS[2] : BUCKETS[3];
+    }
+    const ratio = Math.max(g, r.actual) / Math.min(g, r.actual);
+    return ratio <= 1.1 ? BUCKETS[0] : ratio <= 1.35 ? BUCKETS[1] : ratio <= 2 ? BUCKETS[2] : BUCKETS[3];
+  }
+  // Used ONLY when building the copy-to-clipboard share string (see
+  // buildShareText) — never inserted into the visible page. Some devices
+  // render unsupported/odd emoji as tofu boxes; keeping them out of our own
+  // typography-controlled surface and confined to a string the OS share
+  // sheet / clipboard target renders sidesteps that entirely.
+  function emojiFor(pts: number): string {
+    return pts === 3 ? '\u{1F7E9}' : pts === 2 ? '\u{1F7E8}' : pts === 1 ? '\u{1F7E7}' : '⬜';
+  }
+
+  // ---- state ----
+  let idx = -1;
+  const results: Result[] = [];
+
+  function paintDots() {
+    dotsEl.innerHTML = ROUNDS.map(
+      (_, i) => `<span class="dot ${i < results.length ? 'done' : i === idx ? 'on' : ''}"></span>`,
+    ).join('');
+  }
+
+  // ---- localStorage: first-completion record only; replays never overwrite ----
+  const LS_KEY = 'tsoi-play';
+  const GAME_KEY = 'off-by-how-much';
+  type PlayState = Record<string, { played: Record<string, PlayedRecord> }>;
+  function loadPlayState(): PlayState {
+    try {
+      return JSON.parse(localStorage.getItem(LS_KEY) || '{}');
+    } catch {
+      return {};
+    }
+  }
+  function getPlayed(puzzleNo: number): PlayedRecord | null {
+    return loadPlayState()[GAME_KEY]?.played?.[String(puzzleNo)] ?? null;
+  }
+  // Returns whether THIS call was the first completion — the caller uses
+  // that to gate the beacon so a replay (or a later visit) never re-sends.
+  function recordFirstCompletion(puzzleNo: number, pts: number[]): boolean {
+    try {
+      const state = loadPlayState();
+      if (!state[GAME_KEY]) state[GAME_KEY] = { played: {} };
+      if (state[GAME_KEY].played[String(puzzleNo)]) return false;
+      const total = pts.reduce((a, b) => a + b, 0);
+      state[GAME_KEY].played[String(puzzleNo)] = { pts, total, at: new Date().toISOString() };
+      localStorage.setItem(LS_KEY, JSON.stringify(state));
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  // ---- beacon: fire-and-forget, current-puzzle-only, host-gated ----
+  // PUBLIC_PLAY_API is a build-time var so a preview deploy can point at a
+  // staging endpoint; with nothing set, only the real production hostname
+  // beacons, so localhost/preview plays never pollute the histogram.
+  const apiBase = import.meta.env.PUBLIC_PLAY_API || '';
+  function shouldBeacon(): boolean {
+    return !!apiBase || location.hostname === 'timeseriesofindia.com';
+  }
+  function sendBeacon(puzzleNo: number, pts: number[]) {
+    if (!shouldBeacon()) return;
+    // No Content-Type header on purpose: application/json would force a CORS
+    // preflight when apiBase is cross-origin (previews), and the ingest
+    // endpoint answers OPTIONS with its POST-only 405. A bare POST is a
+    // CORS-simple request that always sends; the worker parses the body
+    // without consulting the header, and fire-and-forget never reads the
+    // (opaque) response.
+    fetch(`${apiBase}/api/play-score`, {
+      method: 'POST',
+      body: JSON.stringify({ puzzle: puzzleNo, pts }),
+      keepalive: true,
+    }).catch(() => {});
+  }
+
+  // ---- percentile line (finale only; best-effort, silent on any failure) ----
+  // Below 50 plays the histogram is too thin for a percentile to mean
+  // anything, but the puzzle still deserves a line — "early" tells the
+  // player they got here before the crowd did, rather than showing nothing.
+  type PercentileResult = { kind: 'pct'; pct: number } | { kind: 'early'; plays: number };
+  async function fetchPercentile(puzzleNo: number, total: number): Promise<PercentileResult | null> {
+    try {
+      const r = await fetch(`${apiBase}/api/play-stats/${puzzleNo}.json`, { signal: AbortSignal.timeout(4000) });
+      if (!r.ok) return null;
+      const j = await r.json();
+      if (typeof j.plays !== 'number' || j.plays <= 0 || !Array.isArray(j.hist)) return null;
+      if (j.plays < 50) return { kind: 'early', plays: j.plays };
+      if (total < 0 || total >= j.hist.length) return null;
+      const below = j.hist.slice(0, total).reduce((a: number, b: number) => a + (Number(b) || 0), 0);
+      const at = Number(j.hist[total]) || 0;
+      const pct = Math.round((100 * (below + at / 2)) / j.plays);
+      return { kind: 'pct', pct: Math.max(1, Math.min(99, pct)) };
+    } catch {
+      return null;
+    }
+  }
+
+  // There used to be an "off by N× on average" line here (geometric mean of
+  // the slider rounds' guess/actual ratios). It was removed deliberately, and
+  // should not come back in that form: it averaged incommensurable things —
+  // the percentage round's ratio is meaningless next to a count's (guessing
+  // 40% against 79.5% is "off by 39 points", not "1.99×"), and round 4 is a
+  // ratio already, so it produced a ratio of ratios. With only three terms the
+  // geometric mean was also dominated by the single worst round, describing
+  // none of them. "Off by" stays where it is concrete and true: per round, on
+  // each reveal card.
+
+  // ---- share text (the ONLY place emoji appear — never in page DOM) ----
+  function buildShareText(pts: number[]): string {
+    const total = pts.reduce((a, b) => a + b, 0);
+    // 3 rows, top (t=3) to bottom (t=1): a cell shows the round's own
+    // verdict emoji once its score reaches that rung, else a blank square.
+    // A 0-pt round never reaches any rung, so its whole column stays blank;
+    // filled-cell count across the grid always equals the total score.
+    const rows = [3, 2, 1].map((t) => pts.map((p) => (p >= t ? emojiFor(p) : '⬜')).join(''));
+    const last = `${rows[2]}  ${total}/${MAX_SCORE}`;
+    // № never appears here — share text uses plain # numbering.
+    return [`Off by How Much? #${payload.puzzleNo} · Time Series of India`, rows[0], rows[1], last, payload.shareUrl].join(
+      '\n',
+    );
+  }
+
+  // ---- screens ----
+  function intro() {
+    idx = -1;
+    paintDots();
+    // Nothing here carries a number; re-rendering on a units flip would only
+    // restart the gauge animation.
+    redraw = null;
+    const played = getPlayed(payload.puzzleNo);
+    const ctaLabel = played ? 'Play again' : `Play puzzle № ${payload.puzzleNo}`;
+    const playedLine = played
+      ? `<p class="played-note">You scored ${played.total}/${MAX_SCORE} on this puzzle.</p>`
+      : '';
+    stage.innerHTML = `<div class="card fade">
+      <p class="kicker">Four numbers. One guess each.</p>
+      <h1>Off by How Much?</h1>
+      <p class="sub">Four real numbers from India&rsquo;s payment systems. You guess; the data answers. The fun is seeing how far off you are.</p>
+      <div class="intro-gauge" aria-hidden="true"><div class="track"></div><i class="pin-guess"></i><i class="pin-actual"></i></div>
+      <p class="primer-line"><a href="${payload.primer.href}">Primer: ${payload.primer.label} &rarr;</a></p>
+      <ul class="rules">
+        <li><span class="n">01</span><span>Slide or pick your best estimate, then lock it in.</span></li>
+        <li><span class="n">02</span><span>Score by closeness: bullseye, close, off or way off.</span></li>
+        <li><span class="n">03</span><span>Every answer opens the real chart behind it.</span></li>
+      </ul>
+      ${playedLine}
+      <button class="btn-primary" id="obhm-play">${ctaLabel}</button>
+    </div>`;
+    document.getElementById('obhm-play')!.addEventListener('click', () => round(0));
+  }
+
+  // `initT` re-opens the round with the slider already at a given position —
+  // used when a units flip re-renders the screen mid-guess, so the player's
+  // estimate survives the switch (only the words around it change).
+  function round(i: number, initT?: number) {
+    idx = i;
+    paintDots();
+    redraw = null; // set below for slider rounds; A/B rounds carry no units
+    const r = ROUNDS[i];
+    let ctrl = '';
+    if (r.type === 'ab') {
+      ctrl = `<div class="ab" role="group" aria-label="choices">
+        <button type="button" data-k="a" aria-pressed="false"><span class="name">${r.a.name}</span><span class="hint">${r.a.hint}</span></button>
+        <button type="button" data-k="b" aria-pressed="false"><span class="name">${r.b.name}</span><span class="hint">${r.b.hint}</span></button>
+      </div>`;
+    } else {
+      ctrl = `<div class="readout" id="obhm-ro"></div>
+        <div class="usd-note" id="obhm-usd"></div>
+        <input type="range" min="0" max="${SCALE}" value="${initT ?? toT(r, r.start)}" id="obhm-sl" aria-label="your estimate">
+        <div class="scale-labels"><span>${fmtFull(r, r.min)}${usdTag(r, r.min)}</span><span>${fmtFull(r, r.max)}${usdTag(r, r.max)}</span></div>`;
+    }
+    stage.innerHTML = `<div class="card fade">
+      <p class="kicker quiet">Round ${i + 1} of ${ROUNDS.length}</p>
+      <h2>${r.q}</h2>
+      ${r.hint ? `<p class="sub">${r.hint}</p>` : ''}
+      ${ctrl}
+      <button class="btn-primary" id="obhm-lock" ${r.type === 'ab' ? 'disabled' : ''}>Lock it in</button>
+    </div>`;
+
+    let getGuess: () => unknown;
+    if (r.type === 'ab') {
+      let pick: 'a' | 'b' | null = null;
+      stage.querySelectorAll<HTMLButtonElement>('.ab button').forEach((b) => {
+        b.addEventListener('click', () => {
+          pick = b.dataset.k as 'a' | 'b';
+          stage.querySelectorAll('.ab button').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+          (document.getElementById('obhm-lock') as HTMLButtonElement).disabled = false;
+        });
+      });
+      getGuess = () => pick;
+    } else {
+      const sl = document.getElementById('obhm-sl') as HTMLInputElement;
+      const ro = document.getElementById('obhm-ro') as HTMLElement;
+      const usd = document.getElementById('obhm-usd') as HTMLElement;
+      const paint = () => {
+        const v = toVal(r, +sl.value);
+        const num = fmtNum(r, v);
+        const unit = fmtUnit(r, v);
+        ro.innerHTML = r.pre ? `<small>${unit}</small>${num}` : `${num}<small>${unit}</small>`;
+        usd.textContent = hasUsd(r) ? usdStr(v) : '';
+      };
+      sl.addEventListener('input', paint);
+      paint();
+      getGuess = () => toVal(r, +sl.value);
+      // Re-open this same round in the new units, slider where it stands.
+      redraw = () => round(i, +sl.value);
+    }
+    document.getElementById('obhm-lock')!.addEventListener('click', () => reveal(i, getGuess()));
+  }
+
+  // Scoring is separated from painting because a units flip re-renders the
+  // reveal card, and the score must be banked exactly once — re-running this
+  // would push a duplicate into `results` and inflate the final total.
+  function reveal(i: number, guess: unknown) {
+    const bucket = scoreRound(ROUNDS[i], guess);
+    results.push({ round: ROUNDS[i], guess, bucket });
+    paintReveal(i, guess, bucket);
+  }
+
+  function paintReveal(i: number, guess: unknown, bucket: Bucket) {
+    const r = ROUNDS[i];
+    paintDots();
+    redraw = () => paintReveal(i, guess, bucket);
+
+    let gaugeHtml = '';
+    if (r.type !== 'ab') {
+      const sr = r;
+      const g = guess as number;
+      const gp = (100 * toT(sr, g)) / SCALE;
+      const ap = (100 * toT(sr, sr.actual)) / SCALE;
+      const ratio = Math.max(g, sr.actual) / Math.min(g, sr.actual);
+      const d = Math.abs(g - sr.actual);
+      const gapText =
+        sr.type === 'lin'
+          ? d < 0.05
+            ? 'spot on'
+            : `off by ${d.toFixed(1)} points`
+          : ratio < 1.05
+            ? 'nearly exact'
+            : `off by ${ratio.toFixed(1)}×`;
+      gaugeHtml = `<div class="gauge"><div class="track"></div>
+        <div class="pin you" style="left:${gp}%"><span>you: ${fmtFull(sr, g)}</span><i></i></div>
+        <div class="pin act" id="obhm-actpin" style="left:${gp}%"><i></i><span>&nbsp;</span></div></div>
+        <div class="verdict"><span class="chip ${bucket.slug}" style="background:${bucket.color}">${bucket.name}</span><span class="gap">${gapText} &middot; +${bucket.pts} pts</span></div>`;
+      // Two rAFs: the pin paints at the guess position first (that frame
+      // settles), THEN slides to the actual value on the next one — the
+      // motion of the gap closing IS the reveal, not a decoration on it.
+      requestAnimationFrame(() =>
+        requestAnimationFrame(() => {
+          const pin = document.getElementById('obhm-actpin');
+          if (!pin) return;
+          (pin as HTMLElement).style.left = `${ap}%`;
+          const span = pin.querySelector('span');
+          if (span) span.textContent = `actual: ${fmtFull(sr, sr.actual)}`;
+        }),
+      );
+    } else {
+      const picked = r[guess as 'a' | 'b'];
+      gaugeHtml = `<div class="verdict"><span class="chip ${bucket.slug}" style="background:${bucket.color}">${bucket.pts ? 'Correct' : 'Not this time'}</span><span class="gap">you picked ${picked.name} &middot; +${bucket.pts} pts</span></div>`;
+    }
+
+    // "{v}" in an answer line = the round's actual value, spelled in the
+    // reader's own units ("22.7 billion" / "2,270 crore"). Rounds whose
+    // answer needs no unit carry a literal string and are untouched.
+    const answerLine =
+      r.type !== 'ab' ? r.answer.replace('{v}', fmtFull(r, r.actual)) : r.answer;
+
+    const last = i === ROUNDS.length - 1;
+    stage.innerHTML = `<div class="card fade">
+      <p class="kicker quiet">Round ${i + 1} &middot; the answer</p>
+      <p class="answer-line">${answerLine}</p>
+      ${gaugeHtml}
+      <figure><figcaption>${chartCap(r.chart)}</figcaption>
+        <div class="chart-box">${drawChart(r.chart)}</div></figure>
+      <p class="context">${proseCount(r.context)}</p>
+      <button class="btn-primary" id="obhm-next">${last ? 'See your score' : 'Next round'}</button>
+    </div>`;
+    wireTips();
+    document.getElementById('obhm-next')!.addEventListener('click', () => (last ? finale() : round(i + 1)));
+  }
+
+  async function finale() {
+    idx = ROUNDS.length;
+    paintDots();
+    redraw = null; // score, verdict, bars and percentile are all unit-free
+    const pts = results.map((res) => res.bucket.pts);
+    const total = pts.reduce((a, b) => a + b, 0);
+    const verdict =
+      total >= 10
+        ? 'Data journalist material.'
+        : total >= 7
+          ? 'Sharper than most headlines.'
+          : total >= 4
+            ? 'India’s numbers surprised you — that’s the point.'
+            : 'Off by orders of magnitude. Welcome to the club.';
+
+    const barsHtml = results
+      .map((res) => {
+        const h = (res.bucket.pts / 3) * 100;
+        return `<div class="col"><div class="fill" style="height:${h}%;background:${res.bucket.color}"></div></div>`;
+      })
+      .join('');
+
+    // No result line under the bars: with the "off by ... on average" clause
+    // gone it would have read "9/12" directly beneath the score-big "9/12".
+    stage.innerHTML = `<div class="card fade">
+      <p class="kicker">Puzzle № ${payload.puzzleNo} complete</p>
+      <div class="score-big">${total}<small>/${MAX_SCORE}</small></div>
+      <p class="sub" style="text-align:center">${verdict}</p>
+      <div class="score-bars" aria-hidden="true">${barsHtml}</div>
+      <p class="percentile-line" id="obhm-pctline"></p>
+      <div class="row">
+        <button class="btn-primary" id="obhm-share"></button>
+        <button class="btn-ghost" id="obhm-again">Play again</button>
+      </div>
+      <!-- Two-tone rows: the muted lead-in says what KIND of link this is,
+           the saffron title says where it goes. Still one anchor per row, so
+           the whole line remains a single click target. -->
+      <div class="finale-links">
+        <a href="${payload.primer.href}"><span class="ln-label">Read the primer:</span> <span class="ln-title">${payload.primer.label} &rarr;</span></a>
+        <a href="/economy/explore/payments/"><span class="ln-label">Explore the numbers:</span> <span class="ln-title">India Payments &rarr;</span></a>
+      </div>
+    </div>`;
+
+    const shareText = buildShareText(pts);
+    const shareBtn = document.getElementById('obhm-share') as HTMLButtonElement;
+    // The button names the GOAL, the confirmation names the MECHANISM. One
+    // label on both platforms, because both produce the same artifact — an
+    // earlier version said "Copy result" on desktop, which described how it
+    // works instead of what it's for and left the point of pressing it unsaid.
+    //
+    // Two behaviours behind the one label:
+    //   • OS share sheet where the platform has one (mostly mobile). Fine to
+    //     open, because the PLAYER picks the destination inside it.
+    //   • Clipboard everywhere else, which the confirmation spells out.
+    // Explicitly NOT: opening a network's compose page in a new tab. That
+    // chooses a network on the player's behalf and navigates them somewhere
+    // they never asked to go — the finale is meant to end cleanly.
+    const canShare = typeof navigator.share === 'function';
+    const shareLabel = 'Share result';
+    shareBtn.textContent = shareLabel;
+    const copyToClipboard = async (): Promise<boolean> => {
+      try {
+        await navigator.clipboard.writeText(shareText);
+        return true;
+      } catch {
+        // Async clipboard denied/unavailable: off-screen textarea +
+        // execCommand — there is no visible share box to fall back on (the
+        // share string never enters the page, see buildShareText).
+        try {
+          const ta = document.createElement('textarea');
+          ta.value = shareText;
+          ta.setAttribute('readonly', '');
+          ta.style.position = 'fixed';
+          ta.style.opacity = '0';
+          document.body.appendChild(ta);
+          ta.select();
+          const ok = document.execCommand('copy');
+          ta.remove();
+          return ok;
+        } catch {
+          return false;
+        }
+      }
+    };
+    shareBtn.addEventListener('click', async () => {
+      if (canShare) {
+        try {
+          await navigator.share({ text: shareText });
+          return; // the sheet itself was the feedback; a cancel needs none
+        } catch (err) {
+          // AbortError = user dismissed the sheet — not a failure, stay quiet
+          if (err instanceof DOMException && err.name === 'AbortError') return;
+          // anything else (rare share failures): fall through to the clipboard
+        }
+      }
+      const ok = await copyToClipboard();
+      // Says where the result went, since nothing visibly happened otherwise.
+      shareBtn.textContent = ok ? 'Copied to clipboard' : 'Couldn’t copy';
+      setTimeout(() => {
+        shareBtn.textContent = shareLabel;
+      }, 2200);
+    });
+    document.getElementById('obhm-again')!.addEventListener('click', () => {
+      results.length = 0;
+      intro();
+    });
+
+    // First-completion bookkeeping: the localStorage write happens for any
+    // puzzle played to completion; the beacon only fires when it's also the
+    // CURRENT puzzle's first play (archived-puzzle replays and previews
+    // must never touch the live histogram).
+    const isFirst = recordFirstCompletion(payload.puzzleNo, pts);
+    if (isFirst && payload.isCurrent) sendBeacon(payload.puzzleNo, pts);
+
+    const pctResult = await fetchPercentile(payload.puzzleNo, total);
+    if (pctResult !== null) {
+      const el = document.getElementById('obhm-pctline');
+      if (el) {
+        el.textContent = pctResult.kind === 'pct'
+          ? `Sharper than ${pctResult.pct}% of players.`
+          : `You’re among the first ~${pctResult.plays} players.`;
+      }
+    }
+  }
+
+  // ---- charts: hand-rolled SVG (no chart library — see build constraints) ----
+  const CHART_COLOR: Record<string, string> = { accent: 'var(--tsoi-color-primary)', teal: 'var(--obhm-teal)' };
+
+  // A count chart picks ONE unit tier off its largest value and labels every
+  // bar in it, so the axis reads consistently and the caption can name the
+  // unit once (that's what "{u}" in a caption is for). Tiers differ by unit
+  // system — crore/lakh vs billions/millions — which is the whole reason the
+  // labels can't be baked into the JSON.
+  const TIERS = {
+    intl: [
+      { div: 1e12, word: 'trillions' },
+      { div: 1e9, word: 'billions' },
+      { div: 1e6, word: 'millions' },
+      { div: 1e3, word: 'thousands' },
+    ],
+    in: [
+      { div: 1e7, word: 'crore' },
+      { div: 1e5, word: 'lakh' },
+      { div: 1e3, word: 'thousands' },
+    ],
+  };
+  function tierFor(maxAbs: number) {
+    const tiers = isIntl() ? TIERS.intl : TIERS.in;
+    return tiers.find((t) => maxAbs >= t.div) ?? { div: 1, word: '' };
+  }
+  // Precision is decided ONCE per chart from its largest value, not per label
+  // — a chart reading "102" beside "25.4" looks like two different
+  // measurements. Below 1,000 in the chosen tier a tenth still carries
+  // information (2.8 and 5.9 must not both read "3"); above it the integer
+  // digits already separate the bars and the decimal is noise.
+  const tierLabel = (v: number, dp: number) =>
+    v.toLocaleString('en-IN', { minimumFractionDigits: dp, maximumFractionDigits: dp });
+
+  // The chart's tier, or null for charts whose values aren't counts (shares,
+  // ratios) — those keep their authored labels and captions verbatim.
+  function tierOf(ch: ChartSpec) {
+    if (!ch.countScale) return null;
+    const maxAbs = Math.max(...ch.data.map((d) => Number(d[1]))) * ch.countScale;
+    return tierFor(maxAbs);
+  }
+  // Resolved caption — the caller renders this into <figcaption>, and
+  // drawChart uses it for the SVG's aria-label, so both name the same unit.
+  function chartCap(ch: ChartSpec): string {
+    const tier = tierOf(ch);
+    return tier ? ch.cap.replace('{u}', tier.word) : ch.cap;
+  }
+
+  function drawChart(ch: ChartSpec): string {
+    const W = 520;
+    const cap = chartCap(ch);
+    // On a count chart every value label is derived in the chosen tier,
+    // superseding whatever literal label the row carried.
+    const tier = tierOf(ch);
+    let countLabel: ((v: number) => string) | null = null;
+    if (tier) {
+      const scale = ch.countScale!;
+      const maxInTier = (Math.max(...ch.data.map((d) => Number(d[1]))) * scale) / tier.div;
+      const dp = maxInTier >= 1000 ? 0 : 1;
+      countLabel = (v) => tierLabel((v * scale) / tier.div, dp);
+    }
+    if (ch.kind === 'cols') {
+      const H = 190;
+      const pt = 24;
+      const pb = 26;
+      const pl = 10;
+      const pr = 10;
+      const maxV = Math.max(...ch.data.map((d) => Number(d[1])));
+      const n = ch.data.length;
+      const slot = (W - pl - pr) / n;
+      const bw = Math.min(46, slot - 8);
+      let s = '';
+      ch.data.forEach((d, i) => {
+        const v = Number(d[1]);
+        const h = ((H - pt - pb) * v) / maxV;
+        const x = pl + slot * i + (slot - bw) / 2;
+        const y = H - pb - h;
+        const isLast = i === n - 1;
+        const label = countLabel ? countLabel(v) : d[2] !== undefined ? String(d[2]) : String(v);
+        s += `<path d="M${x},${H - pb} v${-(h - 4)} q0,-4 4,-4 h${bw - 8} q4,0 4,4 v${h - 4} z" fill="${isLast ? 'var(--tsoi-color-primary)' : 'var(--obhm-teal)'}" data-tip="${d[0]}: ${label}"></path>`;
+        s += `<text x="${x + bw / 2}" y="${H - pb + 15}" text-anchor="middle">${d[0]}</text>`;
+        if (i === 0 || isLast) s += `<text class="val" x="${x + bw / 2}" y="${y - 6}" text-anchor="middle">${label}</text>`;
+      });
+      return `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="${cap}"><line x1="${pl}" y1="${H - pb}" x2="${W - pr}" y2="${H - pb}" stroke="var(--tsoi-color-outline)"></line>${s}</svg>`;
+    }
+    // Horizontal bars: a 6px min width keeps tiny values (e.g. UPI's ₹1,273
+    // ticket size next to RTGS's ₹72,27,717) visible at all — the point of
+    // this chart is the disparity, and the direct value labels carry the
+    // exact numbers regardless of how thin the bar reads.
+    const rh = 30;
+    const gap = 8;
+    const pl = 88;
+    const pr = 64;
+    const H = ch.data.length * (rh + gap) + 4;
+    const maxV = Math.max(...ch.data.map((d) => Number(d[1])));
+    let s = '';
+    ch.data.forEach((d, i) => {
+      const v = Number(d[1]);
+      const colorKey = String(d[2] ?? 'teal');
+      const label = countLabel ? countLabel(v) : d[3] !== undefined ? String(d[3]) : String(v);
+      const w = Math.max(6, ((W - pl - pr) * v) / maxV);
+      const y = 2 + i * (rh + gap);
+      s += `<text x="${pl - 8}" y="${y + rh / 2 + 4}" text-anchor="end">${d[0]}</text>`;
+      s += `<path d="M${pl},${y} h${w - 4} q4,0 4,4 v${rh - 8} q0,4 -4,4 h${-(w - 4)} z" fill="${CHART_COLOR[colorKey] ?? CHART_COLOR.teal}" data-tip="${d[0]}: ${label}"></path>`;
+      s += `<text class="val" x="${pl + w + 7}" y="${y + rh / 2 + 4}">${label}</text>`;
+    });
+    return `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="${cap}">${s}</svg>`;
+  }
+
+  // Touch has no hover: a tap used to fire one pointermove immediately
+  // followed by pointerleave, so the value flashed and vanished before it
+  // could be read. On touch a tap now PINS the tooltip — tapping another bar
+  // moves it, tapping the same bar again or anywhere else dismisses it, and
+  // any scroll clears it (a pinned tip is positioned in viewport coordinates
+  // and would otherwise drift away from its bar). Pointer devices keep the
+  // original hover-tracking behaviour untouched.
+  let pinned: HTMLElement | null = null;
+
+  function showTip(el: HTMLElement, x: number, y: number) {
+    tip.textContent = el.dataset.tip || '';
+    tip.style.opacity = '1';
+    // offsetWidth is read AFTER the text lands, so the right-edge clamp
+    // measures the tip at its real width rather than its previous one.
+    tip.style.left = `${Math.max(8, Math.min(x + 12, innerWidth - tip.offsetWidth - 8))}px`;
+    tip.style.top = `${y - 32}px`;
+  }
+  function hideTip() {
+    tip.style.opacity = '0';
+    pinned = null;
+  }
+
+  document.addEventListener('pointerup', () => {
+    if (pinned) hideTip();
+  });
+  addEventListener('scroll', () => {
+    if (pinned) hideTip();
+  }, { passive: true });
+
+  function wireTips() {
+    stage.querySelectorAll<HTMLElement>('[data-tip]').forEach((el) => {
+      el.addEventListener('pointermove', (e: PointerEvent) => {
+        if (e.pointerType === 'touch') return; // touch is pin-on-tap, below
+        showTip(el, e.clientX, e.clientY);
+      });
+      el.addEventListener('pointerleave', (e: PointerEvent) => {
+        if (e.pointerType === 'touch') return;
+        hideTip();
+      });
+      el.addEventListener('pointerup', (e: PointerEvent) => {
+        if (e.pointerType !== 'touch') return;
+        // Keep the document-level dismiss handler from undoing this very tap.
+        e.stopPropagation();
+        if (pinned === el) return hideTip();
+        pinned = el;
+        showTip(el, e.clientX, e.clientY);
+      });
+    });
+  }
+
+  intro();
+</script>

@@ -15,7 +15,7 @@ export function readingMinutes(slug: string): number {
   try {
     // Anchored to cwd (site/) — reliable under Astro's bundling, unlike
     // import.meta.url which points into the build output once bundled.
-    const path = resolve(process.cwd(), 'src/pages/economy/reads', `${slug}.astro`);
+    const path = resolve(process.cwd(), 'src/pages/economy/read', `${slug}.astro`);
     let src = readFileSync(path, 'utf8');
     src = src.replace(/^---[\s\S]*?---/, ' ');          // frontmatter fence
     src = src.replace(/<script[\s\S]*?<\/script>/gi, ' '); // client scripts

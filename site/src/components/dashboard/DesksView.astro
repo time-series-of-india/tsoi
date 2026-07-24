@@ -1,0 +1,1418 @@
+---
+// Folds several DashboardSpecs into one page as sticky-bar "desks" (newsroom
+// sense: one editorial unit per beat). This is a SEPARATE renderer from
+// DashboardView.astro, not a wrapper around it — DashboardView's client
+// script assumes a single instance per page (document.querySelector('.dash'),
+// a single #dash-spec, etc.), and Astro dedupes identical script tags when a
+// component is used more than once on a page, so six DashboardViews on one
+// page would only wire up the first. Rather than touch that shared,
+// single-instance script (used unmodified by every standalone dashboard
+// page), this component re-implements the same DOM wiring scoped to each
+// desk's own root element, reusing the pure data/registry functions from
+// lib/dashboards/runtime.ts and the shared panel-chrome helpers unchanged.
+//
+// Deliberately dropped versus the standalone pages: the shareable ?ctrl=value
+// URL state. Six desks sharing one URL would collide on control ids (every
+// spec has a 'range', most have a 'metric') — not in the brief's "must keep
+// working" list, so it's left out rather than shipped broken.
+import type { Control, DashboardSpec } from '../../lib/dashboards/runtime';
+
+export interface DeskDef {
+  spec: DashboardSpec; // pre-enriched: globals' options already filled at build time
+  anchor: string; // short anchor id, e.g. 'overview'
+  title: string; // short desk title for the bar, e.g. 'Overview'
+  info: string; // one-sentence description for the title's tooltip
+}
+
+interface Props { desks: DeskDef[] }
+const { desks } = Astro.props;
+
+function ctlAttrs(c: Control, scope: string) {
+  return { 'data-ctl': c.id, 'data-scope': scope };
+}
+
+// Time is a page-global control (one Grafana-style time picker for the whole
+// page, not one per desk): every desk's own 'range' global is dropped from
+// its own bar below and hoisted into the .page-bar instead. All five desks
+// that carry one share the exact same RANGE const from specs.ts, so any one
+// of them supplies the control shape (quick presets, default token) for the
+// hoisted widget; state-wise has a month select instead and is left out.
+const rangeControl: Control | undefined = desks
+  .map((d) => (d.spec.globals ?? []).find((c) => c.id === 'range'))
+  .find((c): c is Control => !!c);
+---
+
+<div class="page-bar">
+  <button type="button" class="page-collapse-btn" aria-expanded="true" aria-label="Collapse all desks">▾</button>
+  <span class="page-title">India Payments</span>
+  <div class="page-controls">
+    {rangeControl && (
+      <div class="ctl">
+        <span class="ctl-label" data-info="The time window every desk shows. Drag across any chart to set a custom window; double-click a chart to reset.">{rangeControl.label}</span>
+        <div class="dr" data-ctl={rangeControl.id} data-scope="page">
+          <button type="button" class="dr-btn"><span class="dr-summary">—</span><span class="dr-caret" aria-hidden="true">▾</span></button>
+          <div class="dr-menu" hidden>
+            <div class="dr-quick">
+              {(rangeControl.quick ?? []).map((o) => (
+                <button type="button" class="dr-q" data-value={o.value}>{o.label}</button>
+              ))}
+            </div>
+            <div class="dr-custom">
+              <label class="dr-field"><span>From</span><select class="dr-from"></select></label>
+              <label class="dr-field"><span>To</span><select class="dr-to"></select></label>
+            </div>
+          </div>
+        </div>
+      </div>
+    )}
+  </div>
+</div>
+
+<div class="desks">
+  {desks.map((d, i) => {
+    const spec = d.spec;
+    const statPanels = spec.panels.filter((p) => p.chart === 'stat');
+    const chartPanels = spec.panels.filter((p) => p.chart !== 'stat');
+    const pid = (id: string) => `d${i}-panel-${id}`;
+    return (
+      <section class="desk" id={d.anchor} data-desk-index={i}>
+        <div class="desk-bar">
+          <button
+            type="button"
+            class="desk-collapse-btn"
+            aria-expanded="true"
+            aria-controls={`${d.anchor}-body`}
+            aria-label={`Collapse ${d.title} desk`}
+          >▾</button>
+          <span class="desk-title" data-info={d.info} tabindex="0">{d.title}</span>
+
+          <div class="desk-controls">
+            {/* 'range' is rendered once, page-level, above — see .page-bar. */}
+            {(spec.globals ?? []).filter((c) => c.id !== 'range').map((c) => (
+              <div class="ctl">
+                <span class="ctl-label" data-info={c.info}>{c.label}</span>
+                {c.type === 'select' ? (
+                  <select {...ctlAttrs(c, 'global')} aria-label={c.label}>
+                    {(c.options ?? []).map((o) => (
+                      <option value={o.value} selected={o.value === c.default}>{o.label}</option>
+                    ))}
+                  </select>
+                ) : c.type === 'multiselect' ? (
+                  <div class="ms" {...ctlAttrs(c, 'global')}>
+                    <button type="button" class="ms-btn"><span class="ms-summary">—</span><span class="ms-caret" aria-hidden="true">▾</span></button>
+                    <div class="ms-menu" hidden>
+                      <input type="text" class="ms-search" placeholder="Search…" autocomplete="off" />
+                      <div class="ms-actions">
+                        <button type="button" class="ms-all">Select all</button>
+                        <button type="button" class="ms-clear">Clear all</button>
+                      </div>
+                      <div class="ms-opts">
+                        {(c.options ?? []).map((o) => (
+                          <label class="ms-opt"><input type="checkbox" value={o.value} checked={Array.isArray(c.default) && c.default.includes(o.value)} />{o.label}</label>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                ) : c.type === 'daterange' ? (
+                  <div class="dr" {...ctlAttrs(c, 'global')}>
+                    <button type="button" class="dr-btn"><span class="dr-summary">—</span><span class="dr-caret" aria-hidden="true">▾</span></button>
+                    <div class="dr-menu" hidden>
+                      <div class="dr-quick">
+                        {(c.quick ?? []).map((o) => (
+                          <button type="button" class="dr-q" data-value={o.value}>{o.label}</button>
+                        ))}
+                      </div>
+                      <div class="dr-custom">
+                        <label class="dr-field"><span>From</span><select class="dr-from"></select></label>
+                        <label class="dr-field"><span>To</span><select class="dr-to"></select></label>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div class="seg" {...ctlAttrs(c, 'global')}>
+                    {(c.options ?? []).map((o) => (
+                      <button type="button" data-value={o.value} class={o.value === c.default ? 'active' : ''}>{o.label}</button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+
+          <button type="button" class="desk-filters-btn" aria-expanded="false">Filters</button>
+          <button type="button" class="desk-max" aria-label={`Maximize ${d.title} desk`}>⤢</button>
+        </div>
+
+        {/* Single collapse unit: the chevron in .desk-bar toggles display on
+            this whole wrapper rather than on .stat-strip/.panels separately,
+            so a fold can't leave one half visible and the other hidden. */}
+        <div class="desk-body" id={`${d.anchor}-body`}>
+        {statPanels.length > 0 && (
+          <div class="stat-strip">
+            {statPanels.map((p) => (
+              <div class="stat" id={pid(p.id)}>
+                <span class="stat-value">—</span>
+                <span class="stat-label" data-info={p.info}>{p.title}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div class="panels">
+          {chartPanels.map((p) => (
+            <section class:list={['panel', { wide: p.wide }]}>
+              <div class="panel-bar">
+                <span class="dot" aria-hidden="true"></span>
+                <span class="panel-title" data-info={p.info}>{p.title}</span>
+                <div class="panel-right">
+                  {p.controls && p.controls.length > 0 && (
+                    <div class="panel-ctls">
+                      {p.controls.map((c) => (
+                        c.type === 'select' ? (
+                          <label class="panel-ctl-sel"><span class="ctl-label" data-info={c.info}>{c.label}</span>
+                            <select {...ctlAttrs(c, p.id)} aria-label={c.label}>
+                              {(c.options ?? []).map((o) => (
+                                <option value={o.value} selected={o.value === c.default}>{o.label}</option>
+                              ))}
+                            </select>
+                          </label>
+                        ) : c.type === 'multiselect' ? (
+                          <label class="panel-ctl-sel"><span class="ctl-label" data-info={c.info}>{c.label}</span>
+                            <div class="ms" {...ctlAttrs(c, p.id)}>
+                              <button type="button" class="ms-btn"><span class="ms-summary">—</span><span class="ms-caret" aria-hidden="true">▾</span></button>
+                              <div class="ms-menu" hidden>
+                                <input type="text" class="ms-search" placeholder="Search…" autocomplete="off" />
+                                <div class="ms-actions">
+                                  <button type="button" class="ms-all">Select all</button>
+                                  <button type="button" class="ms-clear">Clear all</button>
+                                </div>
+                                <div class="ms-opts">
+                                  {(c.options ?? []).map((o) => (
+                                    <label class="ms-opt"><input type="checkbox" value={o.value} checked={Array.isArray(c.default) && c.default.includes(o.value)} />{o.label}</label>
+                                  ))}
+                                </div>
+                              </div>
+                            </div>
+                          </label>
+                        ) : c.type === 'daterange' ? (
+                          <label class="panel-ctl-sel"><span class="ctl-label" data-info={c.info}>{c.label}</span>
+                            <div class="dr" {...ctlAttrs(c, p.id)}>
+                              <button type="button" class="dr-btn"><span class="dr-summary">—</span><span class="dr-caret" aria-hidden="true">▾</span></button>
+                              <div class="dr-menu" hidden>
+                                <div class="dr-quick">
+                                  {(c.quick ?? []).map((o) => (
+                                    <button type="button" class="dr-q" data-value={o.value}>{o.label}</button>
+                                  ))}
+                                </div>
+                                <div class="dr-custom">
+                                  <label class="dr-field"><span>From</span><select class="dr-from"></select></label>
+                                  <label class="dr-field"><span>To</span><select class="dr-to"></select></label>
+                                </div>
+                              </div>
+                            </div>
+                          </label>
+                        ) : (
+                          <label class="panel-ctl-sel"><span class="ctl-label" data-info={c.info}>{c.label}</span>
+                            <div class="seg" {...ctlAttrs(c, p.id)}>
+                              {(c.options ?? []).map((o) => (
+                                <button type="button" data-value={o.value} class={o.value === c.default ? 'active' : ''}>{o.label}</button>
+                              ))}
+                            </div>
+                          </label>
+                        )
+                      ))}
+                    </div>
+                  )}
+                  <button type="button" class="panel-max" aria-label="Maximize panel">⤢</button>
+                </div>
+              </div>
+              <div class="chart" id={pid(p.id)} data-chart={p.chart}></div>
+            </section>
+          ))}
+        </div>
+        </div>
+
+        <script type="application/json" class="desk-spec" set:html={JSON.stringify(spec)} />
+      </section>
+    );
+  })}
+</div>
+
+<style>
+  /* ── page bar: one time picker for the whole page (Grafana model) ──────
+     A thin saffron strip, not a second surface-tint slab: it used to share
+     the .desk-bar tint and full height, so scrolling stacked two identical
+     beige bars (page bar + the desk's own sticky bar) into one heavy block.
+     Filling it with --tsoi-color-pagebar (deep saffron #CC5500 in both themes)
+     and squeezing the vertical padding to a hair around the RANGE control
+     makes it read as the page-level accent it is — distinct from, and lighter
+     than, the desk bars below (which keep their own saffron top-rule as the
+     desk-boundary mark). It's a dedicated token, not --primary, so the dark
+     strip keeps this depth instead of borrowing dark's brighter accent; text
+     uses --tsoi-color-on-pagebar to stay legible on it in both themes. */
+  .page-bar {
+    display: flex; align-items: center; gap: calc(var(--tsoi-spacing-unit) * 2); flex-wrap: wrap;
+    padding: calc(var(--tsoi-spacing-unit) * 0.375) calc(var(--tsoi-spacing-unit) * 1.5);
+    background: var(--tsoi-color-pagebar);
+    position: sticky; top: 0; z-index: 7;
+  }
+  .page-title {
+    flex-shrink: 0;
+    font: var(--tsoi-text-byline); font-weight: 600; letter-spacing: 0.06em;
+    text-transform: uppercase; font-size: 13px; color: var(--tsoi-color-on-pagebar);
+  }
+  /* Collapse-all chevron: aggregate tri-state (see the client script's
+     syncPageCollapseBtn) — pointing down while any desk is expanded (click
+     collapses everything), rotated to point right once all six are folded
+     (click expands everything). Same glyph/rotate idiom as .desk-collapse-btn
+     below, just recoloured for the saffron strip it sits on. */
+  /* A shade smaller than the desk chevron: the saffron strip is deliberately
+     short (see .page-bar's trimmed padding), and --tsoi-page-bar-h is measured
+     at runtime, so this stays proportionate without pushing the strip taller. */
+  .page-collapse-btn {
+    flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+    width: 24px; height: 24px; padding: 0; border: 0; border-radius: 2px; cursor: pointer;
+    background: transparent; color: var(--tsoi-color-on-pagebar); font-size: 16px; line-height: 1;
+  }
+  .page-collapse-btn:hover { opacity: 0.8; }
+  .page-collapse-btn.collapsed { transform: rotate(-90deg); }
+  /* Meaningless inside a maximized overlay — relocatePageBar moves the one
+     .page-bar node (chevron included) into whichever desk/panel is
+     maximized, and collapse-all has nothing to act on from in there. */
+  :global(.desk.maximized) .page-collapse-btn,
+  :global(.panel.maximized) .page-collapse-btn { display: none; }
+  .page-controls { display: flex; align-items: center; gap: calc(var(--tsoi-spacing-unit) * 2); margin-left: auto; }
+  /* RANGE label sits on the saffron strip — light it to match the title. */
+  .page-bar .ctl-label { color: var(--tsoi-color-on-pagebar); }
+  /* Trim the RANGE button's own height too so the whole strip stays short. */
+  .page-bar .dr-btn { padding-block: 2px; }
+  @media (max-width: 600px) {
+    /* Keep it a single compact row rather than stacking title over control:
+       the whole point is a thin bar, so title left / RANGE right, no wrap. */
+    .page-bar { flex-wrap: nowrap; gap: var(--tsoi-spacing-unit); }
+    .page-controls { gap: var(--tsoi-spacing-unit); min-width: 0; }
+  }
+
+  /* Desks are flush — no margin between .desk elements — so the JS-driven
+     stacking below (see the <script>) can compute a clean handoff: bar N-1
+     holds at the page-bar offset until desk N's true top arrives to touch
+     it, then they move together. The resting gap before the next bar is a
+     trailing `::after` spacer, deliberately NOT padding-bottom: a sticky
+     element's NATIVE release (independent of whatever `top` script.ts
+     computes) is bounded by its container's CONTENT edge, not its padding
+     edge, so padding here would make native sticky release the bar early —
+     fighting the JS instead of matching it — while generated content is
+     real content as far as that boundary is concerned, so native release
+     and the script's own computed trigger land on the same scroll position.
+     Mirrors meta.astro. */
+  .desks { display: flex; flex-direction: column; padding-block: calc(var(--tsoi-spacing-unit) * 3); }
+  .desk {
+    /* Jump-nav anchor lands just clear of the page bar; the desk's own sticky
+       bar tucks under it. --tsoi-page-bar-h is measured/kept current by the
+       client script (its height shifts if the bar ever wraps to two lines). */
+    scroll-margin-top: var(--tsoi-page-bar-h, 45px);
+  }
+  .desk:not(:last-child)::after { content: ''; display: block; height: calc(var(--tsoi-spacing-unit) * 2); }
+
+  /* ── desk bar: title, controls, filters toggle, desk maximize ────────── */
+  .desk-bar {
+    display: flex; align-items: center; gap: calc(var(--tsoi-spacing-unit) * 2); flex-wrap: wrap;
+    padding: var(--tsoi-spacing-unit) calc(var(--tsoi-spacing-unit) * 1.5);
+    border: var(--tsoi-rule-column) solid var(--tsoi-color-outline);
+    /* Desk header identity: the darker bar tint plus a thin saffron top rule
+       (the site's section-rule motif) marks where one desk ends and the next
+       begins — the saffron values inside bars are chipped, so the tint is safe. */
+    border-top: 2px solid var(--tsoi-color-primary);
+    background: var(--tsoi-color-surface-container-high);
+    /* Sticks BELOW the page bar (its RANGE control lives above every desk
+       now), not at the very top — see --tsoi-page-bar-h above. */
+    position: sticky; top: var(--tsoi-page-bar-h, 45px); z-index: 6;
+    /* The whole bar folds/unfolds the desk (see the client script); the
+       surface reads as clickable, and the controls inside keep their cursor. */
+    cursor: pointer;
+  }
+  /* The gap below the bar lives on the NEXT element, never as the bar's own
+     margin-bottom: a sticky element is bounded by its MARGIN box, so a bottom
+     margin makes the bar release that many px early and leaves a permanent gap
+     between it and the incoming desk's bar during the push. */
+  .desk-bar + * { margin-top: calc(var(--tsoi-spacing-unit) * 2); }
+  /* Zed-style disclosure chevron, hard left of the title — deliberately not
+     next to .desk-filters-btn/.desk-max on the right: that side already uses
+     aria-expanded for the mobile filters block, and two different
+     expand/collapse affordances sharing one corner reads as one confused
+     control. Rotate-in-place (no glyph swap) keeps the DOM/aria simpler. */
+  /* Sized to match .desk-max at the other end of the bar: the fold and the
+     maximize are the desk's two view controls, so they get equal weight
+     rather than a hairline chevron beside a full-size button. */
+  .desk-collapse-btn {
+    flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+    width: 28px; height: 28px; padding: 0; border: 0; border-radius: 2px; cursor: pointer;
+    background: transparent; color: var(--tsoi-color-on-surface-variant); font-size: 19px; line-height: 1;
+  }
+  .desk-collapse-btn:hover { color: var(--tsoi-color-on-surface); }
+  .desk-collapse-btn.collapsed { transform: rotate(-90deg); }
+  .desk-title {
+    flex-shrink: 0;
+    font: var(--tsoi-text-byline); font-weight: 600; letter-spacing: 0.06em;
+    text-transform: uppercase; font-size: 13px; color: var(--tsoi-color-on-surface);
+  }
+  .desk-controls {
+    display: flex; align-items: center; gap: calc(var(--tsoi-spacing-unit) * 2); flex-wrap: wrap;
+    flex: 1;
+  }
+  /* When panel maximize moves the desk controls into the panel's column-flex
+     overlay, the bar-filling flex:1 would grow them into the chart's space —
+     pin them to content height and give them the bar chrome they left behind. */
+  :global(.panel.maximized) .desk-controls {
+    flex: 0 0 auto;
+    padding: var(--tsoi-spacing-unit) calc(var(--tsoi-spacing-unit) * 1.5);
+    border-bottom: var(--tsoi-rule-column) solid var(--tsoi-color-outline);
+    background: var(--tsoi-color-surface-container-high);
+  }
+  :global(.desk-controls .ctl-asof) {
+    margin-left: auto; display: inline-flex; align-items: baseline; gap: 8px;
+    padding: 4px 10px; border: 1px solid var(--tsoi-color-outline); border-radius: 2px;
+    background: var(--tsoi-color-background); user-select: none;
+    font: var(--tsoi-text-byline); text-transform: uppercase; letter-spacing: 0.04em;
+    color: var(--tsoi-color-on-surface-variant);
+  }
+  :global(.desk-controls .ctl-asof strong) { font-weight: 400; color: var(--tsoi-color-primary-text); letter-spacing: 0; }
+  .ctl { display: flex; align-items: center; gap: calc(var(--tsoi-spacing-unit) / 2); }
+  .ctl-label { font: var(--tsoi-text-byline); text-transform: uppercase; color: var(--tsoi-color-on-surface-variant); }
+
+  .desk-filters-btn {
+    display: none; flex-shrink: 0;
+    font: var(--tsoi-text-byline); text-transform: uppercase; letter-spacing: 0.04em;
+    padding: 5px 10px; border: 1px solid var(--tsoi-color-outline); border-radius: 2px; cursor: pointer;
+    background: var(--tsoi-color-background); color: var(--tsoi-color-on-surface-variant);
+  }
+  .desk-filters-btn:hover { background: var(--tsoi-color-surface-container-high); color: var(--tsoi-color-on-surface); }
+
+  .desk-max {
+    flex-shrink: 0; margin-left: auto;
+    display: flex; align-items: center; justify-content: center;
+    width: 28px; height: 28px; padding: 0; border: 0; border-radius: 2px; cursor: pointer;
+    background: transparent; color: var(--tsoi-color-on-surface-variant); font-size: 19px; line-height: 1;
+  }
+  .desk-max:hover { background: var(--tsoi-color-surface-container-high); color: var(--tsoi-color-on-surface); }
+
+  /* Collapsed desk: instant display swap, no transition — a container full
+     of ECharts canvases mid-height-transition produces visible jank and
+     forces mid-transition resizes, so there's nothing to animate here.
+     Filters/controls fold away too (filtering an invisible desk means
+     nothing); .desk-max is deliberately NOT in this list — maximize must
+     keep working on a collapsed desk (see the client script's openDesk). */
+  .desk.collapsed .desk-body,
+  .desk.collapsed .desk-controls,
+  .desk.collapsed .desk-filters-btn { display: none; }
+
+  @media (max-width: 600px) {
+    .desk-bar { position: sticky; }
+    /* .desk-title is flex-shrink:0 above (desktop has room to spare), but on a
+       narrow bar that refuses to shrink — combined with "Filters" growing to
+       "Hide filters" while open (see the client script) — a longer desk title
+       (e.g. "MERCHANT CATEGORIES") can push .desk-max clean off line 1 and
+       onto its own orphan line, floating over the control rows below instead
+       of sitting beside Filters. flex-shrink alone doesn't fix this: wrapping
+       decisions are made on items' HYPOTHETICAL (unshrunk) size, so a long
+       title still counts as its full content width when the browser decides
+       whether .desk-max fits — flex-shrink only resolves overflow within a
+       line already assigned. Giving the title flex-basis:0 (flex:1 1 0) makes
+       its hypothetical size 0, so Filters + Maximize always have room on line
+       1 regardless of title length; flex-grow:1 then lets it fill whatever
+       space is actually left, with the overflow ellipsizing if it doesn't fit. */
+    .desk-title { flex: 1 1 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .desk-controls { display: none; width: 100%; flex-direction: column; align-items: stretch; gap: var(--tsoi-spacing-unit); order: 4; }
+    .desk-controls.mobile-open { display: flex; }
+    .desk-controls .ctl { width: 100%; justify-content: space-between; }
+    :global(.desk-controls .ctl-asof) { margin-left: 0; width: 100%; justify-content: space-between; }
+    /* Filters first, then maximize — the desktop bar reads Filters → ⤢ left
+       to right, and the mobile bar must not invert that. The auto margin has
+       to move with the order: it's what pins the pair to the right edge, so
+       it belongs on whichever button now leads the pair. Left on .desk-max it
+       would push maximize right and strand Filters beside the title. */
+    .desk-filters-btn {
+      display: inline-flex; align-items: center; justify-content: center;
+      order: 2; margin-left: auto;
+    }
+    .desk-max { order: 3; margin-left: 0; }
+  }
+
+  /* ── desk maximize overlay ────────────────────────────────────────────── */
+  /* z-index above panel-chrome.ts's own overlay (backdrop 39 / .panel.maximized
+     40): a maximized panel's position:fixed opens a stacking context nested
+     inside .desk.maximized (also position:fixed), so the panel's z-index:40
+     only outranks siblings WITHIN that nested context — compared against the
+     panel-chrome backdrop (appended straight to <body>, z-index 39), it's the
+     desk's OWN z-index that decides, not the panel's. Keeping the desk above
+     39/40 means the whole desk (panel included) always wins that comparison,
+     instead of the panel-level backdrop painting a translucent wash over the
+     entire maximized desk. */
+  :global(.tsoi-desk-backdrop) { position: fixed; inset: 0; z-index: 44; background: rgba(0, 0, 0, 0.55); }
+  :global(.desk.maximized) {
+    position: fixed; inset: 0; z-index: 45; overflow-y: auto;
+    background: var(--tsoi-color-background);
+    /* No top padding: the page bar is moved in as the first child while
+       maximized (see initDesk's relocatePageBar) and provides the top edge,
+       exactly as it does in normal flow — so the desk's own sticky bar tucks
+       right under it with no gap and nothing gets clipped. */
+    padding: 0 calc(var(--tsoi-spacing-unit) * 2) calc(var(--tsoi-spacing-unit) * 4);
+    border: 0;
+  }
+
+  /* ── stat strip ───────────────────────────────────────────────────────── */
+  .stat-strip { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: calc(var(--tsoi-spacing-unit) * 2); margin-bottom: calc(var(--tsoi-spacing-unit) * 2); }
+  @media (max-width: 600px) { .stat-strip { grid-template-columns: 1fr; gap: var(--tsoi-spacing-unit); } }
+  .stat { border: var(--tsoi-rule-column) solid var(--tsoi-color-outline); background: var(--tsoi-color-surface); padding: calc(var(--tsoi-spacing-unit) * 1.5); display: flex; flex-direction: column; gap: calc(var(--tsoi-spacing-unit) / 2); }
+  .stat-value { font: var(--tsoi-text-metric-xl); color: var(--tsoi-color-on-surface); }
+  .stat-value :global(.stat-delta) {
+    font-size: 0.5em; font-weight: 400; margin-left: 0.9em;
+    color: var(--tsoi-color-on-surface-variant); letter-spacing: 0.02em;
+  }
+  .stat-label { font: var(--tsoi-text-byline); text-transform: uppercase; letter-spacing: 0.04em; color: var(--tsoi-color-on-surface-variant); }
+
+  /* ── panels grid ──────────────────────────────────────────────────────── */
+  .panels { display: grid; grid-template-columns: 1fr; gap: calc(var(--tsoi-spacing-unit) * 2); }
+  @media (min-width: 880px) { .panels { grid-template-columns: 1fr 1fr; } .panel.wide { grid-column: 1 / -1; } }
+
+  .panel { border: var(--tsoi-rule-column) solid var(--tsoi-color-outline); background: var(--tsoi-color-surface); }
+  .panel-bar {
+    display: flex; align-items: center; gap: var(--tsoi-spacing-unit); flex-wrap: wrap;
+    padding: var(--tsoi-spacing-unit);
+    border-bottom: var(--tsoi-rule-column) solid var(--tsoi-color-outline);
+  }
+  .panel-title { font: var(--tsoi-text-label-caps); letter-spacing: 0.04em; text-transform: uppercase; color: var(--tsoi-color-on-surface); }
+  .dot { width: 6px; height: 6px; border-radius: var(--tsoi-radius-full); background: var(--tsoi-color-chart-1); flex-shrink: 0; }
+  .panel-right { margin-left: auto; display: flex; align-items: center; gap: var(--tsoi-spacing-unit); }
+  .panel-ctls { display: flex; align-items: center; gap: calc(var(--tsoi-spacing-unit) * 1.5); }
+  .panel-ctl-sel { display: inline-flex; align-items: center; gap: 6px; }
+  .panel-ctl-sel .ctl-label { font: var(--tsoi-text-byline); text-transform: uppercase; letter-spacing: 0.04em; color: var(--tsoi-color-on-surface-variant); }
+  .panel-ctls .ms-menu { left: auto; right: 0; }
+  .panel-ctl-sel select {
+    font: var(--tsoi-text-metric-sm); color: var(--tsoi-color-on-surface);
+    background: var(--tsoi-color-background); border: 1px solid var(--tsoi-color-outline);
+    padding: 3px 6px; border-radius: 2px; max-width: 180px;
+  }
+  /* .panel-max button + .panel.maximized overlay rules are injected globally
+     by ../../lib/panel-chrome.ts (shared with DashboardView / meta.astro). */
+
+  select {
+    font: var(--tsoi-text-metric-sm); color: var(--tsoi-color-on-surface);
+    background: var(--tsoi-color-background); border: 1px solid var(--tsoi-color-outline);
+    padding: 4px 8px; border-radius: 2px; max-width: 200px;
+  }
+  .ms { position: relative; }
+  .ms-btn {
+    display: inline-flex; align-items: center; gap: 6px; cursor: pointer;
+    font: var(--tsoi-text-metric-sm); color: var(--tsoi-color-on-surface);
+    background: var(--tsoi-color-background); border: 1px solid var(--tsoi-color-outline);
+    padding: 4px 8px; border-radius: 2px; max-width: 220px;
+  }
+  .ms-summary { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ms-caret { color: var(--tsoi-color-on-surface-variant); }
+  .ms-menu {
+    position: absolute; z-index: 20; top: calc(100% + 4px); left: 0;
+    min-width: 240px; max-width: calc(100vw - 28px);
+    background: var(--tsoi-color-surface); border: 1px solid var(--tsoi-color-outline);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
+  }
+  .ms-search {
+    display: block; width: 100%; box-sizing: border-box;
+    padding: 6px 8px; border: 0; border-bottom: 1px solid var(--tsoi-color-outline);
+    font: var(--tsoi-text-metric-sm); color: var(--tsoi-color-on-surface);
+    background: var(--tsoi-color-background); outline: none;
+  }
+  .ms-search::placeholder { color: var(--tsoi-color-on-surface-variant); }
+  .ms-actions { display: flex; border-bottom: 1px solid var(--tsoi-color-outline); }
+  .ms-all, .ms-clear {
+    flex: 1; text-align: center; padding: 5px 8px;
+    border: 0; cursor: pointer;
+    font: var(--tsoi-text-byline); text-transform: uppercase; letter-spacing: 0.04em;
+    color: var(--tsoi-color-primary-text); background: transparent;
+  }
+  .ms-clear { border-left: 1px solid var(--tsoi-color-outline); }
+  .ms-all:hover, .ms-clear:hover { background: var(--tsoi-color-surface-container-high); }
+  .ms-opts { max-height: 240px; overflow-y: auto; overflow-x: auto; padding: 4px; }
+  .ms-menu :global(.ms-opt[hidden]) { display: none; }
+  .ms-menu :global(.ms-opt) {
+    display: flex; align-items: center; gap: 8px; padding: 5px 7px; cursor: pointer;
+    font: var(--tsoi-text-metric-sm); color: var(--tsoi-color-on-surface); white-space: nowrap;
+  }
+  .ms-menu :global(.ms-opt:hover) { background: var(--tsoi-color-surface-container-high); }
+  .ms-menu :global(.ms-opt input) { accent-color: var(--tsoi-color-primary); flex-shrink: 0; }
+
+  .dr { position: relative; }
+  .dr-btn {
+    display: inline-flex; align-items: center; gap: 6px; cursor: pointer;
+    font: var(--tsoi-text-metric-sm); color: var(--tsoi-color-on-surface);
+    background: var(--tsoi-color-background); border: 1px solid var(--tsoi-color-outline);
+    padding: 4px 8px; border-radius: 2px; max-width: 220px;
+  }
+  .dr-summary { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .dr-caret { color: var(--tsoi-color-on-surface-variant); }
+  .dr-menu {
+    position: absolute; z-index: 20; top: calc(100% + 4px); right: 0;
+    min-width: 240px; max-width: calc(100vw - 28px);
+    background: var(--tsoi-color-surface); border: 1px solid var(--tsoi-color-outline);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
+  }
+  .dr-quick { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px; border-bottom: 1px solid var(--tsoi-color-outline); }
+  .dr-q {
+    font: var(--tsoi-text-byline); text-transform: uppercase; letter-spacing: 0.04em;
+    padding: 4px 9px; border: 1px solid var(--tsoi-color-outline); border-radius: 2px; cursor: pointer;
+    background: var(--tsoi-color-background); color: var(--tsoi-color-on-surface-variant);
+  }
+  .dr-q:hover { background: var(--tsoi-color-surface-container-high); color: var(--tsoi-color-on-surface); }
+  /* Accepted AA deviation (2026-07-19): white on light's #CC5500 fill is
+     4.31:1 against the 4.5:1 floor; the passing darker saffron read too red,
+     so the brand fill stays. */
+  .dr-q.active { background: var(--tsoi-color-primary); color: #fff; border-color: var(--tsoi-color-primary); }
+  .dr-custom { display: flex; flex-direction: column; gap: 8px; padding: 8px; }
+  .dr-field { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .dr-field span { font: var(--tsoi-text-byline); text-transform: uppercase; letter-spacing: 0.04em; color: var(--tsoi-color-on-surface-variant); }
+  .dr-field select { flex: 1; max-width: 160px; }
+
+  .seg { display: inline-flex; border: 1px solid var(--tsoi-color-outline); border-radius: 2px; overflow: hidden; }
+  .seg button {
+    font: var(--tsoi-text-byline); text-transform: uppercase; letter-spacing: 0.04em;
+    padding: 5px 10px; border: 0; cursor: pointer;
+    background: var(--tsoi-color-background); color: var(--tsoi-color-on-surface-variant);
+  }
+  .seg button + button { border-left: 1px solid var(--tsoi-color-outline); }
+  /* Accepted AA deviation (2026-07-19): white on light's #CC5500 fill is
+     4.31:1 against the 4.5:1 floor; the passing darker saffron read too red,
+     so the brand fill stays. */
+  .seg button.active { background: var(--tsoi-color-primary); color: #fff; }
+
+  .chart { width: 100%; height: 360px; }
+  .chart[data-chart='choropleth'] { height: 520px; }
+  .panel.wide .chart { height: 420px; }
+  @media (max-width: 600px) {
+    .chart { height: 320px; }
+    .chart[data-chart='choropleth'] { height: 440px; }
+  }
+  /* Wide tier (see .tsoi-container-wide in global.css): the 2-up grid goes from
+     ~615px to ~850px per panel, which at a fixed 360px turns every line chart
+     into a letterbox. Grow the height with the width instead of splitting to a
+     3-up grid — a third column would claw back the room the ranked bar lists
+     need for their bank names, which already truncate at 2-up. */
+  @media (min-width: 1600px) {
+    .chart { height: 440px; }
+    .panel.wide .chart { height: 500px; }
+  }
+</style>
+
+<script>
+  import * as echarts from 'echarts';
+  import { buildPanel, computeStat, monthLabel, one, readTokens, resolveRange } from '../../lib/dashboards/runtime';
+  import { legendIsolation } from '../../lib/dashboards/legend';
+  import { initInfoTooltips, initMaximize, initTouchTipToggle, initTouchTooltipClose, isCoarsePointer, pushOverlay, requestOverlayClose } from '../../lib/panel-chrome';
+  import type { DashboardSpec, Control, Row, CtrlState } from '../../lib/dashboards/runtime';
+
+  // Bridge for payments.astro's jump-nav script — a separate inline script
+  // with no scope in common with this one (module scripts don't share
+  // globals unless they go through `window`). `declare global` augmentations
+  // must sit at a module's top level, not nested in the `if` block below, so
+  // the interface lives here even though the value is only assigned at the
+  // very end of it.
+  declare global {
+    interface Window { tsoiDesks?: { expandAndScrollTo(anchor: string, opts?: { smooth?: boolean }): void } }
+  }
+
+  const deskEls = Array.from(document.querySelectorAll<HTMLElement>('.desk'));
+  if (deskEls.length > 0) {
+    const specs: DashboardSpec[] = deskEls.map((el) => {
+      const specEl = el.querySelector('script.desk-spec')!;
+      return JSON.parse(specEl.textContent!);
+    });
+
+    const initialized: boolean[] = deskEls.map(() => false);
+    const deskCharts: (Record<string, echarts.ECharts> | null)[] = deskEls.map(() => null);
+    const deskRenderAll: (() => void)[] = deskEls.map(() => () => {});
+    const deskCtrl: (CtrlState | null)[] = deskEls.map(() => null);
+
+    // ── desk collapse state (restored before anything else runs) ─────────
+    // sessionStorage (not localStorage: per-tab, and a folding choice
+    // shouldn't outlive the session) keyed by ANCHOR id, not index, so a
+    // future desk-order change doesn't silently restore the wrong desk.
+    // Not the URL: a shared link must not carry the sender's folding state.
+    // Default (nothing stored) is all-expanded. This must run before the
+    // initial-hash handling at the bottom of this script (see
+    // expandAndScrollTo/window.tsoiDesks) — the hash target has to win over
+    // whatever was stored for it, and that only works if storage is applied
+    // first.
+    const COLLAPSE_KEY = `tsoi:desks:collapsed:${location.pathname}`;
+    function loadCollapsedAnchors(): Set<string> {
+      try {
+        const raw = sessionStorage.getItem(COLLAPSE_KEY);
+        return raw ? new Set(JSON.parse(raw)) : new Set();
+      } catch {
+        return new Set(); // private-mode/storage-full — folding is a nicety, not required for the page to work
+      }
+    }
+    function saveCollapsedAnchors() {
+      try {
+        sessionStorage.setItem(COLLAPSE_KEY, JSON.stringify(deskEls.filter((_, i) => collapsed[i]).map((el) => el.id)));
+      } catch {
+        /* ignore — see loadCollapsedAnchors */
+      }
+    }
+    const storedCollapsed = loadCollapsedAnchors();
+    const collapsed: boolean[] = deskEls.map((el) => storedCollapsed.has(el.id));
+    function updateChevronUI(i: number) {
+      const el = deskEls[i];
+      const btn = el.querySelector<HTMLButtonElement>('.desk-collapse-btn');
+      if (!btn) return;
+      const isCollapsed = collapsed[i];
+      btn.setAttribute('aria-expanded', String(!isCollapsed));
+      btn.setAttribute('aria-label', `${isCollapsed ? 'Expand' : 'Collapse'} ${el.querySelector('.desk-title')?.textContent ?? ''} desk`);
+      btn.classList.toggle('collapsed', isCollapsed);
+    }
+    function applyCollapsedDOM(i: number) {
+      deskEls[i].classList.toggle('collapsed', collapsed[i]);
+      updateChevronUI(i);
+    }
+    // Apply the restored state to the DOM up front — before eager/lazy init
+    // below decide who gets to skip fetching. No aria/DOM state is deferred
+    // to a later "hydration" pass; this IS first paint's steady state.
+    deskEls.forEach((_, i) => applyCollapsedDOM(i));
+
+    // ── page bar follows the maximize overlay ────────────────────────────
+    // A maximized desk/panel is position:fixed over the whole viewport, so the
+    // page bar (with its RANGE picker) would be hidden behind it. Rather than
+    // float a second fixed copy above the overlay — which fights the desk
+    // bar's sticky top offset and clips the stat strip — we physically MOVE
+    // the one page-bar node into whichever overlay is on top, so it's plain
+    // sticky flow again (page bar top:0, desk bar top:--tsoi-page-bar-h),
+    // identical to the un-maximized page. Moving a node preserves its wired
+    // listeners, so the RANGE control keeps working. A comment marks its home
+    // slot for restore. relocatePageBar reads the live .maximized state, so it
+    // handles the nested case (panel maximized inside a maximized desk) and is
+    // safe to call after any open/close.
+    const pageBar = document.querySelector<HTMLElement>('.page-bar');
+    const pageBarHome = pageBar ? document.createComment('page-bar-home') : null;
+    if (pageBar && pageBarHome) pageBar.before(pageBarHome);
+    const relocatePageBar = () => {
+      if (!pageBar || !pageBarHome) return;
+      const host = document.querySelector<HTMLElement>('.panel.maximized')
+        ?? document.querySelector<HTMLElement>('.desk.maximized');
+      if (host) {
+        if (host.firstChild !== pageBar) host.prepend(pageBar);
+      } else if (pageBar.previousSibling !== pageBarHome) {
+        pageBarHome.after(pageBar);
+      }
+    };
+
+    // ── page-level RANGE control ─────────────────────────────────────────
+    // Grafana model: one time picker drives every desk's ctrl.range, instead
+    // of each desk keeping its own. The popover markup is the same 'dr'
+    // widget the desks used to render individually (see DesksView's page-bar
+    // template), just hoisted above them; state-wise has no 'range' global
+    // and sits out of RANGE_DESK_IDX below.
+    const RANGE_DESK_IDX = specs
+      .map((s, i) => ((s.globals ?? []).some((c) => c.id === 'range') ? i : -1))
+      .filter((i) => i >= 0);
+    const rangeCtl: Control | undefined = specs.flatMap((s) => s.globals ?? []).find((c) => c.id === 'range');
+    const pageDr = document.querySelector<HTMLElement>('.page-bar .dr[data-ctl="range"]');
+    let globalRangeToken = (rangeCtl?.default as string) ?? '24';
+    // Union of every range-carrying desk's own month domain, grown as each
+    // desk loads — populates the custom From/To selects. resolveRange itself
+    // still resolves the shared token against each DESK's own domain when a
+    // panel renders (per-dataset date coverage genuinely differs), so this is
+    // only for what the popover's dropdowns can offer.
+    let pageMonths: string[] = [];
+
+    const pageRangeSummary = (token: string): string => {
+      if (!rangeCtl) return '—';
+      const q = (rangeCtl.quick ?? []).find((o) => o.value === token);
+      if (q) return q.value === '0' ? 'All time' : /^\d+$/.test(q.value) ? `Last ${q.label}` : q.label;
+      const win = resolveRange(token, pageMonths);
+      return win ? `${monthLabel(win.from)} – ${monthLabel(win.to)}` : 'All time';
+    };
+    const syncPageRangeUI = () => {
+      if (!pageDr) return;
+      const win = resolveRange(globalRangeToken, pageMonths) ?? (pageMonths.length ? { from: pageMonths[0], to: pageMonths.at(-1)! } : null);
+      const from = pageDr.querySelector<HTMLSelectElement>('.dr-from');
+      const to = pageDr.querySelector<HTMLSelectElement>('.dr-to');
+      if (win && from) from.value = win.from;
+      if (win && to) to.value = win.to;
+      pageDr.querySelector('.dr-summary')!.textContent = pageRangeSummary(globalRangeToken);
+      pageDr.querySelectorAll<HTMLElement>('.dr-q').forEach((b) => b.classList.toggle('active', b.dataset.value === globalRangeToken));
+    };
+    const populatePageRange = () => {
+      if (!pageDr) return;
+      const opts = pageMonths.map((m) => `<option value="${m}">${monthLabel(m)}</option>`).join('');
+      pageDr.querySelector('.dr-from')!.innerHTML = opts;
+      pageDr.querySelector('.dr-to')!.innerHTML = opts;
+      syncPageRangeUI();
+    };
+    function noteDeskMonths(months: string[]) {
+      const set = new Set(pageMonths);
+      let grew = false;
+      for (const m of months) if (!set.has(m)) { set.add(m); grew = true; }
+      if (!grew) return;
+      pageMonths = [...set].sort();
+      populatePageRange();
+    }
+    // Sets the ONE shared range and pushes it into every already-initialized
+    // desk's own ctrl.range, re-rendering that desk. A desk that lazy-inits
+    // later just reads globalRangeToken at that point (see initDesk below).
+    function setGlobalRange(token: string) {
+      globalRangeToken = token;
+      syncPageRangeUI();
+      for (const i of RANGE_DESK_IDX) {
+        const ctrl = deskCtrl[i];
+        if (!ctrl) continue; // not initialized yet — adopts globalRangeToken on init instead
+        ctrl.range = token;
+        deskRenderAll[i]();
+      }
+    }
+    if (pageDr && rangeCtl) {
+      const btn = pageDr.querySelector<HTMLButtonElement>('.dr-btn')!;
+      const menu = pageDr.querySelector<HTMLElement>('.dr-menu')!;
+      const from = pageDr.querySelector<HTMLSelectElement>('.dr-from')!;
+      const to = pageDr.querySelector<HTMLSelectElement>('.dr-to')!;
+      const close = () => { menu.hidden = true; };
+      btn.addEventListener('click', (e) => { e.stopPropagation(); menu.hidden = !menu.hidden; });
+      document.addEventListener('click', (e) => { if (!pageDr.contains(e.target as Node)) close(); });
+      pageDr.querySelectorAll<HTMLButtonElement>('.dr-q').forEach((b) =>
+        b.addEventListener('click', (e) => { e.stopPropagation(); close(); setGlobalRange(b.dataset.value!); }));
+      const setCustom = () => setGlobalRange(`${from.value}~${to.value}`);
+      from.addEventListener('change', () => { if (from.value > to.value) to.value = from.value; setCustom(); });
+      to.addEventListener('change', () => { if (to.value < from.value) from.value = to.value; setCustom(); });
+      syncPageRangeUI();
+    }
+
+    // Desk bars stick BELOW the page bar, not at the very top (see the
+    // --tsoi-page-bar-h var in the <style> block) — measure it so the offset
+    // (and the jump-nav's scroll-margin-top) tracks the bar's real height
+    // instead of an assumed pixel value, in case it ever wraps to two lines.
+    const pageBarEl = document.querySelector<HTMLElement>('.page-bar');
+    if (pageBarEl) {
+      const setPageBarH = () => document.documentElement.style.setProperty('--tsoi-page-bar-h', `${pageBarEl.offsetHeight}px`);
+      setPageBarH();
+      new ResizeObserver(setPageBarH).observe(pageBarEl);
+    }
+
+    // Stack desk-bars by computing each one's `top` from the NEXT desk
+    // section's live natural position, not from the previous bar's already-
+    // resolved (possibly already-sliding) position. Two earlier attempts
+    // both missed: a shared offset releases the outgoing bar a full bar-
+    // height before the incoming one arrives (a visible slide with a gap);
+    // a fixed cumulative offset closes that gap but then leaves the
+    // outgoing bar's vacated slot permanently hollow once it's gone (nothing
+    // covers it, so scrolled content bleeds through — visible on this
+    // dashboard's own charts, six desks deep). Chasing the outgoing bar's
+    // own (already-moving) rect just inherits whatever quirk made it move
+    // early, one step removed. The fix: a desk SECTION is plain in-flow —
+    // unlike its sticky `.desk-bar` child, its rect.top always reflects
+    // where it truly, physically is on scroll, never adjusted (the same
+    // property the desk-collapse scroll-anchor logic below already relies
+    // on). Bar i rests at `base` until desk (i+1)'s true top, closing in
+    // from below, would need to overlap bar i to keep scrolling normally —
+    // only then does bar i get pushed, at the exact instant of contact
+    // (zero gap, not early, not late), moving in lockstep with the incoming
+    // section from that point on. Bar i can also never be pushed ABOVE its
+    // own natural (unstuck) position — that floor is what lets it scroll
+    // away cleanly once it's the one being chased off. The last bar has no
+    // next section pushing it, so it just rests at `base` like an ordinary
+    // single sticky bar. Mirrors meta.astro. A collapsed desk hides its
+    // panels but never changes a bar's own height, so collapse/expand needs
+    // no separate recompute — its own scroll-anchor logic below already
+    // fires a 'scroll' event that re-triggers this.
+    const desks = Array.from(document.querySelectorAll<HTMLElement>('.desk'));
+    const deskBars = desks.map((d) => d.querySelector<HTMLElement>('.desk-bar')!);
+    let stackRaf = 0;
+    const restackDeskBars = () => {
+      const base = pageBarEl?.offsetHeight ?? 0;
+      const naturalTops = desks.map((d) => d.getBoundingClientRect().top);
+      deskBars.forEach((bar, i) => {
+        // A maximized desk is position:fixed, full-viewport, and the only one
+        // showing — the OTHER desks' naturalTops still reflect wherever they
+        // sit in the underlying (hidden) page, which is meaningless here and
+        // was exactly the bug: a desk maximized while a neighbour's true top
+        // happened to be far down this six-desk page inherited that huge
+        // number as its own `top`, stranding the bar deep inside the
+        // overlay's own (mostly empty) scroll box with a giant blank gap
+        // above it. Maximized just wants the plain single-bar case, same as
+        // the last desk below.
+        if (desks[i].classList.contains('maximized')) { bar.style.top = `${base}px`; return; }
+        // The LAST bar is never pushed by anything below it — leave it to
+        // native CSS sticky (stylesheet `top: var(--tsoi-page-bar-h)` already
+        // equals `base`). Writing its `top` every frame lands one frame behind
+        // the compositor's own sticky, so during momentum / rubber-band scroll
+        // at the page bottom it visibly wobbles; clearing the inline top lets
+        // the stylesheet win and no per-frame JS touches it. Its section
+        // position is still READ below to push the second-to-last bar.
+        if (i === desks.length - 1) { bar.style.top = ''; return; }
+        const ceiling = Math.min(base, naturalTops[i + 1] - bar.offsetHeight);
+        const top = Math.max(naturalTops[i], ceiling);
+        // Same wobble, same cure as the last bar — generalised. A bar only
+        // needs hand-steering while the next desk is closing in from below and
+        // pushing it ABOVE the page-bar offset; that downward slide is the
+        // intended motion, and a per-frame `top` is what draws it. Every other
+        // moment — the bar resting stuck at `base`, or still down in flow
+        // waiting its turn — native CSS sticky (stylesheet `top: base`) already
+        // holds it perfectly, and a JS `top` written each scroll frame only
+        // lands one frame behind the compositor and wobbles, worst on
+        // momentum / rubber-band touch scroll (mobile, iPad). So take over
+        // ONLY during the active push and hand back to native the rest of the
+        // time. `< base`, not `<= base`: at rest `top` clamps to exactly
+        // `base`, which must go to native — only a strictly smaller value is a
+        // live push. Up-scroll, where nothing is being pushed, is now pure
+        // native sticky and no longer wobbles.
+        if (top < base) bar.style.top = `${top}px`;
+        else bar.style.top = '';
+      });
+    };
+    const scheduleRestack = () => {
+      if (stackRaf) return;
+      stackRaf = requestAnimationFrame(() => { stackRaf = 0; restackDeskBars(); });
+    };
+    restackDeskBars();
+    window.addEventListener('scroll', scheduleRestack, { passive: true });
+    const deskBarStackObserver = new ResizeObserver(restackDeskBars);
+    deskBars.forEach((bar) => deskBarStackObserver.observe(bar));
+    if (pageBarEl) deskBarStackObserver.observe(pageBarEl);
+
+    // A time-axis panel's x categories are period keys (see runtime.ts's
+    // periodKey): 'YYYY-MM-DD' (daily), 'YYYY-MM' (monthly), 'YYYY-Qn'
+    // (quarterly) or 'YYYY' (yearly), depending on THAT panel's own
+    // aggregation control — fold any of them to the 'YYYY-MM' month bounds
+    // resolveRange expects.
+    const keyToMonth = (key: string, edge: 'from' | 'to'): string => {
+      if (/^\d{4}$/.test(key)) return `${key}-${edge === 'from' ? '01' : '12'}`;
+      if (/^\d{4}-Q[1-4]$/.test(key)) {
+        const [y, q] = key.split('-Q');
+        const startMonth = (+q - 1) * 3 + 1;
+        return `${y}-${String(edge === 'from' ? startMonth : startMonth + 2).padStart(2, '0')}`;
+      }
+      return key.slice(0, 7); // daily or monthly keys both start with the month
+    };
+    const armDeskBrush = (chart: echarts.ECharts) =>
+      chart.dispatchAction({ type: 'takeGlobalCursor', key: 'brush', brushOption: { brushType: 'lineX', brushMode: 'single' } });
+    const wiredBrushCharts = new WeakSet<object>();
+    // A completed drag on ANY desk's time-series chart sets the ONE
+    // page-global range (not a per-chart zoom — see panel-chrome.ts's
+    // activateDragZoom, the per-panel version the standalone dashboard pages
+    // still use). Double-click resets to the spec default ('24').
+    function wireGlobalBrush(chart: echarts.ECharts) {
+      if (isCoarsePointer()) return;
+      armDeskBrush(chart);
+      if (wiredBrushCharts.has(chart)) return;
+      wiredBrushCharts.add(chart);
+      chart.on('brushEnd', (params: any) => {
+        chart.dispatchAction({ type: 'brush', command: 'clear', areas: [] });
+        armDeskBrush(chart);
+        const range = params.areas?.[0]?.coordRange as [number, number] | undefined;
+        if (!range) return;
+        const cats = (chart.getOption().xAxis as any[])?.[0]?.data as string[] | undefined;
+        if (!cats?.length) return;
+        const i0 = Math.max(0, Math.min(cats.length - 1, Math.floor(Math.min(range[0], range[1]))));
+        const i1 = Math.max(0, Math.min(cats.length - 1, Math.ceil(Math.max(range[0], range[1]))));
+        const from = keyToMonth(cats[i0], 'from');
+        const to = keyToMonth(cats[i1], 'to');
+        setGlobalRange(from <= to ? `${from}~${to}` : `${to}~${from}`);
+      });
+      chart.getZr().on('dblclick', () => setGlobalRange((rangeCtl?.default as string) ?? '24'));
+    }
+
+    // One shared india-states geojson fetch even if several desks map it.
+    let indiaMapPromise: Promise<void> | null = null;
+    const ensureIndiaMap = () => {
+      if (!indiaMapPromise) {
+        indiaMapPromise = fetch('/maps/india_states.json')
+          .then((r) => r.json())
+          .then((geo) => { echarts.registerMap('india', geo); });
+      }
+      return indiaMapPromise;
+    };
+
+    async function initDesk(i: number) {
+      if (initialized[i]) return;
+      initialized[i] = true;
+      const root = deskEls[i];
+      const spec = specs[i];
+      const pid = (id: string) => `d${i}-panel-${id}`;
+
+      const data = (await fetch(spec.dataset).then((r) => r.json())) as { rows: Row[]; asOf?: string };
+      const rows = data.rows;
+
+      if (data.asOf) {
+        const bar = root.querySelector('.desk-controls');
+        if (bar) {
+          const label = new Date(data.asOf).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+          const chip = document.createElement('div');
+          chip.className = 'ctl-asof';
+          chip.innerHTML = `<span>As of</span><strong>${label}</strong>`;
+          bar.appendChild(chip);
+        }
+      }
+      if (spec.panels.some((p) => p.chart === 'choropleth')) await ensureIndiaMap();
+
+      const fieldControls = [...(spec.globals ?? []), ...spec.panels.flatMap((p) => p.controls ?? [])]
+        .filter((c) => (c.type === 'select' || c.type === 'multiselect') && c.field);
+      const allControls: Control[] = [...(spec.globals ?? []), ...spec.panels.flatMap((p) => p.controls ?? [])];
+      const ctrl: CtrlState = {};
+      for (const c of allControls) ctrl[c.id] = c.default;
+      // A desk that lazy-inits after the reader has already moved the page's
+      // RANGE control adopts the current global value, not the spec default.
+      if (allControls.some((c) => c.id === 'range')) ctrl.range = globalRangeToken;
+      deskCtrl[i] = ctrl;
+
+      const depField = (id: string) => fieldControls.find((s) => s.id === id)?.field ?? id;
+      const scopedRows = (c: Control) => {
+        let r = rows;
+        if (c.where) for (const [f, v] of Object.entries(c.where)) r = r.filter((row) => String(row[f]) === v);
+        for (const dep of c.dependsOn ?? []) r = r.filter((row) => String(row[depField(dep)]) === one(ctrl[dep]));
+        return r;
+      };
+      const scoped = (c: Control) =>
+        [...new Set(scopedRows(c).filter((row) => row[c.field!] != null).map((row) => String(row[c.field!])))].sort();
+      const labelOf = (c: Control, o: string) => c.labels?.[o] ?? (c.field === 'month' ? monthLabel(o) : o);
+      function populate(c: Control) {
+        const el = root.querySelector<HTMLSelectElement>(`select[data-ctl="${c.id}"]`);
+        if (!el || !c.field) return;
+        const opts = scoped(c);
+        if (!opts.includes(one(ctrl[c.id]))) ctrl[c.id] = opts[0];
+        el.innerHTML = opts.map((o) => `<option value="${o}"${o === one(ctrl[c.id]) ? ' selected' : ''}>${labelOf(c, o)}</option>`).join('');
+      }
+      function updateSummary(el: HTMLElement, c: Control) {
+        const arr = Array.isArray(ctrl[c.id]) ? (ctrl[c.id] as string[]) : [];
+        const total = el.querySelectorAll('input[type="checkbox"]').length;
+        el.querySelector('.ms-summary')!.textContent =
+          total && arr.length === total ? `All (${total})` : arr.length <= 2 ? arr.map((v) => labelOf(c, v)).join(', ') : `${arr.length} of ${total}`;
+      }
+      function populateMulti(c: Control) {
+        const el = root.querySelector<HTMLElement>(`.ms[data-ctl="${c.id}"]`);
+        if (!el || !c.field) return;
+        const r = scopedRows(c);
+        const opts = [...new Set(r.map((row) => String(row[c.field!])))].sort();
+        const prev = Array.isArray(ctrl[c.id]) ? (ctrl[c.id] as string[]) : [];
+        let sel = prev.filter((v) => opts.includes(v));
+        if (sel.length === 0) {
+          if (c.defaultTop) {
+            const by = c.rankBy ?? 'volume_cr';
+            const tot: Record<string, number> = {};
+            for (const row of r) { const k = String(row[c.field!]); tot[k] = (tot[k] ?? 0) + (Number(row[by]) || 0); }
+            sel = opts.slice().sort((a, b) => (tot[b] ?? 0) - (tot[a] ?? 0)).slice(0, c.defaultTop);
+          } else sel = opts.slice();
+        }
+        ctrl[c.id] = sel;
+        el.querySelector('.ms-opts')!.innerHTML = opts
+          .map((o) => `<label class="ms-opt"><input type="checkbox" value="${o}"${sel.includes(o) ? ' checked' : ''}/>${labelOf(c, o)}</label>`)
+          .join('');
+        const search = el.querySelector<HTMLInputElement>('.ms-search');
+        if (search) search.value = '';
+        updateSummary(el, c);
+      }
+      const repopulate = (c: Control) => (c.type === 'multiselect' ? populateMulti : populate)(c);
+      for (const c of fieldControls) repopulate(c);
+
+      const charts: Record<string, echarts.ECharts> = {};
+      for (const p of spec.panels) {
+        if (p.chart === 'stat') continue;
+        charts[p.id] = echarts.init(document.getElementById(pid(p.id))!);
+        // Touch only: retap the same spot to dismiss the tooltip, rather than
+        // hunting for the gutter between two stacked panels.
+        initTouchTipToggle(charts[p.id]);
+      }
+      deskCharts[i] = charts;
+
+      const legendResets: Record<string, () => void> = {};
+      for (const [id, chart] of Object.entries(charts)) {
+        legendResets[id] = legendIsolation(chart, () => renderPanel(id));
+      }
+
+      const renderPanel = (id: string) => {
+        const p = spec.panels.find((x) => x.id === id)!;
+        if (p.chart === 'stat') {
+          const { value, label, delta } = computeStat(p, rows, ctrl);
+          const tile = document.getElementById(pid(id));
+          if (tile) {
+            tile.querySelector('.stat-value')!.innerHTML =
+              delta ? `${value}<span class="stat-delta">${delta}</span>` : String(value);
+            if (label && label !== p.title) tile.querySelector('.stat-label')!.textContent = label;
+          }
+        } else {
+          const option = buildPanel(p, rows, ctrl, readTokens(), false);
+          charts[id].setOption(option, true);
+          // wireGlobalBrush, not panel-chrome's activateDragZoom: a drag on any
+          // desk's time chart sets the ONE page-global range, not a per-chart zoom.
+          if ((option as { dataZoom?: unknown }).dataZoom) wireGlobalBrush(charts[id]);
+          // touch only: click-to-open + an explicit close control on the tooltip
+          // (notMerge above drops the tooltip merge, so re-apply every render)
+          initTouchTooltipClose(charts[id]);
+          legendResets[id]?.();
+        }
+      };
+      const renderAll = () => spec.panels.forEach((p) => renderPanel(p.id));
+      deskRenderAll[i] = renderAll;
+
+      const monthOf = (row: Row) => String(row.date ?? row.month).slice(0, 7);
+      const allMonths = [...new Set(rows.map(monthOf))].filter((m) => /^\d{4}-\d{2}$/.test(m)).sort();
+      // Feed this desk's own month domain into the page-level RANGE widget's
+      // custom From/To dropdowns (only the desks that actually carry 'range').
+      if (RANGE_DESK_IDX.includes(i)) noteDeskMonths(allMonths);
+      const rangeSummary = (c: Control, token: string) => {
+        const q = (c.quick ?? []).find((o) => o.value === token);
+        if (q) return q.value === '0' ? 'All time' : /^\d+$/.test(q.value) ? `Last ${q.label}` : q.label;
+        const win = resolveRange(token, allMonths);
+        return win ? `${monthLabel(win.from)} – ${monthLabel(win.to)}` : 'All time';
+      };
+      const syncRange = (el: HTMLElement, c: Control) => {
+        const token = one(ctrl[c.id]);
+        const win = resolveRange(token, allMonths) ?? { from: allMonths[0], to: allMonths.at(-1)! };
+        el.querySelector<HTMLSelectElement>('.dr-from')!.value = win.from;
+        el.querySelector<HTMLSelectElement>('.dr-to')!.value = win.to;
+        el.querySelector('.dr-summary')!.textContent = rangeSummary(c, token);
+        el.querySelectorAll<HTMLElement>('.dr-q').forEach((b) => b.classList.toggle('active', b.dataset.value === token));
+      };
+      const populateRange = (el: HTMLElement, c: Control) => {
+        const opts = allMonths.map((m) => `<option value="${m}">${monthLabel(m)}</option>`).join('');
+        el.querySelector('.dr-from')!.innerHTML = opts;
+        el.querySelector('.dr-to')!.innerHTML = opts;
+        syncRange(el, c);
+      };
+
+      root.querySelectorAll<HTMLElement>('[data-ctl]').forEach((el) => {
+        const id = el.dataset.ctl!;
+        const scope = el.dataset.scope!;
+        const apply = () => {
+          for (const c of fieldControls) if ((c.dependsOn ?? []).includes(id)) repopulate(c);
+          scope === 'global' ? renderAll() : renderPanel(scope);
+        };
+        if (el.tagName === 'SELECT') {
+          el.addEventListener('change', (e) => { ctrl[id] = (e.target as HTMLSelectElement).value; apply(); });
+        } else if (el.classList.contains('ms')) {
+          const c = allControls.find((x) => x.id === id)!;
+          const btn = el.querySelector<HTMLButtonElement>('.ms-btn')!;
+          const menu = el.querySelector<HTMLElement>('.ms-menu')!;
+          const search = el.querySelector<HTMLInputElement>('.ms-search')!;
+          const selectAll = el.querySelector<HTMLButtonElement>('.ms-all')!;
+          const visibleInputs = () => [...menu.querySelectorAll<HTMLInputElement>('.ms-opt:not([hidden]) input')];
+          const clearAll = el.querySelector<HTMLButtonElement>('.ms-clear')!;
+          const closeMenu = () => {
+            menu.hidden = true;
+            search.value = '';
+            menu.querySelectorAll<HTMLElement>('.ms-opt').forEach((o) => { o.hidden = false; });
+          };
+          btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (menu.hidden) { menu.hidden = false; } else closeMenu();
+          });
+          document.addEventListener('click', (e) => { if (!el.contains(e.target as Node)) closeMenu(); });
+          search.addEventListener('click', (e) => e.stopPropagation());
+          search.addEventListener('input', () => {
+            const q = search.value.toLowerCase();
+            menu.querySelectorAll<HTMLElement>('.ms-opt').forEach((opt) => {
+              opt.hidden = q.length > 0 && !opt.textContent!.toLowerCase().includes(q);
+            });
+          });
+          selectAll.addEventListener('click', (e) => {
+            e.stopPropagation();
+            visibleInputs().forEach((inp) => { inp.checked = true; });
+            ctrl[id] = [...menu.querySelectorAll<HTMLInputElement>('input:checked')].map((inp) => inp.value);
+            updateSummary(el, c);
+            apply();
+          });
+          clearAll.addEventListener('click', (e) => {
+            e.stopPropagation();
+            menu.querySelectorAll<HTMLInputElement>('input[type="checkbox"]').forEach((inp) => { inp.checked = false; });
+            ctrl[id] = [];
+            updateSummary(el, c);
+            apply();
+          });
+          menu.addEventListener('change', (e) => {
+            const checked = [...menu.querySelectorAll<HTMLInputElement>('input:checked')].map((inp) => inp.value);
+            if (checked.length === 0) { (e.target as HTMLInputElement).checked = true; return; }
+            ctrl[id] = checked;
+            updateSummary(el, c);
+            apply();
+          });
+        } else if (el.classList.contains('dr')) {
+          const c = allControls.find((x) => x.id === id)!;
+          const btn = el.querySelector<HTMLButtonElement>('.dr-btn')!;
+          const menu = el.querySelector<HTMLElement>('.dr-menu')!;
+          const from = el.querySelector<HTMLSelectElement>('.dr-from')!;
+          const to = el.querySelector<HTMLSelectElement>('.dr-to')!;
+          populateRange(el, c);
+          const close = () => { menu.hidden = true; };
+          btn.addEventListener('click', (e) => { e.stopPropagation(); menu.hidden = !menu.hidden; });
+          document.addEventListener('click', (e) => { if (!el.contains(e.target as Node)) close(); });
+          el.querySelectorAll<HTMLButtonElement>('.dr-q').forEach((b) =>
+            b.addEventListener('click', (e) => {
+              e.stopPropagation();
+              ctrl[id] = b.dataset.value!;
+              syncRange(el, c);
+              close();
+              apply();
+            }));
+          const setCustom = () => { ctrl[id] = `${from.value}~${to.value}`; syncRange(el, c); apply(); };
+          from.addEventListener('change', () => { if (from.value > to.value) to.value = from.value; setCustom(); });
+          to.addEventListener('change', () => { if (to.value < from.value) from.value = to.value; setCustom(); });
+        } else {
+          el.querySelectorAll<HTMLButtonElement>('button').forEach((b) =>
+            b.addEventListener('click', () => {
+              ctrl[id] = b.dataset.value!;
+              el.querySelectorAll('button').forEach((x) => x.classList.remove('active'));
+              b.classList.add('active');
+              apply();
+            })
+          );
+        }
+      });
+
+      const ro = new ResizeObserver(() => Object.values(charts).forEach((c) => c.resize()));
+      spec.panels.forEach((p) => { if (p.chart !== 'stat') ro.observe(document.getElementById(pid(p.id))!); });
+
+      // Panel maximize (unchanged mechanics from panel-chrome.ts), scoped to
+      // this desk's own panels — the desk's filter controls ride into the
+      // maximized panel and back out, same UX as the standalone pages.
+      const deskControls = root.querySelector<HTMLElement>('.desk-controls');
+      const panelsGrid = root.querySelector<HTMLElement>('.panels');
+      initMaximize({
+        panels: Array.from(root.querySelectorAll<HTMLElement>('.panel')),
+        resize: (panel) => {
+          const chartId = panel.querySelector<HTMLElement>('.chart')?.id.replace(`d${i}-panel-`, '');
+          if (chartId) charts[chartId]?.resize();
+        },
+        onOpen: (panel) => { if (deskControls) panel.insertBefore(deskControls, panel.querySelector('.panel-bar')); relocatePageBar(); },
+        onClose: () => { if (deskControls && panelsGrid) root.querySelector('.desk-bar')!.insertBefore(deskControls, root.querySelector('.desk-filters-btn')); relocatePageBar(); },
+      });
+      new MutationObserver(renderAll).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'data-units'] });
+
+      renderAll();
+      document.fonts?.ready.then(renderAll);
+    }
+
+    // Only the first desk initializes eagerly; the rest wait until they're
+    // about to enter the viewport (roughly a screen's worth of lead time),
+    // so scrolling past desk 1 doesn't pay for datasets nobody's seen yet.
+    // A desk restored collapsed skips this too — there's nothing to render,
+    // so the fetch+ECharts-construction cost is pure waste until the reader
+    // actually expands it (see setCollapsed below, which calls initDesk
+    // itself at that point — this eager/IO path never gets a second chance).
+    if (!collapsed[0]) initDesk(0);
+    const io = new IntersectionObserver((entries) => {
+      for (const entry of entries) {
+        if (!entry.isIntersecting) continue;
+        const i = deskEls.indexOf(entry.target as HTMLElement);
+        if (i > 0 && !collapsed[i]) initDesk(i);
+      }
+    }, { rootMargin: '100% 0px' });
+    deskEls.slice(1).forEach((el) => io.observe(el));
+
+    // Mobile "Filters" toggle: collapses/expands this desk's control block.
+    // Desk maximize stays visible regardless of viewport.
+    deskEls.forEach((el) => {
+      const btn = el.querySelector<HTMLButtonElement>('.desk-filters-btn');
+      const controls = el.querySelector<HTMLElement>('.desk-controls');
+      btn?.addEventListener('click', () => {
+        const open = controls!.classList.toggle('mobile-open');
+        btn.textContent = open ? 'Hide filters' : 'Filters';
+        btn.setAttribute('aria-expanded', String(open));
+      });
+    });
+
+    // Whole-desk maximize: one shared backdrop, at most one desk maximized at
+    // a time. History-aware (see panel-chrome.ts's pushOverlay/requestOverlayClose):
+    // opening pushes a history entry via the SAME shared stack a panel-level
+    // maximize uses, so maximizing a desk THEN a panel inside it pushes two
+    // entries, and Back (or Escape, wired once globally by panel-chrome.ts)
+    // unwinds the panel first, the desk second — no query-based ordering
+    // guard needed here any more, the stack itself enforces the order.
+    const backdrop = document.createElement('div');
+    backdrop.className = 'tsoi-desk-backdrop';
+    backdrop.hidden = true;
+    document.body.appendChild(backdrop);
+    let currentMax = -1;
+    let deskSeq = 0;
+    const resizeDesk = (i: number) => { const cs = deskCharts[i]; if (cs) Object.values(cs).forEach((c) => c.resize()); };
+
+    // ── collapse/expand a single desk ─────────────────────────────────────
+    // The one function every fold/unfold path funnels through — chevron
+    // clicks, collapse-all/expand-all, maximize's force-expand, and anchor
+    // navigation (expandAndScrollTo below) all call this instead of poking
+    // classList directly, so the DOM class, the aria state and the
+    // lazy-init/resize side effects can never drift apart.
+    function setCollapsed(i: number, value: boolean, opts: { persist?: boolean } = {}) {
+      collapsed[i] = value;
+      applyCollapsedDOM(i);
+      if (opts.persist ?? true) saveCollapsedAnchors();
+      if (!value) {
+        // Expanding: initDesk directly, don't wait on the IntersectionObserver
+        // — IO only fires on intersection TRANSITIONS, so a desk expanded
+        // while already onscreen (or never scrolled to at all) would never
+        // re-fire and would stay permanently empty. Fire-and-forget: the
+        // dataset fetch must not block the scroll/paint below (see
+        // expandAndScrollTo), it just has to have been kicked off.
+        (async () => {
+          if (!initialized[i]) await initDesk(i);
+          // ECharts can't measure inside display:none, so ANY chart laid out
+          // or resized while collapsed has stale dimensions — resize on the
+          // next frame even when the desk was already initialized before
+          // being folded.
+          requestAnimationFrame(() => resizeDesk(i));
+        })();
+      }
+      syncPageCollapseBtn();
+      // A fold changes every following desk's natural top, so the sticky desk
+      // bars must be re-stacked — otherwise the next bar keeps the `top` it was
+      // given for the pre-fold layout and sticks off-screen (the desk below
+      // appears to vanish). The ResizeObserver on the bars can't catch this: a
+      // fold changes the desk BODY's height, not the bar's, so it never fires.
+      scheduleRestack();
+    }
+
+    // ── page-bar collapse-all (aggregate tri-state) ───────────────────────
+    const pageCollapseBtn = document.querySelector<HTMLButtonElement>('.page-collapse-btn');
+    function syncPageCollapseBtn() {
+      if (!pageCollapseBtn) return;
+      const anyExpanded = collapsed.some((c) => !c);
+      pageCollapseBtn.setAttribute('aria-expanded', String(anyExpanded));
+      pageCollapseBtn.setAttribute('aria-label', anyExpanded ? 'Collapse all desks' : 'Expand all desks');
+      pageCollapseBtn.classList.toggle('collapsed', !anyExpanded);
+    }
+    // Expand-all/collapse-all shifts every desk-bar below the topmost visible
+    // one, which would otherwise jump the reader's scroll position around.
+    // Find the anchor via its BAR (position:sticky — its rect is the visible
+    // "have we scrolled past this desk" signal), but measure the before/after
+    // DELTA via the desk SECTION's own rect instead of the bar's: the bar's
+    // rect is only meaningful while it's actively pinned, and a big height
+    // change (collapsing/expanding five OTHER desks) can push the anchor
+    // in or out of its sticky range entirely, so its rect stops moving
+    // linearly with the mutation right at the point we most need it to. The
+    // section is plain in-flow (nothing about it is sticky), so its rect
+    // tracks the actual layout shift with no clamping artifact.
+    function withScrollAnchor(mutate: () => void) {
+      const barH = document.querySelector<HTMLElement>('.page-bar')?.offsetHeight ?? 0;
+      const anchor = deskEls.find((el) => {
+        const bar = el.querySelector<HTMLElement>('.desk-bar');
+        return !!bar && bar.getBoundingClientRect().bottom > barH;
+      });
+      const before = anchor?.getBoundingClientRect().top;
+      mutate();
+      if (anchor && before != null) {
+        const after = anchor.getBoundingClientRect().top;
+        if (after !== before) window.scrollBy(0, after - before);
+      }
+    }
+    pageCollapseBtn?.addEventListener('click', () => {
+      const anyExpanded = collapsed.some((c) => !c);
+      withScrollAnchor(() => deskEls.forEach((_, i) => setCollapsed(i, anyExpanded)));
+    });
+
+    // The whole desk bar toggles the fold — chevron, title or empty space alike.
+    // The bar's interactive controls keep their own behaviour: maximize (which
+    // still maximizes, force-expanding a folded desk), the per-desk controls
+    // (module / date-range / segment menus) and the Filters button are all
+    // excluded so a click on them never also folds the desk.
+    // CAPTURE phase, deliberately: on coarse pointers initInfoTooltips attaches a
+    // click handler to every [data-info] element that calls stopPropagation, and
+    // the desk title is one — in the bubble phase that swallowed the tap and the
+    // bar was dead on touch. Capture runs before it. Stopping propagation here in
+    // turn keeps a tap from ALSO opening the title's tooltip while it folds.
+    //
+    // Only REAL controls are excluded, not the whole .desk-controls container:
+    // on a control-heavy desk bar that container spans most of the width, so
+    // excluding it wholesale left the bar looking like it only worked sometimes.
+    // The chevron is exempted from the generic `button` rule so it always folds.
+    const NO_FOLD = '.desk-max, .desk-filters-btn, .ctl, button, select, input, textarea, label, a';
+    deskEls.forEach((el, i) => {
+      el.querySelector<HTMLElement>('.desk-bar')?.addEventListener('click', (e) => {
+        const t = e.target as HTMLElement;
+        if (!t.closest('.desk-collapse-btn') && t.closest(NO_FOLD)) return;
+        e.stopPropagation();
+        setCollapsed(i, !collapsed[i]);
+      }, true);
+    });
+    syncPageCollapseBtn();
+
+    // Direct close — only ever called from the popstate handler (via the
+    // callback openDesk registers below), or when switching straight from
+    // one maximized desk to another without a Back step in between.
+    let preMaxCollapsed = false;
+    const doCloseDesk = () => {
+      if (currentMax < 0) return;
+      const i = currentMax;
+      currentMax = -1;
+      const el = deskEls[i];
+      el.classList.remove('maximized');
+      relocatePageBar();
+      backdrop.hidden = true;
+      const btn = el.querySelector<HTMLButtonElement>('.desk-max')!;
+      btn.textContent = '⤢';
+      btn.setAttribute('aria-label', `Maximize ${el.querySelector('.desk-title')?.textContent ?? ''} desk`);
+      // Maximize only BORROWED the expanded state to avoid opening on an
+      // empty overlay (see openDesk) — put the fold back exactly as the
+      // reader left it, without writing that transient borrow to storage.
+      if (preMaxCollapsed) setCollapsed(i, true, { persist: false });
+      // Back in normal flow: the maximized-branch shortcut in restackDeskBars
+      // no longer applies, so recompute now rather than waiting on a stray
+      // scroll/resize to happen to fire first.
+      scheduleRestack();
+      requestAnimationFrame(() => resizeDesk(i));
+    };
+    const openDesk = (i: number) => {
+      if (currentMax === i) return;
+      if (currentMax >= 0) doCloseDesk();
+      currentMax = i;
+      // A collapsed desk has no rendered charts to show — maximizing it
+      // as-is would open an empty overlay. Force it open first (without
+      // persisting: this is maximize borrowing the expanded state, not the
+      // reader choosing to unfold it — doCloseDesk restores the fold above).
+      preMaxCollapsed = collapsed[i];
+      if (preMaxCollapsed) setCollapsed(i, false, { persist: false });
+      const el = deskEls[i];
+      el.classList.add('maximized');
+      relocatePageBar();
+      backdrop.hidden = false;
+      const btn = el.querySelector<HTMLButtonElement>('.desk-max')!;
+      btn.textContent = '✕';
+      btn.setAttribute('aria-label', 'Close');
+      pushOverlay(`desk-${i}-${++deskSeq}`, doCloseDesk);
+      // Without this, the bar keeps whatever `top` it last had in the normal
+      // page flow — reasonable there, meaningless once reinterpreted inside
+      // the overlay's own (mostly empty) scroll box. See restackDeskBars.
+      scheduleRestack();
+      (async () => {
+        if (!initialized[i]) await initDesk(i);
+        requestAnimationFrame(() => resizeDesk(i));
+      })();
+    };
+    const closeDesk = () => { if (currentMax >= 0) requestOverlayClose(); };
+    backdrop.addEventListener('click', closeDesk);
+    deskEls.forEach((el, i) => {
+      el.querySelector<HTMLButtonElement>('.desk-max')!.addEventListener('click', () => {
+        currentMax === i ? closeDesk() : openDesk(i);
+      });
+    });
+
+    initInfoTooltips();
+
+    // ── anchor navigation: force-expand + scroll ──────────────────────────
+    // Exposed on window because payments.astro's jump-nav lives in its own
+    // inline script — a separate module with no scope in common with this
+    // one (see DesksView's top-of-file note on why this component can't
+    // just be imported into a shared client module either). Collapse state
+    // must never enter the URL/history (see the maximize block above, which
+    // is the only thing allowed to push history here), so this deliberately
+    // does NOT call pushState — the caller owns that.
+    function expandAndScrollTo(anchor: string, opts: { smooth?: boolean } = {}) {
+      const i = deskEls.findIndex((el) => el.id === anchor);
+      if (i < 0) return;
+      // Expand SYNCHRONOUSLY first (setCollapsed's class toggle is instant;
+      // only the dataset fetch inside it is async and deliberately not
+      // awaited here) — scrolling before the fold releases would measure the
+      // pre-expand document height and land short. This also makes the
+      // desk's expanded state the new persisted default, per spec: a reader
+      // who followed a link to it shouldn't find it re-collapsed later.
+      if (collapsed[i]) setCollapsed(i, false);
+      requestAnimationFrame(() => {
+        deskEls[i].scrollIntoView({ behavior: opts.smooth ? 'smooth' : 'auto', block: 'start' });
+      });
+    }
+    window.tsoiDesks = { expandAndScrollTo };
+  }
+</script>

@@ -1,0 +1,100 @@
+---
+// The dashboard card — the landscape face of the Explore format on the
+// dispatch front page: screenshot cover beside the text, the same anatomy as
+// the Explore index's gateway card at card scale. Shape codes format
+// site-wide — a dashboard is a wide instrument, so its card is landscape,
+// where Play's cards are portrait. Cover images are the committed
+// /thumbs/explore captures; without one the card falls back to text.
+interface Props {
+  href: string;
+  kicker: string; // "Dashboard · updated daily"
+  title: string;
+  body?: string;
+  cover?: string; // /thumbs/explore base path (page appends .png / -dark.png)
+  cta?: string;
+}
+const { href, kicker, title, body, cover, cta = 'Open the dashboard' } = Astro.props;
+---
+
+<a class="dash-card" href={href}>
+  {cover && (
+    <span class="da-cover">
+      <img class="t-light" src={`${cover}.png`} alt="" loading="lazy" />
+      <img class="t-dark" src={`${cover}-dark.png`} alt="" loading="lazy" />
+    </span>
+  )}
+  <span class="da-body-wrap">
+    <span class="kicker">{kicker}</span>
+    <span class="da-title">{title}</span>
+    {body && <span class="da-body">{body}</span>}
+    <span class="go">{cta} &rarr;</span>
+  </span>
+</a>
+
+<style>
+  .dash-card {
+    display: grid;
+    grid-template-columns: minmax(180px, 240px) 1fr;
+    border-left: 4px solid var(--tsoi-color-primary);
+    background: var(--tsoi-color-surface-container-low);
+    text-decoration: none; color: inherit;
+    transition: background 0.15s;
+  }
+  .dash-card:hover { background: var(--tsoi-color-surface-container-high); }
+  /* no cover (thumbs not yet generated): plain wide text card */
+  .dash-card:not(:has(.da-cover)) { grid-template-columns: 1fr; }
+
+  .da-cover {
+    display: block; overflow: hidden;
+    border-right: var(--tsoi-rule-column) solid var(--tsoi-color-outline);
+    background: var(--tsoi-color-surface-container-low);
+  }
+  .da-cover img {
+    width: 100%; height: 100%;
+    object-fit: cover; object-position: top left;
+    display: block;
+  }
+  .da-cover .t-dark { display: none; }
+  :global(html[data-theme='dark']) .da-cover .t-light { display: none; }
+  :global(html[data-theme='dark']) .da-cover .t-dark { display: block; }
+
+  .da-body-wrap {
+    display: flex; flex-direction: column; justify-content: center;
+    min-width: 0;
+    padding: calc(var(--tsoi-spacing-unit) * 2.5) calc(var(--tsoi-spacing-unit) * 3);
+  }
+  .kicker {
+    font: var(--tsoi-text-byline); font-weight: 500; letter-spacing: 0.1em;
+    text-transform: uppercase; color: var(--tsoi-color-primary-text);
+  }
+  .da-title {
+    margin-top: var(--tsoi-spacing-unit);
+    font: var(--tsoi-text-headline-md);
+    letter-spacing: var(--tsoi-text-headline-md-tracking);
+    line-height: 1.25;
+  }
+  .dash-card:hover .da-title { color: var(--tsoi-color-primary-text); }
+  .da-body {
+    margin: var(--tsoi-spacing-unit) 0 0;
+    font: var(--tsoi-text-body);
+    letter-spacing: var(--tsoi-text-body-tracking);
+    color: var(--tsoi-color-on-surface-variant);
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .go {
+    margin-top: calc(var(--tsoi-spacing-unit) * 1.5);
+    font: var(--tsoi-text-byline); font-weight: 500; letter-spacing: 0.06em;
+    text-transform: uppercase; color: var(--tsoi-color-primary-text);
+  }
+
+  @media (max-width: 767px) {
+    .dash-card { grid-template-columns: 1fr; }
+    .da-cover {
+      aspect-ratio: 16 / 9;
+      border-right: none;
+      border-bottom: var(--tsoi-rule-column) solid var(--tsoi-color-outline);
+    }
+    .da-body-wrap { padding: calc(var(--tsoi-spacing-unit) * 2.5); }
+  }
+</style>

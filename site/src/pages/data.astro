@@ -46,7 +46,7 @@ const themes = [
                   href={a.href}
                   target="_blank"
                   rel="noopener noreferrer"
-                  aria-label={`Open ${a.name} statistics page (opens in new tab)`}
+                  aria-label={`Open the ${a.name} homepage (opens in new tab)`}
                 >
                   {a.name}
                 </a>
@@ -59,12 +59,45 @@ const themes = [
     }
     <p class="future">More themes — and their sources — will be listed here as they launch.</p>
 
+    <h3>How the data is handled</h3>
+    <p>
+      Figures come from the releases as published, with a small amount of preparation before
+      charting: units are converted for display (millions become crore), product variants that a
+      source lists separately are combined when they are one instrument, and names that drift
+      across the source's own files, a bank capitalised three ways or a merchant category renamed
+      midway through a year, are unified under a single label. Merchant categories are keyed by
+      NPCI's own MCC code for exactly this reason. The values themselves are never changed; where
+      a chart and the official release disagree, the release is right and we want to know.
+    </p>
+
     <h3>Spotted an error?</h3>
     <p>
       If a chart disagrees with the official release, please
       <a href="https://github.com/time-series-of-india/tsoi/issues">open an issue on GitHub</a>
       with a link to the page and the release you checked against. Corrections ship with the next
       rebuild.
+    </p>
+
+    <h3>Reuse &amp; disclaimer</h3>
+    <p>
+      Data is © its publishing agency (currently the Reserve Bank of India and NPCI); TSOI
+      claims no ownership over it and attributes every figure to its source. Where our figures
+      and a source disagree, the source is correct. Map boundaries are illustrative only and are not an authority on any boundary;
+      refer to the Survey of India. You're welcome to cite TSOI's charts and writing with
+      attribution and a link. For reuse of the underlying statistics beyond informational,
+      non-commercial purposes, check the source agency's own terms.
+    </p>
+    <p>
+      Time Series of India is provided for informational and educational purposes only. It is
+      independent and <strong>not affiliated with, endorsed by, or representing</strong> the
+      Reserve Bank of India, the National Payments Corporation of India, or the Government of
+      India. It has no connection with The Times of India or any other news publication; the
+      name refers to time series, the statistical kind.
+      Figures may differ from the primary source; verify against the original before
+      relying on them. The site is provided “as is,” without warranties of any kind, and its
+      maintainers accept no liability for decisions made on the basis of it. Trademarks (UPI,
+      IMPS, RuPay, and bank or app names) belong to their respective owners and are used only to
+      identify the services they name.
     </p>
   </article>
 </StoryPage>
@@ -97,7 +130,7 @@ const themes = [
   }
 
   .prose a {
-    color: var(--tsoi-color-primary);
+    color: var(--tsoi-color-primary-text);
   }
 
   .future {

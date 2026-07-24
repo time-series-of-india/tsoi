@@ -6,8 +6,8 @@
 ---
 
 <div class="units-toggle" role="group" aria-label="Number units">
-  <button type="button" data-units-set="in" aria-label="Indian units (crore, lakh crore)">Cr</button>
-  <button type="button" data-units-set="intl" aria-label="International units (billion, trillion)">bn</button>
+  <button type="button" data-units-set="in" aria-label="Indian units (crore, lakh crore)" data-info="Crore, Indian units">Cr</button>
+  <button type="button" data-units-set="intl" aria-label="International units (billion, trillion)" data-info="Billion, international units">bn</button>
 </div>
 
 <style>
@@ -31,14 +31,21 @@
     border-left: 1px solid var(--tsoi-color-outline);
   }
   .units-toggle button[aria-pressed='true'] {
+    /* Accepted AA deviation (2026-07-19): white on light's #CC5500 is 4.31:1
+       against the 4.5:1 floor; the passing darker saffron read too red, so
+       the brand fill stays. */
     background: var(--tsoi-color-primary);
     color: #fff;
   }
 </style>
 
 <script>
+  import { initInfoTooltips } from '../../lib/panel-chrome';
+
   // Reflect the active choice and wire every units button on the page. Astro
   // dedupes this module script even when the component appears more than once.
+  initInfoTooltips();
+
   const sync = () => {
     const intl = document.documentElement.dataset.units === 'intl';
     for (const btn of document.querySelectorAll<HTMLButtonElement>('[data-units-set]')) {

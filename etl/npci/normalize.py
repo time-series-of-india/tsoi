@@ -169,9 +169,9 @@ BANK_NAME_MAP = {
     "Karnatak vikas Gramin Bank":               "Karnataka Vikas Grameena Bank",
     "NSDL Payments Bank Limited":               "NSDL Payments Bank",
     "Nsdl Payments Bank Limited":               "NSDL Payments Bank",
-    "North East Small Finance Bank Acquirer":   "North East Small Finance Bank",
-    "North East Small Finance Bank Limited - IMPS": "North East Small Finance Bank",
-    "North East Small Finance Bank Ltd":        "North East Small Finance Bank",
+    "North East Small Finance Bank Acquirer":   "Slice Small Finance Bank",
+    "North East Small Finance Bank Limited - IMPS": "Slice Small Finance Bank",
+    "North East Small Finance Bank Ltd":        "Slice Small Finance Bank",
     "One Mobikwik Systems Limited":             "One Mobikwik Systems",
     "One Mobikwik Systems Pvt - Ltd":           "One Mobikwik Systems",
     "PayTM Payments Bank Ltd":                  "Paytm Payments Bank",
@@ -225,9 +225,36 @@ BANK_NAME_MAP = {
     "Yes bank Ltd.":                            "Yes Bank",
     # ── Bank renames: old name → canonical successor ──────────────────────────
     "Jharkhand Rajya Gramin Bank(Erstwhile Vanachal Gramin Bank)": "Vananchal Gramin Bank",
+    # Slice merged into North East SFB (2023) and the combined bank renamed to
+    # Slice SFB (2025). NPCI has used five labels for this one entity across
+    # months/tabs; everything folds to the current name, one continuous series.
+    "North East Small Finance Bank":            "Slice Small Finance Bank",
+    "North East Small Finance Bank Limited":    "Slice Small Finance Bank",
+    "Slice Small Finance Bank Limited":         "Slice Small Finance Bank",
+    "Slice Small Finance Bank Limited(North East Small Finance Bank Limited)": "Slice Small Finance Bank",
 }
 
 
+# Case-insensitive fallback index, built from both the map's keys and its
+# canonical values. NPCI re-cases existing labels between months ("Indian Bank"
+# → "INDIAN Bank", "IDFC First Bank" → "IDFC First BANK"), which silently splits
+# a bank into two series and halves its totals. Indexing the values too means a
+# pure re-casing of a name we already know resolves without a new map entry.
+# Verified unambiguous: no two entries here disagree on the canonical form.
+_CASEFOLD_MAP = {}
+for _raw, _canonical in BANK_NAME_MAP.items():
+    _CASEFOLD_MAP.setdefault(_raw.casefold(), _canonical)
+for _canonical in BANK_NAME_MAP.values():
+    _CASEFOLD_MAP.setdefault(_canonical.casefold(), _canonical)
+
+
 def normalize_bank_name(name: str) -> str:
-    """Return the canonical bank/entity name, or the original if not in the map."""
-    return BANK_NAME_MAP.get(name, name)
+    """Return the canonical bank/entity name, or the original if not in the map.
+
+    Input is stripped first: NPCI has published labels with trailing spaces,
+    which would otherwise bypass the map entirely. Exact matches win; a
+    case-only variant of a known name falls back to _CASEFOLD_MAP."""
+    name = (name or "").strip()
+    if name in BANK_NAME_MAP:
+        return BANK_NAME_MAP[name]
+    return _CASEFOLD_MAP.get(name.casefold(), name)

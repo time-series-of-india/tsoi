@@ -31,6 +31,9 @@ node scripts/build-reads-data.mjs
 echo "==> Generating flagship read dataset (UPI: Anatomy of a Tap)..."
 node scripts/build-read-upi-architecture.mjs
 
+echo "==> Generating meta page dataset (site's own traffic)..."
+node scripts/build-meta.mjs
+
 # Per-content social cards (public/og/* — gitignored, so regenerated every deploy).
 # Editorial OG cards driven off the reads + dashboards registries. Needs `chromium`
 # on PATH (no DB). The committed og-default.png fallback is rebuilt separately via

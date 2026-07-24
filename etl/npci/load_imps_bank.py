@@ -7,6 +7,7 @@ import psycopg2
 from psycopg2 import sql
 from psycopg2.extras import execute_values
 from pathlib import Path
+from etl_util import connect, drop_exact_duplicates
 from normalize import normalize_bank_name
 
 SCHEMA_NAME = os.environ.get("SCHEMA_NAME", "economy_dev")
@@ -38,7 +39,10 @@ cols = ["date", "bank_name", "rank", "volume_mn",
         "approved_pct", "bd_pct", "td_pct", "deemed_approved_pct"]
 
 rows = []
-seen = set()   # deduplicate (date, bank_name) — some months are double-loaded in NPCI's DB
+first_by_key = {}  # deduplicate (date, bank_name) — some months are double-loaded in NPCI's DB.
+                   # Identical re-listings are dropped silently; a duplicate key carrying
+                   # *different* values is still dropped (first wins) but warned about,
+                   # since that can hide a genuine variant split.
 for f in sorted(raw_dir.glob("*.json")):
     year, month = f.stem.split("_")
     date = f"{year}-{MONTHS[month]:02d}-01"
@@ -46,11 +50,7 @@ for f in sorted(raw_dir.glob("*.json")):
         month_data = json.load(fp)
     for r in month_data:
         bank = normalize_bank_name(r.get("imps_beneficiary_banks", "").strip())
-        key = (date, bank)
-        if key in seen:
-            continue
-        seen.add(key)
-        rows.append({
+        row = {
             "date":                date,
             "bank_name":           bank,
             "rank":                r.get("sr_no", ""),
@@ -59,7 +59,16 @@ for f in sorted(raw_dir.glob("*.json")):
             "bd_pct":              parse_num(r.get("bd_percent")),
             "td_pct":              parse_num(r.get("td_percent")),
             "deemed_approved_pct": parse_num(r.get("deemed_approved_percent")),
-        })
+        }
+        key = (date, bank)
+        prev = first_by_key.get(key)
+        if prev is not None:
+            if row != prev:
+                print(f"  WARN: {date} {bank}: duplicate with differing values dropped"
+                      f" (vol {row['volume_mn']} vs kept {prev['volume_mn']})")
+            continue
+        first_by_key[key] = row
+        rows.append(row)
 
 with open(csv_path, "w", newline="") as f:
     w = csv.DictWriter(f, fieldnames=cols)
@@ -69,10 +78,7 @@ print(f"Parsed {len(rows)} rows → {csv_path}")
 
 
 def load_to_db(rows):
-    conn = psycopg2.connect(
-        host="localhost", user="admin",
-        password=os.environ["DB_PASSWORD"], dbname="npci", port=5432
-    )
+    conn = connect()
     try:
         with conn:
             with conn.cursor() as cur:
@@ -127,10 +133,7 @@ print(f"\n--- Loading into {SCHEMA_NAME}.imps_bank_performance ---")
 load_to_db(rows)
 
 print("\n--- Verification ---")
-conn = psycopg2.connect(
-    host="localhost", user="admin",
-    password=os.environ["DB_PASSWORD"], dbname="npci", port=5432
-)
+conn = connect()
 try:
     with conn.cursor() as cur:
         cur.execute(

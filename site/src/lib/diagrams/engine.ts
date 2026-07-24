@@ -226,9 +226,13 @@ export function initSeq(fig: HTMLElement | null, steps: SeqStep[]) {
       const xf = xs[gr.s.from];
       if (gr.s.self) {
         const w = 30;
-        (gr.ln as SVGPathElement).setAttribute('d', `M ${xf} ${y - 7} h ${w} v 14 h ${-w}`);
-        gr.tx.setAttribute('x', String(xf + w + 7)); gr.tx.setAttribute('y', String(y + 1));
-        gr.tx.setAttribute('text-anchor', 'start');
+        // a self-loop on the rightmost lifeline opens leftward, so its label
+        // stays inside the figure instead of running off the border
+        const right = xf >= Math.max(...Object.values(xs)) - 1;
+        const dir = right ? -1 : 1;
+        (gr.ln as SVGPathElement).setAttribute('d', `M ${xf} ${y - 7} h ${dir * w} v 14 h ${-dir * w}`);
+        gr.tx.setAttribute('x', String(xf + dir * (w + 7))); gr.tx.setAttribute('y', String(y + 1));
+        gr.tx.setAttribute('text-anchor', right ? 'end' : 'start');
         gr.ln.style.setProperty('--len', String(w * 2 + 14));
       } else {
         const xt = xs[gr.s.to];

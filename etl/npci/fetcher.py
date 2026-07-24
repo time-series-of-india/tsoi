@@ -1,6 +1,7 @@
 """Shared fetch utilities for NPCI ecosystem statistics API."""
 import datetime
 import json
+import os
 import time
 import urllib.request
 from pathlib import Path
@@ -42,6 +43,27 @@ def load_cached(fname: Path) -> list:
     if isinstance(data, list):
         return data
     return data.get("data", {}).get("results", [])
+
+
+def write_combined(path: Path, records: list, errors: int = 0) -> bool:
+    """Rewrite an all_*.json, refusing after failed fetches or when it would
+    shrink the file — a run of Akamai 403s once replaced months of records
+    with an empty list. FORCE_COMBINED=1 overrides."""
+    force = os.environ.get("FORCE_COMBINED") == "1"
+    existing = 0
+    if path.exists():
+        try:
+            existing = len(load_cached(path))
+        except Exception:
+            existing = 0
+    if not force and (errors > 0 or len(records) < existing):
+        print(f"  KEPT {path.name}: run produced {len(records)} records vs {existing} on disk,"
+              f" {errors} fetch errors — not rewriting (FORCE_COMBINED=1 to override)")
+        return False
+    with open(path, "w") as f:
+        json.dump(records, f)
+    print(f"  wrote {path.name} ({len(records)} records)")
+    return True
 
 
 def fetch_table_detail(params: dict) -> list:
