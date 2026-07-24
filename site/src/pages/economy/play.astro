@@ -1,0 +1,105 @@
+---
+// The Play rack (/economy/play): one portrait card per game. Games render at
+// /economy/play/<game>/ (canonical = current puzzle; numbered puzzle pages are
+// the share targets). Old /economy/beats* URLs 301 here or to the retired
+// deck (public/_redirects). Decks are retired from the rack — their URLs stay
+// alive at /economy/play/[deck] so nothing shared ever breaks, but they are
+// unlisted (same treatment as short reads). Games are equal-weight siblings;
+// the game from the latest dispatch says so with the self-expiring "New" chip.
+import StoryPage from '../../layouts/StoryPage.astro';
+import SectionHeader from '../../components/editorial/SectionHeader.astro';
+import ViewToggle from '../../components/editorial/ViewToggle.astro';
+import GameCard from '../../components/play/GameCard.astro';
+import { DISPATCH_LIST } from '../../lib/dispatches';
+import obhm from '../../data/play/off-by-how-much.json';
+
+const currentPuzzle = obhm.puzzles.find((p) => p.n === obhm.current)!;
+const round1 = currentPuzzle.rounds[0] as {
+  q: string;
+  min?: number;
+  max?: number;
+  countScale?: number;
+};
+
+// Round 1's slider range, for the labels under the card's gauge. Not a
+// spoiler — it's the scale the player is handed the moment they start, and
+// showing it is the point: "somewhere between 100 crore and 10,000 crore" is
+// a span most readers can't intuit, which is the game's whole pitch.
+//
+// Absolute counts, not display strings: the card emits them as
+// `.num[data-count]` spans so BaseLayout's applyProseUnits rewrites them
+// live with the cr/bn toggle, exactly as prose figures do in the reads.
+// Only count-scaled rounds qualify — a future puzzle opening on a percentage
+// or a ratio has no unit to convert, so it simply gets no labels.
+const scale =
+  round1.countScale && round1.min != null && round1.max != null
+    ? { minCount: round1.min * round1.countScale, maxCount: round1.max * round1.countScale }
+    : undefined;
+
+const sectionDate = new Date()
+  .toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })
+  .toUpperCase();
+
+// The game that shipped with the latest dispatch gets a truthful "New" — it
+// expires by itself the moment a newer dispatch ships.
+const isNew = (href: string) =>
+  DISPATCH_LIST[0]?.items.some((it) => it.href === href) ?? false;
+---
+
+<StoryPage
+  title="Play — Time Series of India"
+  description="Games on India's official economic data. Off by How Much? — guess the number, see how far off you are."
+>
+  <SectionHeader label="Economy · Play" date={sectionDate}>
+    <ViewToggle active="play" slot="actions" />
+  </SectionHeader>
+  <p class="intro">
+    Games on India&rsquo;s numbers &mdash; you guess, the data answers.
+  </p>
+
+  <!-- The card's `body` is kept short enough to survive its 2-line clamp at
+       phone width. It used to end "…see how far off you are", which the clamp
+       cut at exactly the payoff phrase; no loss, the title already says it. -->
+  <div class="rack">
+    <GameCard
+      href="/economy/play/off-by-how-much/"
+      kicker={`${obhm.seriesKicker} · Puzzle № ${obhm.current}`}
+      isNew={isNew('/economy/play/off-by-how-much/')}
+      title={obhm.title}
+      body="Four real numbers from India’s payment systems. Guess each one."
+      peek={round1.q}
+      scale={scale}
+    />
+  </div>
+</StoryPage>
+
+<style>
+  .intro {
+    max-width: 70ch;
+    margin: calc(var(--tsoi-spacing-unit) * 2) 0 0;
+    font: var(--tsoi-text-deck);
+    letter-spacing: var(--tsoi-text-deck-tracking);
+    color: var(--tsoi-color-on-surface-variant);
+  }
+
+  /* Track capped at 480px: the game card holds the intro screen's proportion
+     (see GameCard.astro), and the intro card itself is 560 wide — the rack's
+     card is deliberately a size down from the thing it opens, close enough to
+     recognise, not so close it pretends to already BE the game. */
+  .rack {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 480px));
+    gap: calc(var(--tsoi-spacing-unit) * 3.5);
+    margin-top: calc(var(--tsoi-spacing-unit) * 4);
+    justify-content: start;
+  }
+
+  @media (max-width: 600px) {
+    /* one card per row, full width of the column — a landscape card at phone
+       width is already short enough to sit whole on screen */
+    .rack {
+      grid-template-columns: minmax(0, 1fr);
+      gap: calc(var(--tsoi-spacing-unit) * 3);
+    }
+  }
+</style>

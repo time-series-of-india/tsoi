@@ -41,6 +41,9 @@ node scripts/build-read-upi-architecture.mjs
 echo "==> Generating per-content OG cards..."
 node scripts/build-og-cards.mjs
 
+echo "==> Generating meta page dataset (site's own traffic)..."
+node scripts/build-meta.mjs
+
 echo "==> Content-hashing runtime data files + writing manifest..."
 node scripts/hash-data.mjs
 

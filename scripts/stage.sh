@@ -28,6 +28,7 @@ if [ "$SKIP_GEN" -eq 0 ]; then
     node scripts/build-reads-data.mjs
     node scripts/build-read-upi-architecture.mjs
     node scripts/build-og-cards.mjs
+    node scripts/build-meta.mjs
 else
     echo "==> Skipping generators (--skip-generators): reusing site/public/data/."
 fi

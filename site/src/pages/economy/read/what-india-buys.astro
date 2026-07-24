@@ -1,0 +1,78 @@
+---
+// Short read: what India buys on UPI (merchant categories). Data:
+// public/data/economy/reads/what-india-buys.json (scripts/build-reads-data.mjs).
+import ReadLayout from '../../../components/read/ReadLayout.astro';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+
+const data = JSON.parse(readFileSync(fileURLToPath(new URL('../../../../public/data/economy/reads/what-india-buys.json', import.meta.url)), 'utf8'));
+const { stats } = data;
+const payload = JSON.stringify(data);
+---
+
+<ReadLayout
+  slug="what-india-buys"
+  kicker="Economy · Monthly"
+  asOf={stats.asOf}
+  units={true}
+>
+  <figure class="chartfig">
+    <div class="chart" id="read-chart" style="height:420px"></div>
+    <figcaption>Top merchant categories by UPI transaction volume, {stats.asOf}. <span class="e e1">Food categories</span> in orange. Source: NPCI.</figcaption>
+  </figure>
+
+  <div class="prose">
+    <p>Behind the headline numbers, what are people actually buying? The biggest single category by
+      far is groceries, about <strong>{stats.groceriesShare}%</strong> of tracked merchant spending,
+      followed by a run of <span class="e e1">food</span>: fast food, restaurants, bakeries, dairies.
+      Add them together and food is roughly <strong>{stats.foodShare}%</strong> of it. UPI is, more
+      than anything else, how India buys food.</p>
+    <p>The fastest climber is fast food. In {stats.earlyYear} it ranked about
+      <strong>#{stats.fastFoodEarly}</strong> among categories; today it is
+      <strong>#{stats.fastFoodNow}</strong>, behind only groceries. The spread of food delivery and
+      quick-service chains, paid for one scan at a time, shows up cleanly in the data.</p>
+
+    <div class="pullstat">
+      <div><span class="n e1">{stats.foodShare}%</span><span class="l">of UPI merchant spending is <em>food</em></span></div>
+      <div><span class="n">#{stats.fastFoodEarly} &rarr; #{stats.fastFoodNow}</span><span class="l"><em>fast food</em>’s rise since {stats.earlyYear}</span></div>
+    </div>
+
+    <p>The rest is the texture of ordinary days: fuel, phone recharges, pharmacies, a little tobacco.
+      A few oddities sit in the long tail, like buying digital gold by UPI. What the list is not is
+      big-ticket. This is the spending of everyday life, which is exactly why there is so much of it.</p>
+
+    <p class="source">Source: NPCI UPI merchant-category statistics, processed by Time Series of India.
+      <a href="/economy/explore/payments#mcc">Explore the dashboard →</a></p>
+  </div>
+
+  <script type="application/json" id="read-data" set:html={payload}></script>
+</ReadLayout>
+
+<script>
+  import * as echarts from 'echarts';
+  import { buildPanel, readTokens } from '../../../lib/dashboards/runtime';
+  import type { PanelSpec, CtrlState } from '../../../lib/dashboards/runtime';
+
+  const data = JSON.parse(document.getElementById('read-data')!.textContent!);
+  const host = document.getElementById('read-chart');
+  if (host) {
+    const foodMap: Record<string, boolean> = Object.fromEntries(data.topCats.map((c: any) => [c.category, c.food]));
+    const spec: PanelSpec = { id: 'mcc', title: '', chart: 'bar', encoding: { x: 'category', y: 'volume_cr', horizontal: true, sort: 'desc' } };
+    const opt = () => {
+      const t = readTokens();
+      const o: any = buildPanel(spec, data.topCats, { metric: 'volume_cr' } as CtrlState, t);
+      const cats: string[] = (o.yAxis && o.yAxis.data) || [];
+      o.series[0].data = o.series[0].data.map((v: any, i: number) => ({
+        value: v && v.value !== undefined ? v.value : v,
+        itemStyle: { color: foodMap[cats[i]] ? t.palette[0] : t.subtle },
+      }));
+      return o;
+    };
+    const chart = echarts.init(host);
+    const render = () => chart.setOption(opt(), true);
+    new ResizeObserver(() => chart.resize()).observe(host);
+    new MutationObserver(render).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'data-units'] });
+    render();
+    document.fonts?.ready.then(render);
+  }
+</script>

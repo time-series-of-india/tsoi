@@ -1,7 +1,7 @@
 ---
-// Static About page: mission (translate official releases into charted insight),
-// the atlas ambition (any India-specific public dataset), a first-person maker
-// note, then a compressed sources/reuse/disclaimer block. Linked from Footer.
+// Static About page in two halves: the project (mission, atlas ambition,
+// open source, independence note) and the maker (first-person note, contact,
+// closing epigraph). The full sources/reuse/disclaimer block lives on /data. Linked from Footer.
 import StoryPage from '../layouts/StoryPage.astro';
 import SectionHeader from '../components/editorial/SectionHeader.astro';
 ---
@@ -17,8 +17,8 @@ import SectionHeader from '../components/editorial/SectionHeader.astro';
       India publishes some of the world's richest public data, but most of it lives inside Excel
       attachments and ministry portals, filed the way departments work, not the way questions are
       asked. Time Series of India does the translation once, in public:
-      official releases become clear charts and short explainers — swipeable beats, written
-      reads, interactive dashboards — every number traceable to the release it came from.
+      official releases become clear charts and short explainers, things to play, read and
+      explore, with every number traceable to the release it came from.
     </p>
 
     <h3>One theme at a time</h3>
@@ -35,28 +35,22 @@ import SectionHeader from '../components/editorial/SectionHeader.astro';
       <a href="https://github.com/time-series-of-india/tsoi">open source</a>.
     </p>
 
+    <h3>Independent</h3>
+    <p>
+      Time Series of India is independent. It is not affiliated with, endorsed by, or
+      representing the Reserve Bank of India, NPCI, or the Government of India, and it has no
+      connection with The Times of India; the name refers to time series, the statistical kind.
+      Sources, reuse terms and the full disclaimer are on <a href="/data">the data page</a>.
+    </p>
 
-    <h3>Sources, reuse &amp; disclaimer</h3>
+    <h3>About me</h3>
     <p>
-      Every figure derives from a publicly released official dataset, and each read and dashboard
-      names its source — see <a href="/data">the data page</a> for the full list per theme. Data
-      is © its publishing agency (currently the Reserve Bank of India and NPCI) and reproduced
-      with acknowledgement; where our figures and a source disagree, the source is correct. Map
-      boundaries are illustrative only and are not an authority on any boundary — refer to the
-      Survey of India. You're welcome to cite TSOI's charts and writing with attribution and a
-      link; for reuse of the underlying statistics beyond informational, non-commercial purposes,
-      check the source agency's own terms.
+      I am a software developer based in Mumbai, India. TSOI is a side project I build in whatever free
+      time I get. It is an exercise in explaining systems, design thinking, and the craft of a
+      good dashboard. If you like my work or have feedback, write to me at
+      <a href="mailto:contact@timeseriesofindia.com">contact@timeseriesofindia.com</a>.
     </p>
-    <p>
-      Time Series of India is provided for informational and educational purposes only. It is
-      independent and <strong>not affiliated with, endorsed by, or representing</strong> the
-      Reserve Bank of India, the National Payments Corporation of India, or the Government of
-      India. Figures may differ from the primary source; verify against the original before
-      relying on them. The site is provided “as is,” without warranties of any kind, and its
-      maintainers accept no liability for decisions made on the basis of it. Trademarks (UPI,
-      IMPS, RuPay, and bank or app names) belong to their respective owners and are used only to
-      identify the services they name.
-    </p>
+    <p class="epigraph"><em>All the world&rsquo;s a staging server.</em></p>
   </article>
 </StoryPage>
 
@@ -79,6 +73,11 @@ import SectionHeader from '../components/editorial/SectionHeader.astro';
   }
 
   .prose a {
-    color: var(--tsoi-color-primary);
+    color: var(--tsoi-color-primary-text);
+  }
+
+  .epigraph {
+    margin-top: calc(var(--tsoi-spacing-unit) * 2);
+    color: var(--tsoi-color-on-surface-variant);
   }
 </style>

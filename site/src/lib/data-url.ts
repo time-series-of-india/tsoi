@@ -10,7 +10,7 @@
 //
 // Falls back to the logical path when the manifest has no entry (e.g. local dev
 // before hash-data.mjs has run), so development works without the hashing step.
-import manifest from './data-manifest.json';
+import manifest from './data-manifest.json' with { type: 'json' };
 
 const map = manifest as Record<string, string>;
 

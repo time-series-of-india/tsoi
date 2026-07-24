@@ -16,15 +16,23 @@ factual accuracy:
   **"Report a data error"** issue with a source link. No code needed.
 
 **Not open to contribution:** the **editorial content** — the prose in reads and
-beats, and the chart/dashboard *designs*. These are maintainer-authored, licensed
-**CC BY-NC-ND 4.0** (share verbatim with credit, non-commercially; no derivatives —
-this keeps the copyright clean, see [`LICENSE-CONTENT.md`](LICENSE-CONTENT.md)). If
-you spot a factual error in the words or a chart, that's a **data-error report**,
-which *is* welcome.
+beats, the chart/dashboard *designs*, and the game/puzzle *text and design*.
+These are maintainer-authored, licensed **CC BY-NC-ND 4.0** (share verbatim with
+credit, non-commercially; no derivatives — this keeps the copyright clean, see
+[`LICENSE-CONTENT.md`](LICENSE-CONTENT.md)). If you spot a factual error in the
+words or a chart, that's a **data-error report**, which *is* welcome.
 
 > A note on dashboards: the runtime and specs are Apache code, but a dashboard's
 > *visual design* is editorial content. So contribute dashboard **code/bug fixes**
 > freely; new dashboard *designs* are maintainer-authored (propose them in an issue).
+
+> A note on games: same split as dashboards. The game *runtime* (the Astro
+> component, the scoring worker) is Apache code — contribute fixes freely. A
+> puzzle's *questions, hints and context copy* are editorial content,
+> maintainer-authored, same as prose. The underlying *mechanic* (guess, reveal,
+> score) isn't ownable by anyone — that's an idea, not an expression — so this
+> restriction is only ever about the specific authored puzzle, never about the
+> game format itself.
 
 > **Maintenance stance:** single maintainer, no SLA. Issues are triaged and PRs
 > reviewed when time allows. No CLA for code — Apache-2.0 is inbound=outbound.
@@ -171,8 +179,9 @@ for the maintainer to correct it.
   data. TSOI claims no ownership.
 - **Code contributions** are Apache-2.0 (inbound=outbound), credited in git history.
   No CLA.
-- **Editorial content** (prose, chart/dashboard designs, generated cards) is
-  © TSOI, licensed [CC BY-NC-ND 4.0](https://creativecommons.org/licenses/by-nc-nd/4.0/) —
+- **Editorial content** (prose, chart/dashboard designs, game/puzzle text and
+  design, generated cards) is © TSOI, licensed
+  [CC BY-NC-ND 4.0](https://creativecommons.org/licenses/by-nc-nd/4.0/) —
   see [`LICENSE-CONTENT.md`](LICENSE-CONTENT.md).
   Prose stays maintainer-authored; none of this restricts the open code.
 

@@ -4,6 +4,7 @@
 // through the dashboard runtime (buildPanel). Figures shown precisely by the
 // charts come from build-time data (beats.json); the prose carries the meaning.
 import type { PanelSpec } from './dashboards/runtime';
+import type { Theme } from './themes';
 import { dataUrl } from './data-url';
 
 export interface Beat {
@@ -17,15 +18,18 @@ export interface Beat {
 
 export interface BeatDeck {
   slug: string;
+  theme: Theme; // subject cluster within the section (kicker label + grouping)
   title: string;
   deck: string; // standfirst on the intro card
   dataset: string; // a {key: rows[]} object
+  source?: string; // attribution caption rendered under every chart (legal load-bearing)
   beats: Beat[];
 }
 
 export const BEAT_DECKS: Record<string, BeatDeck> = {
   payments: {
     slug: 'payments',
+    theme: 'payments',
     title: 'Six things India’s payment data knows',
     deck: 'A swipe through what the numbers reveal about how the country moves money. One chart, one idea at a time.',
     dataset: dataUrl('/data/economy/beats.json'),

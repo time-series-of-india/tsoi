@@ -12,6 +12,8 @@ env/
 node_modules/
 site/dist/
 site/.astro/
+# wrangler's local cache (can hold geolocation data from `wrangler dev`)
+.wrangler/
 
 # --- Build-time database data ---
 infra/db/timescale_data/
@@ -19,7 +21,7 @@ infra/db/data/
 
 # --- Source data & ETL intermediates (not committed — see CONTRIBUTING) ---
 # Raw RBI/NPCI downloads and every generated/fetched ETL artifact stay local.
-data/
+/data/
 etl/**/*.json
 etl/**/*.csv
 # product-dict.json is committed config, not a generated artifact — keep it tracked.
@@ -38,7 +40,10 @@ site/public/data/
 # --- Local-only: internal tooling, planning docs, agent config (not public deliverables) ---
 # Internal docs moved to a separate private repo (2026-07-09); the ignore
 # stays as a safety net so a recreated docs/ can't be committed by accident.
-docs/
+# pipeline.md is the one deliberate exception: the public source-to-page
+# lineage + privacy disclosure for the game beacon and /meta (README links it).
+docs/*
+!docs/pipeline.md
 # EDITORIAL.md: maintainer-authored editorial standard, held back from the public
 # repo pending review — kept local-only so it can't be committed by accident.
 EDITORIAL.md
@@ -62,3 +67,7 @@ infra/timescaledb/
 .DS_Store
 Thumbs.db
 tsoi-shots/
+
+# Wrangler local secrets — never commit (mirrors the .env rules above)
+.dev.vars
+.dev.vars.*

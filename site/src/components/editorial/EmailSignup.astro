@@ -58,6 +58,9 @@ const ACTION = 'https://buttondown.com/api/emails/embed-subscribe/timeseriesofin
   .signup button {
     flex: 0 0 auto; cursor: pointer;
     font: var(--tsoi-text-byline); text-transform: uppercase; letter-spacing: 0.08em;
+    /* Accepted AA deviation (2026-07-19): white on light's #CC5500 fill is
+     4.31:1 against the 4.5:1 floor; the passing darker saffron read too red,
+     so the brand fill stays. */
     color: #fff; background: var(--tsoi-color-primary); border: 1px solid var(--tsoi-color-primary);
     padding: 8px 16px; border-radius: 2px;
   }
@@ -67,7 +70,7 @@ const ACTION = 'https://buttondown.com/api/emails/embed-subscribe/timeseriesofin
   .hp { position: absolute; left: -9999px; width: 1px; height: 1px; opacity: 0; }
 
   .signup-msg { margin: 0; font: var(--tsoi-text-byline); }
-  .signup-msg[data-kind='ok'] { color: var(--tsoi-color-primary); }
+  .signup-msg[data-kind='ok'] { color: var(--tsoi-color-primary-text); }
   .signup-msg[data-kind='err'] { color: var(--tsoi-color-error, #b3261e); }
 
   /* compact footer variant: label + field + button on one centred row */

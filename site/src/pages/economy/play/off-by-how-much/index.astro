@@ -1,0 +1,16 @@
+---
+// Canonical address for the game: always the CURRENT puzzle (this is what
+// nav/marketing link). Numbered pages (./[puzzle]) are the share-URL target
+// and become the archive once more puzzles ship.
+import OffByHowMuch from '../../../../components/play/OffByHowMuch.astro';
+import gameData from '../../../../data/play/off-by-how-much.json';
+
+const puzzle = gameData.puzzles.find((p) => p.n === gameData.current)!;
+---
+
+<OffByHowMuch
+  game={{ title: gameData.title, seriesKicker: gameData.seriesKicker, current: gameData.current }}
+  puzzle={puzzle}
+  puzzleNo={puzzle.n}
+  isCurrent={true}
+/>

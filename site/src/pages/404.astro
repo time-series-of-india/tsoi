@@ -8,19 +8,20 @@ import SectionHeader from '../components/editorial/SectionHeader.astro';
 
 <StoryPage
   title="Page not found — Time Series of India"
-  description="This page doesn't exist. Browse India's payment data — beats, reads and dashboards — from the home page."
+  description="This page doesn't exist. Browse India's public data — play, read and explore — from the home page."
 >
   <SectionHeader label="404" />
   <div class="nf">
     <h1 class="nf-title">This page isn&rsquo;t in the series.</h1>
     <p class="nf-deck">
       The address may be mistyped, or the page has moved. Everything on the site is reachable
-      from these three surfaces:
+      from these surfaces:
     </p>
     <ul class="nf-links">
-      <li><a href="/">Beats</a> — the story of Indian payments, card by card</li>
-      <li><a href="/economy">Reads</a> — charted essays on how India moves money</li>
-      <li><a href="/economy/dashboards/">Dashboards</a> — the full interactive data</li>
+      <li><a href="/">Front page</a> — the latest dispatch, and every one before it</li>
+      <li><a href="/economy/play/">Play</a> — swipeable decks, one chart and one idea at a time</li>
+      <li><a href="/economy/read/">Read</a> — charted longform on India in official numbers</li>
+      <li><a href="/economy/explore/">Explore</a> — the full interactive data</li>
     </ul>
   </div>
 </StoryPage>
@@ -56,7 +57,7 @@ import SectionHeader from '../components/editorial/SectionHeader.astro';
   }
 
   .nf-links a {
-    color: var(--tsoi-color-primary);
+    color: var(--tsoi-color-primary-text);
     font-weight: 600;
   }
 </style>

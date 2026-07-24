@@ -1,0 +1,20 @@
+# tsoi-meta-live — scheduled pusher for the /meta page's live traffic.json.
+# GraphQL Analytics (read-only token, Worker secret CF_ANALYTICS_TOKEN) →
+# merge into R2 traffic.json (read-merge-replace, keyed by day/hour) →
+# served by this worker's fetch handler with revalidating cache headers.
+# Account id comes from CLOUDFLARE_ACCOUNT_ID env at deploy time (never in
+# this file, per repo audit convention).
+name = "tsoi-meta-live"
+main = "worker.js"
+compatibility_date = "2026-07-01"
+
+[triggers]
+crons = ["*/5 * * * *"]
+
+[[r2_buckets]]
+binding = "META"
+bucket_name = "tsoi-meta"
+
+[vars]
+ZONE_TAG = "3b9cbc8e585cdd619c216c891f6f6ca9"
+# ACCOUNT_TAG is set as a deploy-time var: wrangler deploy --var ACCOUNT_TAG:$CLOUDFLARE_ACCOUNT_ID

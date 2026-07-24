@@ -68,9 +68,15 @@ against already-generated data.
   the schema DDL in `infra/db/`. Not used by the published site at runtime.
 - **`etl/rbi/`** — Python ETL that parses RBI Excel files and loads TimescaleDB
 - **`etl/npci/`** — Python ETL that fetches and loads NPCI statistics data
-- **`site/`** — the Astro site: native, spec-driven ECharts dashboards and
-  longform reads (`site/src/lib/dashboards/`), plus `site/scripts/build-*.mjs`
-  generators that emit the static JSON the browser fetches
+- **`site/`** — the Astro site, organized as three formats (Play, Read,
+  Explore): native, spec-driven ECharts dashboards (`site/src/lib/dashboards/`),
+  longform reads, and the numbers game ("Off by How Much?"), plus
+  `site/scripts/build-*.mjs` generators that emit the static JSON the browser
+  fetches
+- **`infra/workers/`** — two small scheduled Cloudflare Workers outside the
+  static build: `meta-live` (refreshes `/meta`'s live traffic snapshot) and
+  `play-score` (anonymous score ingest for the game's percentile line). The
+  site never depends on either — see `infra/workers/README.md`.
 - **`scripts/`** — `deploy.sh`: build-and-push deploy to Cloudflare Workers
 
 ### Data Flow
@@ -108,6 +114,10 @@ DDL for the `economy_dev` schema: `infra/db/init-economy-dev.sql` (and
 
 - **TimescaleDB** (PostgreSQL 15 + timescaledb extension) — build-time time-series storage; loopback-only, never exposed publicly
 - **Cloudflare Workers Static Assets** — serves the built `site/dist/` at the edge; per-path cache policy in `site/public/_headers` (content-hashed `/data/*` and `/_astro/*` are immutable; HTML revalidates)
+- **`meta-live` / `play-score`** — two scheduled edge Workers, not on the site's
+  serving path (`/meta` falls back to a baked snapshot and the game's
+  percentile line simply doesn't render if either is down). See
+  `infra/workers/README.md` for deploy, tokens, and prod routes.
 
 ### Configuration
 

@@ -13,11 +13,13 @@ interface Props {
 
 const { homeH1 = false } = Astro.props;
 
-// Link to the section root when inside a section, otherwise the home beats deck.
-const path = Astro.url.pathname;
-const wordmarkHref = path.startsWith('/economy') ? '/economy' : '/';
+// The wordmark is the way back to the front page — newspaper convention, and
+// telemetry says returning readers come home via the masthead.
+const wordmarkHref = '/';
 
-// Edition date is the build date — a static site's "edition" is its last rebuild.
+// Edition date: server-rendered as the build date (the no-JS fallback), then
+// swapped to the reader's local date by the inline script below — a daily
+// paper carries today's date, not the date it was typeset.
 const editionDate = new Date().toLocaleDateString('en-GB', {
   weekday: 'long',
   day: 'numeric',
@@ -28,7 +30,21 @@ const editionDate = new Date().toLocaleDateString('en-GB', {
 
 <header class="masthead">
   <div class="meta-row">
-    <span class="edition">{editionDate}<span class="edition-url"> · timeseriesofindia.com</span></span>
+    <span class="edition"><span data-tsoi-edition-date>{editionDate}</span><span class="edition-url"> · timeseriesofindia.com</span></span>
+    <script is:inline>
+      // Runs synchronously during parse (element is just above) so the date is
+      // correct before first paint; localised to the reader's clock.
+      (() => {
+        const el = document.querySelector('[data-tsoi-edition-date]');
+        if (el)
+          el.textContent = new Date().toLocaleDateString('en-GB', {
+            weekday: 'long',
+            day: 'numeric',
+            month: 'long',
+            year: 'numeric',
+          });
+      })();
+    </script>
     <div class="meta-actions">
       <UnitsToggle />
       <button

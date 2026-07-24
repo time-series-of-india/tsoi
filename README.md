@@ -3,11 +3,11 @@
 An open-source project charting India's public data — explained, and citable.
 
 The first section, **Economy**, tracks India's payment systems (UPI, IMPS, NEFT,
-RTGS, cards and more) from official RBI and NPCI releases. Three ways to read it:
+RTGS, cards and more) from official RBI and NPCI releases. Three ways in:
 
-- **Beats** — a swipe deck of single-chart insights: one idea, one chart, one swipe.
-- **Stories** — short editorial pieces, each anchored to a focused live chart.
-- **Dashboards** — interactive explorers for slicing the numbers yourself.
+- **Play** — data games and card decks: guess a number, then meet the real chart.
+- **Read** — short pieces and longreads, each anchored to live charts.
+- **Explore** — interactive dashboards for slicing the numbers yourself.
 
 Live at **[timeseriesofindia.com](https://timeseriesofindia.com)**.
 
@@ -22,7 +22,9 @@ Excel / CSV (RBI, NPCI)  →  ETL (Python)  →  PostgreSQL / TimescaleDB  →  
   and rendered natively with [Apache ECharts](https://echarts.apache.org) (no iframes).
 - **`infra/`** — Docker Compose: TimescaleDB (build-time data store).
 
-See [`CLAUDE.md`](CLAUDE.md) for architecture and common commands.
+See [`CLAUDE.md`](CLAUDE.md) for architecture and common commands, and
+[`docs/pipeline.md`](docs/pipeline.md) for the full source-to-page lineage and
+what the live feeds store.
 
 ## For contributors & AI agents
 
@@ -61,9 +63,12 @@ for the full statement:
 - **Code, ETL, infra → Apache-2.0.** See [`LICENSE`](LICENSE) and [`NOTICE`](NOTICE).
   Use, modify and redistribute under those terms.
 - **Editorial & visual content → [CC BY-NC-ND 4.0](https://creativecommons.org/licenses/by-nc-nd/4.0/).**
-  The prose, chart and dashboard designs, and generated cards may be shared
-  verbatim with attribution, non-commercially — no commercial use, no derivatives.
-  (Commercial and derivative rights stay with the copyright holder.)
+  The prose, chart and dashboard designs, game/puzzle text and design, and
+  generated cards may be shared verbatim with attribution, non-commercially —
+  no commercial use, no derivatives. (Commercial and derivative rights stay
+  with the copyright holder. Game *mechanics* aren't covered — ideas and rules
+  aren't copyrightable — only the authored questions, prose and presentation
+  built on top of them.)
 - **Underlying data → RBI / NPCI government open data.** Facts aren't copyrightable;
   TSOI claims no ownership (see *Data & attribution* above).
 
@@ -72,7 +77,7 @@ plain CC BY — sharing is fine, remixing and commercial reuse are not. Code PRs
 are Apache inbound=outbound; external *editorial prose* is not accepted (to keep
 the copyright unfragmented) — factual corrections with a source link are.
 
-Copyright 2026 Prateek Gulati.
+Copyright 2026 Time Series of India.
 
 ## Map & data attribution
 

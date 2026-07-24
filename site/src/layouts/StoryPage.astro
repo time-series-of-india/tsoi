@@ -15,16 +15,22 @@ interface Props {
   source_agency?: string;
   source_url?: string;
   last_updated?: string;
+  /** Front page only: render the masthead wordmark as the page h1. */
+  homeH1?: boolean;
+  /** Opt in to the wide container tier (≥1600px) for data-dense dashboard
+   * surfaces. Editorial/prose pages should leave this unset — the 1280px
+   * measure stays the default. */
+  wide?: boolean;
 }
 
-const props = Astro.props;
+const { homeH1 = false, wide = false, ...props } = Astro.props;
 ---
 
 <BaseLayout {...props}>
   <slot name="ld-json" slot="ld-json" />
-  <Masthead />
+  <Masthead homeH1={homeH1} />
   <SectionNav />
-  <main class="tsoi-container story-main">
+  <main class:list={['tsoi-container', 'story-main', { 'tsoi-container-wide': wide }]}>
     <slot />
   </main>
   <Footer />

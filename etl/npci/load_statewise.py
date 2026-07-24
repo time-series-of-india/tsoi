@@ -13,6 +13,7 @@ import psycopg2
 from psycopg2 import sql
 from psycopg2.extras import execute_values
 from pathlib import Path
+from etl_util import connect, drop_exact_duplicates
 
 SCHEMA_NAME = os.environ.get("SCHEMA_NAME", "economy_dev")
 
@@ -75,6 +76,8 @@ for f in sorted(raw_dir.glob("*.json")):
             "value_contribution_pct":  parse_num(r.get("value_contribution")),
         })
 
+rows = drop_exact_duplicates(rows)
+
 with open(csv_path, "w", newline="") as f:
     w = csv.DictWriter(f, fieldnames=cols)
     w.writeheader()
@@ -83,10 +86,7 @@ print(f"Parsed {len(rows)} rows → {csv_path}")
 
 
 def load_to_db(rows):
-    conn = psycopg2.connect(
-        host="localhost", user="admin",
-        password=os.environ["DB_PASSWORD"], dbname="npci", port=5432
-    )
+    conn = connect()
     try:
         with conn:
             with conn.cursor() as cur:
@@ -137,10 +137,7 @@ print(f"\n--- Loading into {SCHEMA_NAME}.upi_statewise_statistics ---")
 load_to_db(rows)
 
 print("\n--- Verification ---")
-conn = psycopg2.connect(
-    host="localhost", user="admin",
-    password=os.environ["DB_PASSWORD"], dbname="npci", port=5432
-)
+conn = connect()
 try:
     with conn.cursor() as cur:
         cur.execute(

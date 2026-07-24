@@ -18,13 +18,14 @@ function ctlAttrs(c: Control, scope: string) {
 ---
 
 <div class="dash">
-  {spec.globals && spec.globals.length > 0 && (
-    <div class="global-bar">
-      {spec.globals.map((c) => (
+  {/* rendered even with no globals: the client script pins the dataset's as-of
+      chip here, and scoped styles only attach to build-time markup */}
+  <div class="global-bar">
+      {(spec.globals ?? []).map((c) => (
         <div class="ctl">
-          <span class="ctl-label">{c.label}</span>
+          <span class="ctl-label" data-info={c.info}>{c.label}</span>
           {c.type === 'select' ? (
-            <select {...ctlAttrs(c, 'global')}>
+            <select {...ctlAttrs(c, 'global')} aria-label={c.label}>
               {(c.options ?? []).map((o) => (
                 <option value={o.value} selected={o.value === c.default}>{o.label}</option>
               ))}
@@ -69,15 +70,14 @@ function ctlAttrs(c: Control, scope: string) {
           )}
         </div>
       ))}
-    </div>
-  )}
+  </div>
 
   {statPanels.length > 0 && (
     <div class="stat-strip">
       {statPanels.map((p) => (
         <div class="stat" id={`panel-${p.id}`}>
           <span class="stat-value">—</span>
-          <span class="stat-label">{p.title}</span>
+          <span class="stat-label" data-info={p.info}>{p.title}</span>
         </div>
       ))}
     </div>
@@ -88,16 +88,63 @@ function ctlAttrs(c: Control, scope: string) {
       <section class:list={['panel', { wide: p.wide }]}>
         <div class="panel-bar">
           <span class="dot" aria-hidden="true"></span>
-          <span class="panel-title">{p.title}</span>
+          <span class="panel-title" data-info={p.info}>{p.title}</span>
           <div class="panel-right">
             {p.controls && p.controls.length > 0 && (
               <div class="panel-ctls">
                 {p.controls.map((c) => (
-                  <div class="seg" {...ctlAttrs(c, p.id)}>
-                    {(c.options ?? []).map((o) => (
-                      <button type="button" data-value={o.value} class={o.value === c.default ? 'active' : ''}>{o.label}</button>
-                    ))}
-                  </div>
+                  c.type === 'select' ? (
+                    <label class="panel-ctl-sel"><span class="ctl-label" data-info={c.info}>{c.label}</span>
+                      <select {...ctlAttrs(c, p.id)} aria-label={c.label}>
+                        {(c.options ?? []).map((o) => (
+                          <option value={o.value} selected={o.value === c.default}>{o.label}</option>
+                        ))}
+                      </select>
+                    </label>
+                  ) : c.type === 'multiselect' ? (
+                    <label class="panel-ctl-sel"><span class="ctl-label" data-info={c.info}>{c.label}</span>
+                      <div class="ms" {...ctlAttrs(c, p.id)}>
+                        <button type="button" class="ms-btn"><span class="ms-summary">—</span><span class="ms-caret" aria-hidden="true">▾</span></button>
+                        <div class="ms-menu" hidden>
+                          <input type="text" class="ms-search" placeholder="Search…" autocomplete="off" />
+                          <div class="ms-actions">
+                            <button type="button" class="ms-all">Select all</button>
+                            <button type="button" class="ms-clear">Clear all</button>
+                          </div>
+                          <div class="ms-opts">
+                            {(c.options ?? []).map((o) => (
+                              <label class="ms-opt"><input type="checkbox" value={o.value} checked={Array.isArray(c.default) && c.default.includes(o.value)} />{o.label}</label>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    </label>
+                  ) : c.type === 'daterange' ? (
+                    <label class="panel-ctl-sel"><span class="ctl-label" data-info={c.info}>{c.label}</span>
+                      <div class="dr" {...ctlAttrs(c, p.id)}>
+                        <button type="button" class="dr-btn"><span class="dr-summary">—</span><span class="dr-caret" aria-hidden="true">▾</span></button>
+                        <div class="dr-menu" hidden>
+                          <div class="dr-quick">
+                            {(c.quick ?? []).map((o) => (
+                              <button type="button" class="dr-q" data-value={o.value}>{o.label}</button>
+                            ))}
+                          </div>
+                          <div class="dr-custom">
+                            <label class="dr-field"><span>From</span><select class="dr-from"></select></label>
+                            <label class="dr-field"><span>To</span><select class="dr-to"></select></label>
+                          </div>
+                        </div>
+                      </div>
+                    </label>
+                  ) : (
+                    <label class="panel-ctl-sel"><span class="ctl-label" data-info={c.info}>{c.label}</span>
+                      <div class="seg" {...ctlAttrs(c, p.id)}>
+                        {(c.options ?? []).map((o) => (
+                          <button type="button" data-value={o.value} class={o.value === c.default ? 'active' : ''}>{o.label}</button>
+                        ))}
+                      </div>
+                    </label>
+                  )
                 ))}
               </div>
             )}
@@ -119,7 +166,21 @@ function ctlAttrs(c: Control, scope: string) {
     padding: var(--tsoi-spacing-unit) calc(var(--tsoi-spacing-unit) * 1.5);
     border: var(--tsoi-rule-column) solid var(--tsoi-color-outline);
     background: var(--tsoi-color-surface-container-high);
+    /* Sticky so the active filters (and the as-of date) stay visible while
+       scrolling the panel grid. Opaque background keeps panels legible beneath. */
+    position: sticky; top: 0; z-index: 6;
   }
+  /* As-of date chip — a non-interactive pill (button-like boundary), pinned right.
+     :global because the element is created in the client script (Astro's scoped
+     styles only attach to markup rendered at build time). */
+  :global(.ctl-asof) {
+    margin-left: auto; display: inline-flex; align-items: baseline; gap: 8px;
+    padding: 4px 10px; border: 1px solid var(--tsoi-color-outline); border-radius: 2px;
+    background: var(--tsoi-color-background); user-select: none;
+    font: var(--tsoi-text-byline); text-transform: uppercase; letter-spacing: 0.04em;
+    color: var(--tsoi-color-on-surface-variant);
+  }
+  :global(.ctl-asof strong) { font-weight: 400; color: var(--tsoi-color-primary-text); letter-spacing: 0; }
   .ctl { display: flex; align-items: center; gap: calc(var(--tsoi-spacing-unit) / 2); }
   .ctl-label { font: var(--tsoi-text-byline); text-transform: uppercase; color: var(--tsoi-color-on-surface-variant); }
   /* Units sits to the far right of the control bar, away from the data filters. */
@@ -128,15 +189,26 @@ function ctlAttrs(c: Control, scope: string) {
      control right) instead of wrapping two-per-line. The control bar sticks to
      the top so units (and the filters) stay reachable while scrolling panels. */
   @media (max-width: 600px) {
-    .global-bar { flex-direction: column; align-items: stretch; gap: var(--tsoi-spacing-unit); position: sticky; top: 0; z-index: 5; }
+    .global-bar { flex-direction: column; align-items: stretch; gap: var(--tsoi-spacing-unit); }
     .ctl { width: 100%; justify-content: space-between; }
     .ctl-units { margin-left: 0; }
+    :global(.ctl-asof) { margin-left: 0; width: 100%; justify-content: space-between; }
   }
 
   .stat-strip { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: calc(var(--tsoi-spacing-unit) * 2); }
+  /* Tried 2-col here to match meta.astro's mobile stat strip; reverted — real
+     dashboard values (₹ + decimals + Cr/LCr suffix) wrap across two lines in
+     a half-width tile, which reads worse than one clean line at full width. */
   @media (max-width: 600px) { .stat-strip { grid-template-columns: 1fr; gap: var(--tsoi-spacing-unit); } }
   .stat { border: var(--tsoi-rule-column) solid var(--tsoi-color-outline); background: var(--tsoi-color-surface); padding: calc(var(--tsoi-spacing-unit) * 1.5); display: flex; flex-direction: column; gap: calc(var(--tsoi-spacing-unit) / 2); }
   .stat-value { font: var(--tsoi-text-metric-xl); color: var(--tsoi-color-on-surface); }
+  /* Day-over-day delta rides alongside the metric — smaller and muted so the
+     price stays the headline and the change is a secondary read. Wider gap so
+     it doesn't crowd the number. */
+  .stat-value :global(.stat-delta) {
+    font-size: 0.5em; font-weight: 400; margin-left: 0.9em;
+    color: var(--tsoi-color-on-surface-variant); letter-spacing: 0.02em;
+  }
   .stat-label { font: var(--tsoi-text-byline); text-transform: uppercase; letter-spacing: 0.04em; color: var(--tsoi-color-on-surface-variant); }
 
   .panels { display: grid; grid-template-columns: 1fr; gap: calc(var(--tsoi-spacing-unit) * 2); }
@@ -151,18 +223,19 @@ function ctlAttrs(c: Control, scope: string) {
   .panel-title { font: var(--tsoi-text-label-caps); letter-spacing: 0.04em; text-transform: uppercase; color: var(--tsoi-color-on-surface); }
   .dot { width: 6px; height: 6px; border-radius: var(--tsoi-radius-full); background: var(--tsoi-color-chart-1); flex-shrink: 0; }
   .panel-right { margin-left: auto; display: flex; align-items: center; gap: var(--tsoi-spacing-unit); }
-  .panel-ctls { display: flex; gap: var(--tsoi-spacing-unit); }
-  .panel-max {
-    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
-    width: 22px; height: 22px; padding: 0; border: 0; border-radius: 2px; cursor: pointer;
-    background: transparent; color: var(--tsoi-color-on-surface-variant); font-size: 13px; line-height: 1;
+  .panel-ctls { display: flex; align-items: center; gap: calc(var(--tsoi-spacing-unit) * 1.5); }
+  .panel-ctl-sel { display: inline-flex; align-items: center; gap: 6px; }
+  .panel-ctl-sel .ctl-label { font: var(--tsoi-text-byline); text-transform: uppercase; letter-spacing: 0.04em; color: var(--tsoi-color-on-surface-variant); }
+  /* Panel-level ms popover sits near the panel's right edge — anchor it right
+     (like .dr-menu) so it opens leftward and stays on-screen. */
+  .panel-ctls .ms-menu { left: auto; right: 0; }
+  .panel-ctl-sel select {
+    font: var(--tsoi-text-metric-sm); color: var(--tsoi-color-on-surface);
+    background: var(--tsoi-color-background); border: 1px solid var(--tsoi-color-outline);
+    padding: 3px 6px; border-radius: 2px; max-width: 180px;
   }
-  .panel-max:hover { background: var(--tsoi-color-surface-container-high); color: var(--tsoi-color-on-surface); }
-  .panel.maximized {
-    position: fixed; inset: 0; z-index: 40;
-    display: flex; flex-direction: column;
-  }
-  .panel.maximized .chart { flex: 1; height: auto; }
+  /* .panel-max button + .panel.maximized overlay rules are injected globally
+     by ../../lib/panel-chrome.ts (shared with meta.astro) — not scoped here. */
 
   select {
     font: var(--tsoi-text-metric-sm); color: var(--tsoi-color-on-surface);
@@ -196,7 +269,7 @@ function ctlAttrs(c: Control, scope: string) {
     flex: 1; text-align: center; padding: 5px 8px;
     border: 0; cursor: pointer;
     font: var(--tsoi-text-byline); text-transform: uppercase; letter-spacing: 0.04em;
-    color: var(--tsoi-color-primary); background: transparent;
+    color: var(--tsoi-color-primary-text); background: transparent;
   }
   .ms-clear { border-left: 1px solid var(--tsoi-color-outline); }
   .ms-all:hover, .ms-clear:hover { background: var(--tsoi-color-surface-container-high); }
@@ -237,6 +310,9 @@ function ctlAttrs(c: Control, scope: string) {
     background: var(--tsoi-color-background); color: var(--tsoi-color-on-surface-variant);
   }
   .dr-q:hover { background: var(--tsoi-color-surface-container-high); color: var(--tsoi-color-on-surface); }
+  /* Accepted AA deviation (2026-07-19): white on light's #CC5500 fill is
+     4.31:1 against the 4.5:1 floor; the passing darker saffron read too red,
+     so the brand fill stays. */
   .dr-q.active { background: var(--tsoi-color-primary); color: #fff; border-color: var(--tsoi-color-primary); }
   .dr-custom { display: flex; flex-direction: column; gap: 8px; padding: 8px; }
   .dr-field { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
@@ -250,18 +326,38 @@ function ctlAttrs(c: Control, scope: string) {
     background: var(--tsoi-color-background); color: var(--tsoi-color-on-surface-variant);
   }
   .seg button + button { border-left: 1px solid var(--tsoi-color-outline); }
+  /* Accepted AA deviation (2026-07-19): white on light's #CC5500 fill is
+     4.31:1 against the 4.5:1 floor; the passing darker saffron read too red,
+     so the brand fill stays. */
   .seg button.active { background: var(--tsoi-color-primary); color: #fff; }
 
   .chart { width: 100%; height: 360px; }
   .chart[data-chart='choropleth'] { height: 520px; }
+  /* dot-plot lists ~34 states down the y-axis — give it the map's height so the
+     two sit level side by side. */
+  .chart[data-chart='dotplot'] { height: 520px; }
+  /* comparison board: one row per commodity (16) across aligned columns — needs
+     the vertical room the map/dot-plot get. */
+  .chart[data-chart='comptable'] { height: 560px; }
+  /* state-spread scatter: 16 food rows of swarms need vertical breathing room */
+  .chart[data-chart='strips'] { height: 600px; }
   .panel.wide .chart { height: 420px; }
-  @media (max-width: 600px) { .chart { height: 320px; } .chart[data-chart='choropleth'] { height: 440px; } }
+  .panel.wide .chart[data-chart='comptable'] { height: 560px; }
+  .panel.wide .chart[data-chart='strips'] { height: 600px; }
+  @media (max-width: 600px) {
+    .chart { height: 320px; }
+    .chart[data-chart='choropleth'] { height: 440px; }
+    .chart[data-chart='dotplot'] { height: 560px; }
+    .chart[data-chart='comptable'] { height: 540px; }
+    .chart[data-chart='strips'] { height: 600px; }
+  }
 </style>
 
 <script>
   import * as echarts from 'echarts';
-  import { buildPanel, computeStat, monthLabel, one, resolveRange } from '../../lib/dashboards/runtime';
+  import { buildPanel, computeStat, monthLabel, one, resolveRange, toRegion } from '../../lib/dashboards/runtime';
   import { legendIsolation } from '../../lib/dashboards/legend';
+  import { activateDragZoom, initInfoTooltips, initMaximize, initTouchTipToggle, initTouchTooltipClose } from '../../lib/panel-chrome';
   import type { DashboardSpec, Control, Row, Tokens, CtrlState } from '../../lib/dashboards/runtime';
 
   const specEl = document.getElementById('dash-spec');
@@ -284,21 +380,38 @@ function ctlAttrs(c: Control, scope: string) {
     for (const c of allControls) ctrl[c.id] = c.default;
 
     (async () => {
-      const { rows } = (await fetch(spec.dataset).then((r) => r.json())) as { rows: Row[] };
+      const data = (await fetch(spec.dataset).then((r) => r.json())) as { rows: Row[]; asOf?: string };
+      const rows = data.rows;
+      // As-of chip: if the dataset is dated, pin it to the right of the control bar.
+      if (data.asOf) {
+        const bar = document.querySelector('.global-bar');
+        if (bar) {
+          const label = new Date(data.asOf).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+          const chip = document.createElement('div');
+          chip.className = 'ctl-asof';
+          chip.innerHTML = `<span>As of</span><strong>${label}</strong>`;
+          bar.appendChild(chip);
+        }
+      }
       if (spec.panels.some((p) => p.chart === 'choropleth')) {
         const geo = await fetch('/maps/india_states.json').then((r) => r.json());
         echarts.registerMap('india', geo);
       }
 
       // --- cascading control options (parents first), client-side ---
-      const fieldControls = (spec.globals ?? []).filter((c) => (c.type === 'select' || c.type === 'multiselect') && c.field);
+      // Field-driven selects/multiselects — globals AND panel-level ones (e.g. the
+      // spread panel's State picker) — get their options populated from the data.
+      const fieldControls = [...(spec.globals ?? []), ...spec.panels.flatMap((p) => p.controls ?? [])]
+        .filter((c) => (c.type === 'select' || c.type === 'multiselect') && c.field);
       const depField = (id: string) => fieldControls.find((s) => s.id === id)?.field ?? id;
       const scopedRows = (c: Control) => {
         let r = rows;
+        if (c.where) for (const [f, v] of Object.entries(c.where)) r = r.filter((row) => String(row[f]) === v);
         for (const dep of c.dependsOn ?? []) r = r.filter((row) => String(row[depField(dep)]) === one(ctrl[dep]));
         return r;
       };
-      const scoped = (c: Control) => [...new Set(scopedRows(c).map((row) => String(row[c.field!])))].sort();
+      const scoped = (c: Control) =>
+        [...new Set(scopedRows(c).filter((row) => row[c.field!] != null).map((row) => String(row[c.field!])))].sort();
       const labelOf = (c: Control, o: string) => c.labels?.[o] ?? (c.field === 'month' ? monthLabel(o) : o);
       function populate(c: Control) {
         const el = document.querySelector<HTMLSelectElement>(`select[data-ctl="${c.id}"]`);
@@ -418,6 +531,7 @@ function ctlAttrs(c: Control, scope: string) {
       for (const p of spec.panels) {
         if (p.chart === 'stat') continue;
         charts[p.id] = echarts.init(document.getElementById(`panel-${p.id}`)!);
+        initTouchTipToggle(charts[p.id]);
       }
 
       // Click-to-isolate legend (shared helper): click to isolate one
@@ -431,19 +545,74 @@ function ctlAttrs(c: Control, scope: string) {
       const renderPanel = (id: string) => {
         const p = spec.panels.find((x) => x.id === id)!;
         if (p.chart === 'stat') {
-          const { value } = computeStat(p, rows, ctrl);
+          const { value, label, delta } = computeStat(p, rows, ctrl);
           const tile = document.getElementById(`panel-${id}`);
-          if (tile) tile.querySelector('.stat-value')!.textContent = value;
+          if (tile) {
+            // value + optional smaller/muted delta span (controlled strings).
+            tile.querySelector('.stat-value')!.innerHTML =
+              delta ? `${value}<span class="stat-delta">${delta}</span>` : String(value);
+            // Some stats (e.g. the State tile) return a data-driven label;
+            // keep the spec title as the fallback for the static ones.
+            if (label && label !== p.title) tile.querySelector('.stat-label')!.textContent = label;
+          }
         } else {
-          charts[id].setOption(buildPanel(p, rows, ctrl, tokens()), true);
+          // caption=false: the panel bar already shows the title, so the chart
+          // must not repeat it as an in-chart caption (beats/reads pass the default).
+          const option = buildPanel(p, rows, ctrl, tokens(), false);
+          charts[id].setOption(option, true);
+          // Only time-series panels carry a dataZoom (see runtime.ts) — arm the
+          // drag-to-select brush for those; notMerge above resets it every render.
+          if ((option as { dataZoom?: unknown }).dataZoom) activateDragZoom(charts[id]);
+          // touch only: click-to-open + an explicit close control on the tooltip
+          // (notMerge above drops the tooltip merge, so re-apply every render)
+          initTouchTooltipClose(charts[id]);
           legendResets[id]?.();
         }
       };
       const renderAll = () => spec.panels.forEach((p) => renderPanel(p.id));
 
+      // Board → scatter linkage: clicking a comparison-board row scrolls the
+      // state-spread panel into view and flashes that food's facet row (via the
+      // transient __flash ctrl key the strips builder reads; it is not a spec
+      // control, so it never reaches the URL).
+      const boardP = spec.panels.find((p) => p.chart === 'comptable');
+      const spreadP = spec.panels.find((p) => p.chart === 'strips');
+      if (boardP && spreadP && charts[boardP.id]) {
+        let flashTimer = 0;
+        charts[boardP.id].on('click', (e: any) => {
+          const food = String(e.name || e.data?.series || '');
+          if (!food) return; // sparkline column (custom series) carries no name
+          document.getElementById(`panel-${spreadP.id}`)?.closest('.panel')
+            ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          ctrl.__flash = food;
+          renderPanel(spreadP.id);
+          clearTimeout(flashTimer);
+          flashTimer = window.setTimeout(() => { ctrl.__flash = ''; renderPanel(spreadP.id); }, 2000);
+        });
+      }
+
+      // On selecting a state, pop the map tooltip once for that region (a one-time
+      // cue — hovering afterwards behaves normally, and it clears on de-select).
+      // Only fires for a choropleth whose highlight is driven by the changed control.
+      const showSelectionTip = (changedId: string) => {
+        for (const p of spec.panels) {
+          if (p.chart !== 'choropleth' || (p.encoding as any)?.highlight !== `@${changedId}`) continue;
+          const chart = charts[p.id];
+          if (!chart) continue;
+          const st = one(ctrl[changedId]);
+          const region = toRegion(st);
+          requestAnimationFrame(() =>
+            !region || st === 'All India'
+              ? chart.dispatchAction({ type: 'hideTip' })
+              : chart.dispatchAction({ type: 'showTip', seriesIndex: 0, name: region }));
+        }
+      };
+
       // --- date-range widget helpers (months come from the dataset itself) ---
       const monthOf = (row: Row) => String(row.date ?? row.month).slice(0, 7);
-      const allMonths = [...new Set(rows.map(monthOf))].sort();
+      // Only rows that actually carry a date/month feed the range picker — a
+      // shared dataset also holds snapshot rows (dist/today/movers) with none.
+      const allMonths = [...new Set(rows.map(monthOf))].filter((m) => /^\d{4}-\d{2}$/.test(m)).sort();
       const rangeSummary = (c: Control, token: string) => {
         const q = (c.quick ?? []).find((o) => o.value === token);
         if (q) return q.value === '0' ? 'All time' : /^\d+$/.test(q.value) ? `Last ${q.label}` : q.label;
@@ -472,12 +641,13 @@ function ctlAttrs(c: Control, scope: string) {
           // cascading: repopulate any field control that depends on this one
           for (const c of fieldControls) if ((c.dependsOn ?? []).includes(id)) repopulate(c);
           scope === 'global' ? renderAll() : renderPanel(scope);
+          showSelectionTip(id);
           writeUrl();
         };
         if (el.tagName === 'SELECT') {
           el.addEventListener('change', (e) => { ctrl[id] = (e.target as HTMLSelectElement).value; apply(); });
         } else if (el.classList.contains('ms')) {
-          const c = (spec.globals ?? []).find((x) => x.id === id)!;
+          const c = allControls.find((x) => x.id === id)!;
           const btn = el.querySelector<HTMLButtonElement>('.ms-btn')!;
           const menu = el.querySelector<HTMLElement>('.ms-menu')!;
           const search = el.querySelector<HTMLInputElement>('.ms-search')!;
@@ -528,7 +698,7 @@ function ctlAttrs(c: Control, scope: string) {
             apply();
           });
         } else if (el.classList.contains('dr')) {
-          const c = (spec.globals ?? []).find((x) => x.id === id)!;
+          const c = allControls.find((x) => x.id === id)!;
           const btn = el.querySelector<HTMLButtonElement>('.dr-btn')!;
           const menu = el.querySelector<HTMLElement>('.dr-menu')!;
           const from = el.querySelector<HTMLSelectElement>('.dr-from')!;
@@ -568,45 +738,30 @@ function ctlAttrs(c: Control, scope: string) {
       const ro = new ResizeObserver(() => Object.values(charts).forEach((c) => c.resize()));
       spec.panels.forEach((p) => { if (p.chart !== 'stat') ro.observe(document.getElementById(`panel-${p.id}`)!); });
 
-      // Panel maximize — full-viewport overlay, Escape or backdrop click to close.
-      const backdrop = Object.assign(document.createElement('div'), { hidden: true });
-      Object.assign(backdrop.style, { position: 'fixed', inset: '0', zIndex: '39', background: 'rgba(0,0,0,0.55)' });
-      document.body.appendChild(backdrop);
+      // Some charts (comptable) build a different column layout above/below a
+      // width breakpoint — resize() alone can't restructure them, so re-render
+      // the panels whose option is width-dependent when the breakpoint flips.
+      if (typeof matchMedia !== 'undefined') {
+        const mq = matchMedia('(max-width: 760px)');
+        const responsivePanels = spec.panels.filter((p) => p.chart === 'comptable');
+        mq.addEventListener('change', () => responsivePanels.forEach((p) => renderPanel(p.id)));
+      }
 
+      // Panel maximize — full-viewport overlay; the global filter bar rides into
+      // the maximized panel (still usable while zoomed in) and back out on close.
       const globalBar = document.querySelector<HTMLElement>('.global-bar');
       const dash = document.querySelector<HTMLElement>('.dash');
       const panelsGrid = document.querySelector<HTMLElement>('.panels');
-
-      let maximizedPanel: HTMLElement | null = null;
-      const openMax = (panel: HTMLElement) => {
-        maximizedPanel = panel;
-        panel.classList.add('maximized');
-        backdrop.hidden = false;
-        const btn = panel.querySelector<HTMLButtonElement>('.panel-max')!;
-        btn.textContent = '✕'; btn.setAttribute('aria-label', 'Close');
-        if (globalBar) panel.insertBefore(globalBar, panel.querySelector('.panel-bar'));
-        const chartId = panel.querySelector<HTMLElement>('.chart')!.id.replace('panel-', '');
-        requestAnimationFrame(() => charts[chartId]?.resize());
-      };
-      const closeMax = () => {
-        if (!maximizedPanel) return;
-        maximizedPanel.classList.remove('maximized');
-        backdrop.hidden = true;
-        const btn = maximizedPanel.querySelector<HTMLButtonElement>('.panel-max')!;
-        btn.textContent = '⤢'; btn.setAttribute('aria-label', 'Maximize panel');
-        if (globalBar && dash && panelsGrid) dash.insertBefore(globalBar, panelsGrid);
-        const chartId = maximizedPanel.querySelector<HTMLElement>('.chart')!.id.replace('panel-', '');
-        requestAnimationFrame(() => charts[chartId]?.resize());
-        maximizedPanel = null;
-      };
-      document.querySelectorAll<HTMLButtonElement>('.panel-max').forEach((btn) =>
-        btn.addEventListener('click', () => {
-          const panel = btn.closest<HTMLElement>('.panel')!;
-          panel.classList.contains('maximized') ? closeMax() : openMax(panel);
-        })
-      );
-      backdrop.addEventListener('click', closeMax);
-      document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeMax(); });
+      initMaximize({
+        panels: Array.from(document.querySelectorAll<HTMLElement>('.panel')),
+        resize: (panel) => {
+          const chartId = panel.querySelector<HTMLElement>('.chart')?.id.replace('panel-', '');
+          if (chartId) charts[chartId]?.resize();
+        },
+        onOpen: (panel) => { if (globalBar) panel.insertBefore(globalBar, panel.querySelector('.panel-bar')); },
+        onClose: () => { if (globalBar && dash && panelsGrid) dash.insertBefore(globalBar, panelsGrid); },
+      });
+      initInfoTooltips();
       new MutationObserver(renderAll).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'data-units'] });
 
       renderAll();

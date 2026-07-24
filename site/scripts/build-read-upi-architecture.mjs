@@ -47,8 +47,10 @@ for (const a of topApps) for (const y of years) {
 // ---- bankFlow: remitter vs beneficiary volume per bank (latest 12 months) ----
 const bank = load('all_data.json');
 const periods = [...new Set(bank.map((r) => `${r.year}-${r.month}`))];
+const MONTH_ORDER = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const months = [...new Set(bank.map((r) => JSON.stringify([r.year, r.month])))]
-  .map((s) => JSON.parse(s)).sort((a, b) => (a[0] - b[0]) || 0);
+  .map((s) => JSON.parse(s))
+  .sort((a, b) => (a[0] - b[0]) || (MONTH_ORDER.indexOf(a[1]) - MONTH_ORDER.indexOf(b[1])));
 const last12 = new Set(months.slice(-12).map((m) => m.join('|')));
 const inLast12 = (r) => last12.has(`${r.year}|${r.month}`);
 // canonBank: raw NPCI carries casing/suffix variants of the same bank — group

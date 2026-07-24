@@ -1,0 +1,21 @@
+# tsoi-play-score — anonymous score pipeline for "Off by How Much?".
+# Ingest: POST /api/play-score → one immutable R2 object per beacon (R2 has
+# no append; object-per-beacon designs out the read-modify-write race).
+# Aggregate (cron */5, early-exit): fold new raws past the cursor into a
+# 13-bucket histogram; cursor+hist commit in ONE atomic stats PUT
+# (idempotent reruns); processed raws deleted after commit.
+# Stats: GET /api/play-stats/<n>.json — client computes the Hazen percentile.
+name = "tsoi-play-score"
+main = "worker.js"
+compatibility_date = "2026-07-01"
+
+[triggers]
+crons = ["*/5 * * * *"]
+
+[[r2_buckets]]
+binding = "PLAY"
+bucket_name = "tsoi-play"
+
+[vars]
+# Highest released puzzle number — bump with each puzzle release.
+MAX_PUZZLE = "1"

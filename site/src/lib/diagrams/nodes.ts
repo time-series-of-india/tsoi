@@ -1,6 +1,6 @@
-// Shared node builders for the UPI read's interaction diagrams (server-side: used
-// in .astro frontmatter to build the static markup that the client engine then
-// animates). Keep icons thin-line so they read as one family with the charts.
+// Shared node builders for the longform reads' interaction diagrams (server-side:
+// used in .astro frontmatter to build the static markup that the client engine
+// then animates). Keep icons thin-line so they read as one family with the charts.
 export const IC: Record<string, string> = {
   phone: '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="6.5" y="2.5" width="11" height="19" rx="2.4"/><line x1="10" y1="18.6" x2="14" y2="18.6"/></svg>',
   bank: '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.2 21 8 3 8Z"/><line x1="5.5" y1="9" x2="5.5" y2="17"/><line x1="10" y1="9" x2="10" y2="17"/><line x1="14" y1="9" x2="14" y2="17"/><line x1="18.5" y1="9" x2="18.5" y2="17"/><line x1="3.5" y1="19" x2="20.5" y2="19"/></svg>',

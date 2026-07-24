@@ -35,7 +35,12 @@ const ogImage = props.slug ? `/og/reads/${props.slug}.png` : undefined;
 <StoryPage title={title} description={description ?? deck} og_type="article" og_image={ogImage}>
   <ScrollProgress />
   <article class="read">
-    <a class="back" href="/economy">&lsaquo; All reads</a>
+    <!-- folio, not a back button: states where the piece lives ("Economy ·
+         Reads"), never where the reader came from. The masthead is the only
+         road home; the browser owns history. -->
+    <nav class="folio" aria-label="Section">
+      <a href="/economy">Economy</a><span class="dot" aria-hidden="true">&middot;</span><a href="/economy/read">Read</a>
+    </nav>
     <header class="head">
       <p class="kicker">{kicker}{props.slug ? ` · ${readingMinutes(props.slug)} min read` : ''}{asOf ? ` · data through ${asOf}` : ''}</p>
       <h1>{title}</h1>
@@ -49,10 +54,12 @@ const ogImage = props.slug ? `/og/reads/${props.slug}.png` : undefined;
 
 <style>
   .read { max-width: 680px; margin-inline: auto; }
-  .back { display: inline-flex; align-items: center; gap: 5px; font: var(--tsoi-text-byline); font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--tsoi-color-primary); text-decoration: none; padding: 4px 0; margin-bottom: calc(var(--tsoi-spacing-unit) * 2); }
-  .back:hover { text-decoration: underline; }
+  .folio { font: var(--tsoi-text-byline); font-weight: 500; font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; padding: 4px 0; margin-bottom: calc(var(--tsoi-spacing-unit) * 2); }
+  .folio a { color: var(--tsoi-color-primary-text); text-decoration: none; }
+  .folio a:hover { text-decoration: underline; }
+  .folio .dot { color: var(--tsoi-color-on-surface-variant); padding-inline: 5px; }
   .head { margin-bottom: calc(var(--tsoi-spacing-unit) * 3); }
-  .kicker { margin: 0 0 var(--tsoi-spacing-unit); font: var(--tsoi-text-byline); font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; color: var(--tsoi-color-primary); }
+  .kicker { margin: 0 0 var(--tsoi-spacing-unit); font: var(--tsoi-text-byline); font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; color: var(--tsoi-color-primary-text); }
   .head h1 { margin: 0; font: var(--tsoi-text-headline-lg); letter-spacing: var(--tsoi-text-headline-lg-tracking); }
   .deck { margin: var(--tsoi-spacing-unit) 0 0; font: var(--tsoi-text-deck); font-size: 17px; color: var(--tsoi-color-on-surface-variant); }
   .toolbar { display: flex; align-items: center; gap: calc(var(--tsoi-spacing-unit) * 2); flex-wrap: wrap; margin-top: calc(var(--tsoi-spacing-unit) * 2); }
@@ -64,28 +71,35 @@ const ogImage = props.slug ? `/og/reads/${props.slug}.png` : undefined;
 </style>
 
 <style is:global>
-  /* entity colour system — set a --ent, used by prose keywords and chart series */
-  .read .e-merch { --ent: var(--tsoi-color-chart-1); }
-  .read .e-p2p   { --ent: var(--tsoi-color-chart-2); }
-  .read .e-app   { --ent: var(--tsoi-color-chart-4); }
-  .read .e-psp   { --ent: var(--tsoi-color-chart-2); }
-  .read .e-npci  { --ent: var(--tsoi-color-chart-1); }
-  .read .e-rem   { --ent: var(--tsoi-color-chart-3); }
-  .read .e-ben   { --ent: var(--tsoi-color-chart-6); }
-  .read .e-fail  { --ent: var(--tsoi-color-chart-5); }
-  .read .e-rate  { --ent: var(--tsoi-color-chart-1); } /* single-series default: orange */
+  /* entity colour system — set a --ent, used by prose keywords and chart series.
+     --ent-text mirrors it for the one place this sets actual TEXT color (.e
+     below): chart-1/2/3/6 measure 2.4-3.8:1 as text on the read's cream, under
+     the 4.5:1 AA floor, so those alias the -text variants (global.css); 4/5
+     already clear it as text and alias straight through. */
+  .read .e-merch { --ent: var(--tsoi-color-chart-1); --ent-text: var(--tsoi-color-chart-1-text); }
+  .read .e-p2p   { --ent: var(--tsoi-color-chart-2); --ent-text: var(--tsoi-color-chart-2-text); }
+  .read .e-app   { --ent: var(--tsoi-color-chart-4); --ent-text: var(--tsoi-color-chart-4); }
+  .read .e-psp   { --ent: var(--tsoi-color-chart-2); --ent-text: var(--tsoi-color-chart-2-text); }
+  .read .e-npci  { --ent: var(--tsoi-color-chart-1); --ent-text: var(--tsoi-color-chart-1-text); }
+  .read .e-rem   { --ent: var(--tsoi-color-chart-3); --ent-text: var(--tsoi-color-chart-3-text); }
+  .read .e-ben   { --ent: var(--tsoi-color-chart-6); --ent-text: var(--tsoi-color-chart-6-text); }
+  .read .e-fail  { --ent: var(--tsoi-color-chart-5); --ent-text: var(--tsoi-color-chart-5); }
+  .read .e-rate  { --ent: var(--tsoi-color-chart-1); --ent-text: var(--tsoi-color-chart-1-text); } /* single-series default: orange */
   /* generic palette aliases for color-coding 2-3 protagonists to chart series */
-  .read .e1 { --ent: var(--tsoi-color-chart-1); }
-  .read .e2 { --ent: var(--tsoi-color-chart-2); }
-  .read .e3 { --ent: var(--tsoi-color-chart-3); }
-  .read .e4 { --ent: var(--tsoi-color-chart-4); }
-  .read .e5 { --ent: var(--tsoi-color-chart-5); }
-  .read .e6 { --ent: var(--tsoi-color-chart-6); }
-  .read .e { color: var(--ent); font-weight: 600; border-bottom: 2px solid color-mix(in srgb, var(--ent) 35%, transparent); }
+  .read .e1 { --ent: var(--tsoi-color-chart-1); --ent-text: var(--tsoi-color-chart-1-text); }
+  .read .e2 { --ent: var(--tsoi-color-chart-2); --ent-text: var(--tsoi-color-chart-2-text); }
+  .read .e3 { --ent: var(--tsoi-color-chart-3); --ent-text: var(--tsoi-color-chart-3-text); }
+  .read .e4 { --ent: var(--tsoi-color-chart-4); --ent-text: var(--tsoi-color-chart-4); }
+  .read .e5 { --ent: var(--tsoi-color-chart-5); --ent-text: var(--tsoi-color-chart-5); }
+  .read .e6 { --ent: var(--tsoi-color-chart-6); --ent-text: var(--tsoi-color-chart-6-text); }
+  .read .e { color: var(--ent-text); font-weight: 600; border-bottom: 2px solid color-mix(in srgb, var(--ent) 35%, transparent); }
 
   .read .prose p { font: var(--tsoi-text-body); font-size: calc(17px * var(--tsoi-reading-scale, 1)); line-height: 1.7; margin: 0 0 calc(var(--tsoi-spacing-unit) * 2.5); }
   .read .prose .source { font: var(--tsoi-text-byline); color: var(--tsoi-color-on-surface-variant); }
-  .read .prose .source a { color: var(--tsoi-color-primary); text-decoration: none; }
+  /* Underlined, not color-only: a link sitting in a sentence of running prose
+     needs a non-color cue too. Matches the site's existing dotted-underline
+     offset convention (panel-chrome.ts's [data-info] tooltips). */
+  .read .prose .source a { color: var(--tsoi-color-primary-text); text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 3px; }
 
   .read figure { margin: 0 0 calc(var(--tsoi-spacing-unit) * 3); }
   .read figcaption { font: var(--tsoi-text-byline); color: var(--tsoi-color-on-surface-variant); margin-top: var(--tsoi-spacing-unit); line-height: 1.5; }

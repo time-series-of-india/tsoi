@@ -1,0 +1,174 @@
+---
+// The Explore index for the Economy section (/economy/explore) — explore
+// holds products, and today its only product is a dashboard (a set of desks).
+// Dashboards are instruments, not stories: they don't age into an archive, so
+// the page is organised by STRUCTURE, not recency. Each product gets ONE
+// gateway card and nothing else.
+//
+// It used to carry question-first rows under the gateway ("By bank" jumping
+// to the bank desk) and a contents nav above it. Both went in Jul 2026: once
+// the desks fold had collapsed the six standalone boards into a single
+// /economy/explore/payments page, the rows were five links to five anchors on
+// the one page the gateway already opens, and the contents nav was a
+// table-of-contents over a single entry. The desk list belongs to the
+// dashboard, which publishes its own jump nav — this page's job is just to
+// hand you the door. Future products (food prices, ...) append to PRODUCTS
+// and land beside payments.
+//
+// Meta here is freshness (the trust signal for a tool), not dispatch
+// provenance: that's what the reads shelf carries.
+import StoryPage from '../../../layouts/StoryPage.astro';
+import SectionHeader from '../../../components/editorial/SectionHeader.astro';
+import ViewToggle from '../../../components/editorial/ViewToggle.astro';
+
+const sectionDate = new Date()
+  .toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })
+  .toUpperCase();
+
+// One entry per explore product — a gateway card each.
+const PRODUCTS = [
+  {
+    id: 'payments',
+    label: 'Payments',
+    cadence: 'Monthly · RBI / NPCI releases',
+    href: '/economy/explore/payments',
+    title: 'India Payments',
+    deck: 'Every payments desk on one page: the headline totals first, then one desk per question, from bank performance to what India buys on UPI.',
+    thumb: '/thumbs/explore/payments.png',
+    thumbDark: '/thumbs/explore/payments-dark.png',
+  },
+];
+---
+
+<StoryPage
+  title="Explore — Time Series of India"
+  description="Interactive dashboards of India's economy — payment systems — built from official RBI and NPCI data."
+  noindex
+>
+  <SectionHeader label="Economy · Explore" date={sectionDate}>
+    <ViewToggle active="explore" slot="actions" />
+  </SectionHeader>
+
+  <!-- What explore IS, in one line. What a DESK is belongs to the dashboard
+       itself (see explore/payments.astro's deck) — saying it in both places
+       made the reader learn the same vocabulary twice. -->
+  <p class="intro">
+    Interactive views of India's economy.
+  </p>
+
+  {PRODUCTS.map((p) => (
+    <section class="theme-group" id={p.id}>
+      <h2 class="theme-head">
+        <span class="theme-label">{p.label}</span>
+        <span class="hair" aria-hidden="true"></span>
+        <span class="cadence">{p.cadence}</span>
+      </h2>
+
+      <!-- the dashboard card — the only thing on the page, so it needs no
+           "Start here" telling the reader where to begin -->
+      <a class="gateway" href={p.href}>
+        <span class="gw-cover">
+          <img class="t-light" src={p.thumb} alt="" loading="lazy" />
+          <img class="t-dark" src={p.thumbDark} alt="" loading="lazy" />
+        </span>
+        <span class="gw-body">
+          <span class="gw-title">{p.title}</span>
+          <span class="gw-deck">{p.deck}</span>
+          <span class="go">Open the dashboard &rarr;</span>
+        </span>
+      </a>
+    </section>
+  ))}
+</StoryPage>
+
+<style>
+  .intro {
+    max-width: 70ch;
+    margin: calc(var(--tsoi-spacing-unit) * 2) 0 0;
+    font: var(--tsoi-text-deck);
+    letter-spacing: var(--tsoi-text-deck-tracking);
+    color: var(--tsoi-color-on-surface-variant);
+  }
+
+  /* ── product group header: subject left, freshness right ────────────── */
+  .theme-group {
+    margin-top: calc(var(--tsoi-spacing-unit) * 5);
+    /* anchor landings clear the masthead comfortably */
+    scroll-margin-top: calc(var(--tsoi-spacing-unit) * 3);
+  }
+  .theme-head {
+    display: flex; align-items: baseline; gap: var(--tsoi-column-gutter);
+    margin: 0;
+    padding-bottom: var(--tsoi-spacing-unit);
+    border-bottom: var(--tsoi-rule-column) solid var(--tsoi-color-outline);
+  }
+  .theme-label {
+    font: var(--tsoi-text-byline); font-weight: 500; letter-spacing: 0.1em;
+    text-transform: uppercase; color: var(--tsoi-color-on-surface-variant);
+    white-space: nowrap;
+  }
+  .theme-head .hair { flex: 1; }
+  .cadence {
+    font: var(--tsoi-text-byline); letter-spacing: 0.06em; text-transform: uppercase;
+    color: var(--tsoi-color-on-surface-variant); white-space: nowrap;
+  }
+
+  /* ── the dashboard card: the big slot — but compact: a gateway needs to
+     be recognisable, not persuasive, and the next product group must stay
+     within reach ────────────────────────────────────────────────────────── */
+  .gateway {
+    display: grid;
+    grid-template-columns: 0.7fr 1fr;
+    margin-top: calc(var(--tsoi-spacing-unit) * 2.5);
+    border: 1px solid var(--tsoi-color-outline);
+    background: var(--tsoi-color-surface-container-low);
+    text-decoration: none; color: inherit;
+    transition: background 0.15s, border-color 0.15s;
+  }
+  .gateway:hover { background: var(--tsoi-color-surface-container-high); border-color: var(--tsoi-color-primary); }
+  .gw-cover {
+    display: block; overflow: hidden; aspect-ratio: 16 / 9;
+    border-right: var(--tsoi-rule-column) solid var(--tsoi-color-outline);
+    background: var(--tsoi-color-surface-container-low);
+  }
+  .gw-cover img { width: 100%; height: 100%; object-fit: cover; object-position: top left; display: block; }
+  /* selectors carry the same parent chain as the base img rule so they win
+     on specificity over `.gw-cover img { display: block }` */
+  .gw-cover .t-dark { display: none; }
+  :global(html[data-theme='dark']) .gw-cover .t-light { display: none; }
+  :global(html[data-theme='dark']) .gw-cover .t-dark { display: block; }
+  .gw-body {
+    display: flex; flex-direction: column; justify-content: center;
+    padding: calc(var(--tsoi-spacing-unit) * 2.5) calc(var(--tsoi-spacing-unit) * 3);
+  }
+  .gw-title {
+    font: var(--tsoi-text-headline-lg);
+    letter-spacing: var(--tsoi-text-headline-lg-tracking);
+    line-height: 1.15;
+  }
+  .gateway:hover .gw-title { color: var(--tsoi-color-primary-text); }
+  .gw-deck {
+    max-width: 52ch;
+    margin: var(--tsoi-spacing-unit) 0 0;
+    font: var(--tsoi-text-body);
+    color: var(--tsoi-color-on-surface-variant);
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .go {
+    margin-top: calc(var(--tsoi-spacing-unit) * 1.5);
+    font: var(--tsoi-text-byline); font-weight: 500; letter-spacing: 0.06em;
+    text-transform: uppercase; color: var(--tsoi-color-primary-text);
+  }
+
+  /* ── responsive ──────────────────────────────────────────────────────── */
+  @media (max-width: 767px) {
+    .gateway { grid-template-columns: 1fr; }
+    .gw-cover {
+      aspect-ratio: 16 / 9;
+      border-right: none;
+      border-bottom: var(--tsoi-rule-column) solid var(--tsoi-color-outline);
+    }
+    .gw-body { padding: calc(var(--tsoi-spacing-unit) * 2.5); }
+  }
+</style>

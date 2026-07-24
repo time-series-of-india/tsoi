@@ -28,7 +28,7 @@ const MANIFEST = path.join(SITE, 'src/lib/data-manifest.json');
 // Logical URLs the browser fetches at runtime. Keep in sync with:
 //   - src/lib/dashboards/specs.ts  (dashboard datasets)
 //   - src/lib/beats.ts             (beats.json)
-//   - src/pages/economy/reads/upi-architecture.astro  (flagship read fetch())
+//   - src/pages/economy/read/upi-architecture.astro  (flagship read fetch())
 const RUNTIME_FILES = [
   '/data/economy/product-view.json',
   '/data/economy/bank-performance.json',
@@ -38,6 +38,7 @@ const RUNTIME_FILES = [
   '/data/economy/beats.json',
   '/data/economy/read-upi-architecture.json',
   '/data/economy/reads/shops-vs-people.json',
+  '/data/meta/traffic.json',
 ];
 
 const manifest = {};

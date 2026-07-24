@@ -1,16 +1,54 @@
 ---
-// Horizontal section navigation below the masthead. Economy is live; the rest
-// link to a per-section "coming soon" page (kept muted). Active section is
-// derived from the current path.
+// Horizontal section navigation below the masthead. "Front page" (the dispatch
+// front page at /) leads; Economy is live; the rest link to a per-section
+// "in the works" page (kept dimmed). Active item is derived from the current path.
+// Economy links straight to the Read shelf (its current default view) rather
+// than /economy, which only 301s there — no redirect hop on a nav click. The
+// script below re-points that one link at whichever format you last used.
 const sections = [
-  { label: 'Economy', slug: 'economy', live: true },
+  { label: 'Front page', slug: '', live: true },
+  { label: 'Economy', slug: 'economy', href: '/economy/read', live: true },
   { label: 'Environment', slug: 'environment' },
   { label: 'Infrastructure', slug: 'infrastructure' },
   { label: 'Demographics', slug: 'demographics' },
   { label: 'Governance', slug: 'governance' },
 ];
-const seg = Astro.url.pathname.split('/')[1] || 'economy'; // homepage = Economy
+const seg = Astro.url.pathname.split('/')[1] || ''; // '' = the front page
 ---
+
+<script>
+  // Economy remembers your last format. The nav link ships as /economy/read
+  // (the canonical default, and what a cold visitor should get); once you've
+  // picked Play or Explore, coming back to Economy should return you there
+  // rather than resetting to the shelf every time.
+  //
+  // Done by REWRITING THE LINK, not by redirecting: /economy 301s to
+  // /economy/read at the Cloudflare edge (see astro.config.mjs redirects and
+  // public/_redirects), which has no access to browser storage — and doing it
+  // client-side after landing would flash the wrong shelf before correcting.
+  // Rewriting the href means the very first navigation goes to the right
+  // place. A bare /economy typed into the address bar still 301s to the
+  // default, which is correct: a naked URL should give the canonical view.
+  //
+  // localStorage, not sessionStorage: this is a standing preference ("I use
+  // Explore"), not a within-session working state like the desk folds. It
+  // stays visible/undoable — the format toggle shows which view you're in and
+  // switching writes the new choice immediately.
+  const KEY = 'tsoi:economy:format';
+  const FORMATS = ['play', 'read', 'explore'];
+
+  const current = location.pathname.match(/^\/economy\/(play|read|explore)\b/)?.[1];
+  try {
+    if (current) localStorage.setItem(KEY, current);
+    const remembered = current ?? localStorage.getItem(KEY);
+    if (remembered && FORMATS.includes(remembered) && remembered !== 'read') {
+      const link = document.querySelector<HTMLAnchorElement>('.section-nav a[href="/economy/read"]');
+      if (link) link.href = `/economy/${remembered}`;
+    }
+  } catch {
+    // Private-mode/blocked storage: fall through to the shipped default.
+  }
+</script>
 
 <nav class="section-nav" aria-label="Sections">
   <ul>
@@ -19,9 +57,9 @@ const seg = Astro.url.pathname.split('/')[1] || 'economy'; // homepage = Economy
         <li>
           <a
             class:list={['item', { active: seg === s.slug, soon: !s.live }]}
-            href={`/${s.slug}`}
+            href={s.href ?? `/${s.slug}`}
             aria-current={seg === s.slug ? 'true' : undefined}
-            title={s.live ? undefined : 'Coming soon'}
+            title={s.live ? undefined : 'In the works'}
           >
             {s.label}
           </a>
@@ -57,13 +95,31 @@ const seg = Astro.url.pathname.split('/')[1] || 'economy'; // homepage = Economy
   }
 
   .active {
-    color: var(--tsoi-color-primary);
+    color: var(--tsoi-color-primary-text);
   }
 
+  /* Unbuilt sections read as unavailable rather than merely quiet: the
+     variant colour alone sat close enough to the live items to look like a
+     peer. Dimming on top of it puts real distance between "you can go here"
+     and "not yet" without removing the link (the stubs are still reachable,
+     and still say what's coming). Hover lifts it back to full variant — a
+     hint that the link works — but never to the saffron the live items get. */
   .soon {
     color: var(--tsoi-color-on-surface-variant);
+    /* 0.55 measured 2.87:1 on the light surfaces — under the 4.5:1 AA floor
+       for text. 0.75 clears it (4.71:1 light) while staying visibly dimmer
+       than a live item; dark's on-surface-variant (#AEB5C0) has enough
+       headroom on the dark ground that it passes at 0.75 too. */
+    opacity: 0.75;
+    transition: opacity 0.12s;
   }
-  .item:hover { color: var(--tsoi-color-primary); }
+  .item:hover { color: var(--tsoi-color-primary-text); }
+  .soon:hover { color: var(--tsoi-color-on-surface-variant); opacity: 1; }
+  /* Standing ON an unbuilt section: undim it so the nav still answers "where
+     am I", but leave it the variant colour — the saffron that marks the
+     active item is reserved for sections that actually have something in
+     them, and this one is still just a stub. */
+  .soon.active { opacity: 1; }
 
   @media (max-width: 767px) {
     ul {
