@@ -8,6 +8,10 @@ name = "tsoi-meta-live"
 main = "worker.js"
 compatibility_date = "2026-07-01"
 
+routes = [
+  { pattern = "timeseriesofindia.com/data/live/*", zone_name = "timeseriesofindia.com" },
+]
+
 [triggers]
 crons = ["*/5 * * * *"]
 

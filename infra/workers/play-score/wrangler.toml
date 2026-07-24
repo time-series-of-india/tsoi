@@ -9,6 +9,10 @@ name = "tsoi-play-score"
 main = "worker.js"
 compatibility_date = "2026-07-01"
 
+routes = [
+  { pattern = "timeseriesofindia.com/api/play-*", zone_name = "timeseriesofindia.com" },
+]
+
 [triggers]
 crons = ["*/5 * * * *"]
 
