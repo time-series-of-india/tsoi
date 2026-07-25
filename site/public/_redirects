@@ -13,13 +13,33 @@
 /economy/beats/*        /                        301
 /economy/beats          /                        301
 /economy/beats/         /                        301
-# Only the longread keeps its own destination; everything else under the old
-# /reads scheme is a retired short and lands on the shelf. Written as
-# "survivor first, splat catches the rest" so no future retirement needs a new
-# line here, and a forgotten old URL lands on the shelf instead of 404-ing.
+# Only the longread keeps its own destination; the retired shorts land on the
+# shelf. EVERY slug is spelled out and there is deliberately no /economy/reads/*
+# splat: on Cloudflare a splat beats an exact rule that also matches, whatever
+# the file order (verified on prod — `wrangler dev` honours order, prod does
+# not), so a surviving slug can never be listed alongside a splat that would
+# swallow it. /economy/reads/upi-architecture is the old URL of the most-read
+# page and the one the HN post links to; it must reach the piece, not the shelf.
+# The list is closed — these nine are every read that ever shipped on the old
+# scheme — so nothing new can arrive here needing a fallback.
 /economy/reads/upi-architecture   /economy/read/upi-architecture/  301
 /economy/reads/upi-architecture/  /economy/read/upi-architecture/  301
-/economy/reads/*        /economy/read/           301
+/economy/reads/how-india-moves    /economy/read/  301
+/economy/reads/how-india-moves/   /economy/read/  301
+/economy/reads/shops-vs-people    /economy/read/  301
+/economy/reads/shops-vs-people/   /economy/read/  301
+/economy/reads/what-india-buys    /economy/read/  301
+/economy/reads/what-india-buys/   /economy/read/  301
+/economy/reads/duel               /economy/read/  301
+/economy/reads/duel/              /economy/read/  301
+/economy/reads/where-money-lands  /economy/read/  301
+/economy/reads/where-money-lands/ /economy/read/  301
+/economy/reads/where-india-pays   /economy/read/  301
+/economy/reads/where-india-pays/  /economy/read/  301
+/economy/reads/bank-reliability   /economy/read/  301
+/economy/reads/bank-reliability/  /economy/read/  301
+/economy/reads/credit-vs-debit    /economy/read/  301
+/economy/reads/credit-vs-debit/   /economy/read/  301
 /economy/reads          /economy/read/           301
 /economy/reads/         /economy/read/           301
 # Desks fold (Jul 2026): the six standalone dashboards live on as desks of
