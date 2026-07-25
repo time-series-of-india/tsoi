@@ -1,8 +1,10 @@
 ---
 // Per-deck route (/economy/play/payments). Decks are retired from the rack
-// but their URLs live forever — old /economy/beats* shares 301 here
-// (public/_redirects), so the page keeps rendering, unlisted (the short-read
-// treatment). Games own the rack now.
+// but their URLs live forever, so the page keeps rendering, unlisted (the
+// short-read treatment). Nothing points here any more: /economy/beats used to
+// 301 in, and stopped (Jul 2026) once it turned out to be the site's top
+// search result, feeding every visitor onto a noindex dead end. Games own the
+// rack now.
 import BeatsDeck from '../../../components/story/BeatsDeck.astro';
 import { BEAT_DECKS } from '../../../lib/beats';
 

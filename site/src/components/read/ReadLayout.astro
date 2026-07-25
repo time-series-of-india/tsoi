@@ -30,9 +30,15 @@ const deck = props.deck ?? entry?.deck ?? '';
 const { asOf, description } = props;
 // Per-read social card (scripts/build-og-cards.mjs); falls back in StoryPage.
 const ogImage = props.slug ? `/og/reads/${props.slug}.png` : undefined;
+// Retired shorts are unlisted, and unlisted has to mean unlisted to crawlers
+// too — otherwise search keeps walking readers onto pages no index links to.
+// Same treatment the retired deck already gets (BeatsDeck's noindex); the
+// pages stay served, and RSS still carries them. Paired with the sitemap
+// filter in astro.config.mjs, which reads `kind` from this same registry.
+const noindex = entry?.kind === 'short';
 ---
 
-<StoryPage title={title} description={description ?? deck} og_type="article" og_image={ogImage}>
+<StoryPage title={title} description={description ?? deck} og_type="article" og_image={ogImage} noindex={noindex}>
   <ScrollProgress />
   <article class="read">
     <!-- folio, not a back button: states where the piece lives ("Economy ·

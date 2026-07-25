@@ -4,13 +4,22 @@
 # Format rename (Jul 2026): beats → play, reads → read, dashboards → explore.
 # Splats carry deep links (old shared article/deck/dashboard URLs) across.
 # /economy points straight at the read shelf — never chain through /reads.
-# The old beats page IS the payments deck, so its index goes to the deck's
-# permanent URL (alive but unlisted since decks left the rack) — sending an
-# old share to the rack would swap the cards someone was promised for a game.
-/economy/beats/*        /economy/play/:splat     301
-/economy/beats          /economy/play/payments/  301
-/economy/beats/         /economy/play/payments/  301
-/economy/reads/*        /economy/read/:splat     301
+# Retired formats send old URLs to a LISTED page, not to the unlisted survivor
+# (revised Jul 2026): /economy/beats was the site's most-indexed URL, and
+# pointing it at the retired payments deck walked every search visitor onto a
+# noindex page with nothing after it. Beats goes to the front page; retired
+# short reads go to the shelf. Both destinations are live surfaces a reader can
+# continue from. The pages themselves stay served — unlisted, not unpublished.
+/economy/beats/*        /                        301
+/economy/beats          /                        301
+/economy/beats/         /                        301
+# Only the longread keeps its own destination; everything else under the old
+# /reads scheme is a retired short and lands on the shelf. Written as
+# "survivor first, splat catches the rest" so no future retirement needs a new
+# line here, and a forgotten old URL lands on the shelf instead of 404-ing.
+/economy/reads/upi-architecture   /economy/read/upi-architecture/  301
+/economy/reads/upi-architecture/  /economy/read/upi-architecture/  301
+/economy/reads/*        /economy/read/           301
 /economy/reads          /economy/read/           301
 /economy/reads/         /economy/read/           301
 # Desks fold (Jul 2026): the six standalone dashboards live on as desks of

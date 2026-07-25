@@ -1,10 +1,11 @@
 ---
 // The Play rack (/economy/play): one portrait card per game. Games render at
 // /economy/play/<game>/ (canonical = current puzzle; numbered puzzle pages are
-// the share targets). Old /economy/beats* URLs 301 here or to the retired
-// deck (public/_redirects). Decks are retired from the rack — their URLs stay
-// alive at /economy/play/[deck] so nothing shared ever breaks, but they are
-// unlisted (same treatment as short reads). Games are equal-weight siblings;
+// the share targets). Old /economy/beats* URLs 301 to the front page, not
+// here and not to the deck (public/_redirects). Decks are retired from the
+// rack — their URLs stay alive at /economy/play/[deck] so nothing shared ever
+// breaks, but they are unlisted (same treatment as short reads), reached now
+// only by a direct link. Games are equal-weight siblings;
 // the game from the latest dispatch says so with the self-expiring "New" chip.
 import StoryPage from '../../layouts/StoryPage.astro';
 import SectionHeader from '../../components/editorial/SectionHeader.astro';
