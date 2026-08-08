@@ -29,7 +29,13 @@ import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
 
 // One entry per explore product page (see economy/explore/index.astro).
-const PRODUCTS = [{ slug: 'payments', path: '/economy/explore/payments' }];
+const PRODUCTS = [
+  { slug: 'payments', path: '/economy/explore/payments' },
+  { slug: 'inflation', path: '/economy/explore/inflation' },
+  // Not a desk board: the machine's instrument (the answer and its chart) IS
+  // the product, so the thumb frames that element instead of a desk body.
+  { slug: 'rupee-time-machine', path: '/economy/explore/rupee-time-machine', selector: '.instrument' },
+];
 
 const SITE_DIR = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const OUT_DIR = resolve(SITE_DIR, 'public/thumbs/explore');
@@ -72,13 +78,24 @@ async function capture(browser, base, product, theme) {
 
   // Wait for the first desk's first chart canvas to actually paint, then let
   // the grow-in animation settle.
+  const canvasSel = product.selector ? `${product.selector} canvas` : '.desk .panel .chart canvas';
   await page
-    .waitForFunction(() => {
-      const c = document.querySelector('.desk .panel .chart canvas');
+    .waitForFunction((sel) => {
+      const c = document.querySelector(sel);
       return c && c.width > 50 && c.height > 50;
-    }, null, { timeout: 15_000 })
+    }, canvasSel, { timeout: 15_000 })
     .catch(() => console.log(`  (canvas never sized) ${slug}`));
   await page.waitForTimeout(3000);
+
+  // A product that names its own selector is clipped to that element whole;
+  // the desk-body framing below is for the spec-driven boards.
+  if (product.selector) {
+    const file = resolve(OUT_DIR, theme === 'dark' ? `${slug}-dark.png` : `${slug}.png`);
+    await page.locator(product.selector).first().screenshot({ path: file });
+    console.log(`wrote ${file}`);
+    await context.close();
+    return;
+  }
 
   // Clip = the FIRST DESK's BODY (stat tiles through its first panel row) —
   // deliberately NOT the desk from its own top, which would pull in

@@ -7,6 +7,10 @@
 // Vocabulary note: "dispatch" is a noun only in this codebase — never name a
 // function dispatch() (collides with JS event dispatch).
 import type { Section, Theme } from './themes';
+import {
+  INFLATION_PEAKS_HREF,
+  INFLATION_PEAKS_TITLE,
+} from './play/inflation-peaks';
 
 // One card variant per format; a future format (game, comic) means a new card
 // variant on the front page, not a new surface.
@@ -19,6 +23,7 @@ export interface DispatchItem {
   blurb: string; // sells the item — what you'll come away with, not a contents list
   thumb?: string; // reads only: thumbnail base path; page appends .png / -dark.png
   meta?: string; // short kicker addendum: "6 cards", "updated daily"
+  cta?: string; // overrides the format's default verb ("Open the dashboard") — a machine is opened, not a dashboard
 }
 
 export interface Dispatch {
@@ -62,6 +67,47 @@ export const DISPATCHES: Record<string, Dispatch> = {
         href: '/economy/explore/payments',
         blurb:
           'Every rail on one board — UPI, cards, NEFT, RTGS — volume and value over any window, with five more boards behind it for banks, apps, states and merchant categories.',
+      },
+    ],
+  },
+  '2-inflation': {
+    edition: 2,
+    slug: '2-inflation',
+    date: '2026-08-08',
+    section: 'economy',
+    theme: 'inflation',
+    standfirst:
+      'What inflation actually measures, how the number is built from a single collector’s tablet up to the headline everyone quotes, and two ways to feel it yourself: a game where the terrain is the series, and a calculator that runs any amount along it.',
+    items: [
+      {
+        format: 'read',
+        title: 'Inflation: The Price of Nearly Everything',
+        href: '/economy/read/price-of-nearly-everything',
+        thumb: '/thumbs/read/price-of-nearly-everything',
+        blurb:
+          'One number claims to describe a billion baskets. The gap between the headline and your life, the descent from that headline to a collector’s tablet, and where in the country it lands hardest.',
+      },
+      {
+        format: 'game',
+        title: INFLATION_PEAKS_TITLE,
+        href: INFLATION_PEAKS_HREF,
+        blurb:
+          'A driving game where the terrain is the inflation series. One button, and a long way down.',
+      },
+      {
+        format: 'dashboard',
+        title: 'India Inflation',
+        href: '/economy/explore/inflation',
+        blurb:
+          'Every inflation desk on one page: the headline back to 1969, the divisions that moved it, the whole basket item by item, and every state beside the national number.',
+      },
+      {
+        format: 'dashboard',
+        title: 'Rupee Time Machine',
+        href: '/economy/explore/rupee-time-machine',
+        blurb:
+          'Any amount, any two months since August 1969: what it spent like then against what it spends like now, on one continuous price line.',
+        cta: 'Open the machine',
       },
     ],
   },

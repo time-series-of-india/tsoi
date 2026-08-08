@@ -29,8 +29,19 @@ const MANIFEST = path.join(SITE, 'src/lib/data-manifest.json');
 //   - src/lib/dashboards/specs.ts  (dashboard datasets)
 //   - src/lib/beats.ts             (beats.json)
 //   - src/pages/economy/read/upi-architecture.astro  (flagship read fetch())
+//   - src/components/play/InflationPeaks.astro       (game terrain fetch())
+//   - src/pages/economy/explore/rupee-time-machine.astro  (calculator fetch())
+//
+// DELIBERATELY NOT LISTED: /data/economy/inflation-items/*. Those shards are
+// hashed by their own generator and written under the hash they earned, so they
+// are already immutable-safe; the main dataset carries each filename, and the
+// main dataset is what versions them. Hashing them a second time here would
+// produce a name nothing links to. The list below is an allowlist rather than a
+// directory walk, so the exclusion is structural — nothing has to remember it.
 const RUNTIME_FILES = [
   '/data/economy/product-view.json',
+  '/data/economy/inflation-board.json',
+  '/data/economy/rupee-time-machine.json',
   '/data/economy/bank-performance.json',
   '/data/economy/upi-ecosystem.json',
   '/data/economy/state-wise.json',
@@ -38,6 +49,7 @@ const RUNTIME_FILES = [
   '/data/economy/beats.json',
   '/data/economy/read-upi-architecture.json',
   '/data/economy/reads/shops-vs-people.json',
+  '/data/economy/play/inflation-peaks.json',
   '/data/meta/traffic.json',
 ];
 

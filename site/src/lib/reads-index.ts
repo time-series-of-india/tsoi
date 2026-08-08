@@ -109,4 +109,14 @@ export const READS: ReadEntry[] = [
     theme: 'payments',
     published: '2026-07-06',
   },
+  {
+    slug: 'price-of-nearly-everything',
+    kind: 'read',
+    title: 'Inflation: The Price of Nearly Everything',
+    deck: 'One number claims to describe a billion baskets. The gap between the headline and your life, the descent from that headline to a collector’s tablet, and where in the country it lands hardest.',
+    crumb: 'The Price of Nearly Everything',
+    source: 'MoSPI',
+    theme: 'inflation',
+    published: '2026-08-08',
+  },
 ];

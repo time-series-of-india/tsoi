@@ -4,7 +4,9 @@
 // the Explore index's gateway card at card scale. Shape codes format
 // site-wide — a dashboard is a wide instrument, so its card is landscape,
 // where Play's cards are portrait. Cover images are the committed
-// /thumbs/explore captures; without one the card falls back to text.
+// /thumbs/explore captures; without one, a caller can pass a `motif` slot
+// (a thin data-drawn line, same system as the game's terrain) instead — only
+// once neither exists does the card fall back to plain text.
 interface Props {
   href: string;
   kicker: string; // "Dashboard · updated daily"
@@ -14,13 +16,20 @@ interface Props {
   cta?: string;
 }
 const { href, kicker, title, body, cover, cta = 'Open the dashboard' } = Astro.props;
+const hasMotif = Astro.slots.has('motif');
 ---
 
 <a class="dash-card" href={href}>
-  {cover && (
+  {(cover || hasMotif) && (
     <span class="da-cover">
-      <img class="t-light" src={`${cover}.png`} alt="" loading="lazy" />
-      <img class="t-dark" src={`${cover}-dark.png`} alt="" loading="lazy" />
+      {cover ? (
+        <>
+          <img class="t-light" src={`${cover}.png`} alt="" loading="lazy" />
+          <img class="t-dark" src={`${cover}-dark.png`} alt="" loading="lazy" />
+        </>
+      ) : (
+        <slot name="motif" />
+      )}
     </span>
   )}
   <span class="da-body-wrap">
@@ -57,6 +66,9 @@ const { href, kicker, title, body, cover, cta = 'Open the dashboard' } = Astro.p
   .da-cover .t-dark { display: none; }
   :global(html[data-theme='dark']) .da-cover .t-light { display: none; }
   :global(html[data-theme='dark']) .da-cover .t-dark { display: block; }
+  /* the motif slot: a thin data-line stands in for a screenshot that hasn't
+     been captured yet, sized exactly like the img it stands in for */
+  .da-cover :global(svg) { display: block; width: 100%; height: 100%; }
 
   .da-body-wrap {
     display: flex; flex-direction: column; justify-content: center;

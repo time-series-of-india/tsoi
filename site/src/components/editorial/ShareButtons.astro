@@ -21,7 +21,8 @@ interface Props {
   title: string;                     // the headline that travels with the link
   variant?: 'button' | 'icon' | 'fab'; // labelled, icon-only in-flow, or corner fab
   divider?: boolean;                 // top hairline rule (button variant only)
-  align?: 'start' | 'center';        // popover anchor edge for the button variant
+  align?: 'start' | 'center' | 'end'; // popover anchor edge — 'end' for a trigger
+                                      // sitting against the content's right edge
 }
 const { title, variant = 'button', divider = true, align = 'start' } = Astro.props;
 const iconOnly = variant !== 'button';

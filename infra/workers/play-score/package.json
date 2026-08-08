@@ -1,0 +1,13 @@
+{
+  "name": "tsoi-play-score",
+  "private": true,
+  "type": "module",
+  "description": "Deploys with npx wrangler; this file exists for the tests. See test/README.md.",
+  "scripts": {
+    "test": "node --test \"test/**/*.test.mjs\""
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.0",
+    "wrangler": "^4.0.0"
+  }
+}

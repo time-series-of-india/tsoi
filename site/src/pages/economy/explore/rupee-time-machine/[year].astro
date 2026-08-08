@@ -1,0 +1,224 @@
+---
+// One static page per calendar year: /economy/explore/rupee-time-machine/1990.
+//
+// This is the machine's search surface. A reader who types "value of 100 rupees
+// in 1990" is asking about a year, not a month, so the page takes the year at
+// its twelve-month average and says so in the headline rather than quietly
+// picking a January. Everything below the fold of that sentence — the three
+// restated lines, every cell of the table — is computed in lib/rtm.ts from the
+// dataset's own year block and unit-tested in tests/rtm/years.test.ts, so the
+// fifty-six pages cannot drift from the machine they point at.
+//
+// No chart here: the crawlable table IS the page's data, and a year page that
+// waited for JavaScript to say anything would be a year page a crawler reads as
+// empty.
+import { readFileSync } from 'node:fs';
+import StoryPage from '../../../../layouts/StoryPage.astro';
+import {
+  YEAR_AMOUNT, fmtINR, yearAnswer, yearHeadlineHtml, yearRows, type RtmData,
+} from '../../../../lib/rtm';
+
+const LOGICAL = '/data/economy/rupee-time-machine.json';
+const data: RtmData = JSON.parse(readFileSync(`public${LOGICAL}`, 'utf8'));
+
+/** Every full year the block carries. The current year is short — it has no
+ *  twelve-month average and no year-on-year — so it gets no page of its own,
+ *  only the last row of every other page's table. */
+const fullYears = data.years.filter((e) => !e.partial).map((e) => e.y);
+
+export async function getStaticPaths() {
+  const d: RtmData = JSON.parse(readFileSync('public/data/economy/rupee-time-machine.json', 'utf8'));
+  return d.years.filter((e) => !e.partial).map((e) => ({ params: { year: String(e.y) } }));
+}
+
+const year = Number(Astro.params.year);
+const a = yearAnswer(data, year);
+const rows = yearRows(data, year);
+const result = fmtINR(a.result);
+
+const MACHINE = '/economy/explore/rupee-time-machine';
+---
+
+<StoryPage
+  title={`₹${YEAR_AMOUNT} in ${year} — Rupee Time Machine — Time Series of India`}
+  description={`₹${YEAR_AMOUNT} in ${year} amounts to about ₹${result} in ${data.asOfLabel}. India's inflation from ${year} to today on one continuous monthly price line, from official Labour Bureau and MoSPI indices.`}
+  og_image="/og/explore/rupee-time-machine.png"
+>
+  <nav class="folio" aria-label="Section">
+    <a href="/economy">Economy</a><span class="dot" aria-hidden="true">&middot;</span><a href="/economy/explore">Explore</a>
+  </nav>
+
+  <header class="year-head">
+    <h1>&#8377;{YEAR_AMOUNT} in {year}</h1>
+  </header>
+
+  <section class="answer" aria-label="Answer">
+    <p class="primary" set:html={yearHeadlineHtml(a)}></p>
+    <p class="line">{a.multiplierLine}</p>
+    <p class="line">{a.inverseLine}</p>
+    <p class="line">{a.buysLine}</p>
+  </section>
+
+  <!-- The crawlable table: the page's year priced forward, year by year, to
+       the last one the price line reaches. -->
+  <div class="table-wrap">
+    <table class="years">
+      <thead>
+        <tr>
+          <th scope="col">Year</th>
+          <th scope="col">&#8377;{YEAR_AMOUNT} of {year} becomes</th>
+          <th scope="col">Average inflation</th>
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map((r) => (
+          <tr>
+            <th scope="row">{r.label}</th>
+            <td class="becomes">{r.becomes}</td>
+            <td>{r.infl}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+
+  <p class="cta">
+    <a href={`${MACHINE}?amount=${YEAR_AMOUNT}&from=${year}-01`}>Any amount, down to the month: open the Rupee Time Machine &rarr;</a>
+  </p>
+
+  <p class="method">
+    One continuous price line, chained from the Labour Bureau's CPI-IW and MoSPI's
+    CPI Combined; <a href={MACHINE}>the machine's fold</a> has the joins.
+  </p>
+  <p class="sources">
+    Sources:
+    <a href="https://labourbureau.gov.in/cpi-iw" rel="noopener">Labour Bureau, CPI-IW</a>
+    <span class="dot" aria-hidden="true">&middot;</span>
+    <a href="https://www.mospi.gov.in/cpi" rel="noopener">MoSPI, Consumer Price Index</a>
+  </p>
+
+  <!-- The mesh: every year page links to every other, so the set crawls as one
+       surface rather than as fifty-six orphans. -->
+  <nav class="mesh" aria-label="By year">
+    <span class="mesh-label">By year</span>
+    <ul>
+      {fullYears.map((y) => (
+        <li>{y === year ? <span class="here" aria-current="page">{y}</span> : <a href={`${MACHINE}/${y}`}>{y}</a>}</li>
+      ))}
+    </ul>
+  </nav>
+</StoryPage>
+
+<style>
+  /* folio — the same voice as the machine page and the board */
+  .folio { font: var(--tsoi-text-byline); font-weight: 500; font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; padding: 4px 0; margin-bottom: calc(var(--tsoi-spacing-unit) * 2); }
+  .folio a { color: var(--tsoi-color-primary-text); text-decoration: none; }
+  .folio a:hover { text-decoration: underline; }
+  .folio .dot { color: var(--tsoi-color-on-surface-variant); padding-inline: 5px; }
+
+  .year-head { max-width: 70ch; }
+  .year-head h1 { margin: 0; font: var(--tsoi-text-headline-lg); letter-spacing: var(--tsoi-text-headline-lg-tracking); }
+
+  /* ── the answer: the machine's own prose, one year wide ───────────────── */
+  .answer { margin-top: calc(var(--tsoi-spacing-unit) * 3); max-width: 62ch; }
+  .primary {
+    margin: 0;
+    font: var(--tsoi-text-deck); font-size: 20px; line-height: 1.5;
+    color: var(--tsoi-color-on-surface);
+  }
+  .primary :global(.rtm-fig) {
+    font: var(--tsoi-text-headline-lg); letter-spacing: var(--tsoi-text-headline-lg-tracking);
+    font-size: 28px; white-space: nowrap;
+  }
+  .primary :global(.rtm-result) { color: var(--tsoi-color-primary-text); }
+  .line {
+    margin: calc(var(--tsoi-spacing-unit) * 1.5) 0 0;
+    font: var(--tsoi-text-body); color: var(--tsoi-color-on-surface-variant);
+  }
+  @media (min-width: 768px) {
+    .primary { font-size: 22px; }
+    .primary :global(.rtm-fig) { font-size: 30px; }
+  }
+
+  /* ── the table ────────────────────────────────────────────────────────
+     Scrolls in its own container rather than pushing the page sideways: on a
+     390px phone three columns of monospaced rupees are wider than the screen,
+     and a page body that scrolls horizontally is a page that has lost its
+     margin. */
+  .table-wrap {
+    margin-top: calc(var(--tsoi-spacing-unit) * 4);
+    /* Three short columns, held to a reading measure rather than stretched
+       across a 1,232px container: at full width the year and its rupee figure
+       end up a hand's width apart and the eye loses the row. */
+    max-width: 30rem;
+    overflow-x: auto;
+    border-top: var(--tsoi-rule-column) solid var(--tsoi-color-outline);
+  }
+  .years {
+    border-collapse: collapse; width: 100%; min-width: 340px;
+    font: var(--tsoi-text-metric-sm); letter-spacing: var(--tsoi-text-metric-sm-tracking);
+  }
+  .years th[scope='col'] {
+    font: var(--tsoi-text-label-caps); letter-spacing: var(--tsoi-text-label-caps-tracking);
+    text-transform: uppercase; color: var(--tsoi-color-on-surface-variant);
+    font-weight: 500; text-align: right;
+  }
+  .years th[scope='col']:first-child { text-align: left; }
+  .years th, .years td {
+    padding: 7px calc(var(--tsoi-spacing-unit) * 2) 7px 0;
+    border-bottom: var(--tsoi-rule-column) solid var(--tsoi-color-outline);
+    color: var(--tsoi-color-on-surface-variant); white-space: nowrap;
+    text-align: right;
+  }
+  .years th[scope='row'] {
+    text-align: left; font-weight: 400; color: var(--tsoi-color-on-surface);
+  }
+  .years td:last-child, .years th[scope='col']:last-child { padding-right: 0; }
+  .years .becomes { color: var(--tsoi-color-on-surface); }
+  /* The page's own year is the base of every other row: ₹100 becoming ₹100 is
+     the table's zero, and it reads as one. */
+  .years tbody tr:first-child .becomes { color: var(--tsoi-color-on-surface-variant); }
+
+  /* ── out of the page: the machine, then the method ────────────────────── */
+  .cta { margin: calc(var(--tsoi-spacing-unit) * 3) 0 0; font: var(--tsoi-text-body); }
+  .cta a { color: var(--tsoi-color-primary-text); text-decoration: none; }
+  .cta a:hover { text-decoration: underline; }
+
+  .method, .sources {
+    margin: calc(var(--tsoi-spacing-unit) * 2) 0 0; max-width: 70ch;
+    font: var(--tsoi-text-metric-sm); line-height: 1.6;
+    letter-spacing: var(--tsoi-text-metric-sm-tracking);
+    color: var(--tsoi-color-on-surface-variant);
+  }
+  .method a, .sources a { color: var(--tsoi-color-primary-text); }
+  .sources { margin-top: var(--tsoi-spacing-unit); }
+  .sources .dot { padding-inline: 4px; }
+
+  /* ── the mesh ─────────────────────────────────────────────────────────── */
+  .mesh {
+    margin-top: calc(var(--tsoi-spacing-unit) * 4);
+    border-top: var(--tsoi-rule-column) solid var(--tsoi-color-outline);
+    padding-top: calc(var(--tsoi-spacing-unit) * 2);
+  }
+  .mesh-label {
+    display: block;
+    font: var(--tsoi-text-label-caps); letter-spacing: var(--tsoi-text-label-caps-tracking);
+    text-transform: uppercase; color: var(--tsoi-color-on-surface-variant);
+  }
+  .mesh ul {
+    display: flex; flex-wrap: wrap; gap: 4px calc(var(--tsoi-spacing-unit) * 1.5);
+    list-style: none; margin: calc(var(--tsoi-spacing-unit) * 1.5) 0 0; padding: 0;
+  }
+  .mesh li { font: var(--tsoi-text-metric-sm); letter-spacing: var(--tsoi-text-metric-sm-tracking); }
+  .mesh a { color: var(--tsoi-color-primary-text); text-decoration: none; }
+  .mesh a:hover { text-decoration: underline; }
+  .mesh .here { color: var(--tsoi-color-on-surface); font-weight: 500; }
+
+  /* On a phone the three columns are ten pixels wider than the screen, which
+     is the least useful amount of overflow there is: the scroller stays (a
+     narrower phone, or a reader at 200% type, still needs it) but the gutters
+     tighten first so the common case reads whole. */
+  @media (max-width: 600px) {
+    .years th, .years td { padding-right: var(--tsoi-spacing-unit); }
+  }
+</style>

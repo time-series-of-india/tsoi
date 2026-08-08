@@ -11,8 +11,17 @@ import StoryPage from '../../layouts/StoryPage.astro';
 import SectionHeader from '../../components/editorial/SectionHeader.astro';
 import ViewToggle from '../../components/editorial/ViewToggle.astro';
 import GameCard from '../../components/play/GameCard.astro';
+import PeaksAuto from '../../components/play/PeaksAuto.astro';
 import { DISPATCH_LIST } from '../../lib/dispatches';
 import obhm from '../../data/play/off-by-how-much.json';
+import {
+  INFLATION_PEAKS_HREF,
+  INFLATION_PEAKS_KICKER,
+  INFLATION_PEAKS_TITLE,
+} from '../../lib/play/inflation-peaks';
+import { readFileSync } from 'node:fs';
+import { lineMotif } from '../../lib/lineMotif';
+import { coverAuto } from '../../lib/play/peaks-cover';
 
 const currentPuzzle = obhm.puzzles.find((p) => p.n === obhm.current)!;
 const round1 = currentPuzzle.rounds[0] as {
@@ -36,6 +45,30 @@ const scale =
   round1.countScale && round1.min != null && round1.max != null
     ? { minCount: round1.min * round1.countScale, maxCount: round1.max * round1.countScale }
     : undefined;
+
+// Inflation Peaks' motif is its own terrain, drawn once as a thin saffron
+// profile. Same weight as the gauge on the sibling card: one line, no fill,
+// no icon. Read off the generated spine at build time, so the silhouette on
+// the rack is the series the game actually runs on.
+//
+// Downsampled to a fixed number of samples rather than every nth month: the
+// spine grows by a month whenever MOSPI publishes, and a fixed stride would
+// quietly thicken the line over the years. Normalised into the viewBox so
+// the shape holds whatever the numbers are.
+// Cropped to the stretch the machine arrives loaded with (2020 onward), with
+// the game's own auto standing on it: the full 57-year spine at 58px is
+// a texture, and nothing about a texture says game. Same crop and overlay as
+// the front page's card (src/pages/index.astro) so the two read as the same
+// object, and the placement itself is shared (lib/play/peaks-cover) so they
+// cannot drift again. Normalised from the stretch's own floor, not zero.
+const peaks = (() => {
+  const all = JSON.parse(
+    readFileSync('public/data/economy/play/inflation-peaks.json', 'utf8'),
+  ).points as { ym: string; yoy: number }[];
+  const stretch = all.filter((p) => p.ym >= '2020-01');
+  const line = lineMotif(stretch.map((p) => p.yoy), { samples: 96 });
+  return { points: line.points, auto: coverAuto(line) };
+})();
 
 const sectionDate = new Date()
   .toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })
@@ -61,7 +94,30 @@ const isNew = (href: string) =>
   <!-- The card's `body` is kept short enough to survive its 2-line clamp at
        phone width. It used to end "…see how far off you are", which the clamp
        cut at exactly the payoff phrase; no loss, the title already says it. -->
+  <!-- Newest first: dispatch No. 2’s game ahead of dispatch No. 1’s. -->
   <div class="rack">
+    <GameCard
+      href={INFLATION_PEAKS_HREF}
+      kicker={INFLATION_PEAKS_KICKER}
+      isNew={isNew(INFLATION_PEAKS_HREF)}
+      title={INFLATION_PEAKS_TITLE}
+      body="A driving game where the terrain is the inflation series. One button, and a long way down."
+      peek="Hold to accelerate, release to coast."
+      peekLabel="Controls"
+    >
+      <span slot="cover" class="peaks-cover">
+        <svg
+          class="peaks-motif"
+          viewBox="0 0 100 30"
+          preserveAspectRatio="none"
+          aria-hidden="true"
+        >
+          <polyline points={peaks.points} />
+        </svg>
+        <PeaksAuto {...peaks.auto} />
+      </span>
+    </GameCard>
+
     <GameCard
       href="/economy/play/off-by-how-much/"
       kicker={`${obhm.seriesKicker} · Puzzle № ${obhm.current}`}
@@ -82,6 +138,41 @@ const isNew = (href: string) =>
     letter-spacing: var(--tsoi-text-deck-tracking);
     color: var(--tsoi-color-on-surface-variant);
   }
+
+  /* The peaks card's motif: the game's terrain as a single saffron rule,
+     sitting in the same cover box and at the same visual weight as the
+     sibling card's gauge. `vector-effect` keeps the stroke at 1.5px through
+     the non-uniform viewBox scaling, which would otherwise squash it. */
+  /* Headroom for the auto, which stands ON the line and therefore reaches
+     about 19px ABOVE it — a sprite anchored at its rear tyre with 18px of
+     bodywork over that point. The 58px band measures the terrain only, so
+     without this the vehicle escapes the cover box and, on any layout where
+     the card has no slack to give (the front page's side column at tablet
+     width), lands in the last line of the pitch above it.
+
+     Reserved here rather than solved in the placement search, because the
+     alternative is telling coverAuto to keep off high ground, and on this
+     crop every window low enough to qualify tilts 8-20°. Standing the auto
+     level is the point of that search (see lib/play/peaks-cover) and worth
+     20px more than an unpadded box is.
+
+     Margin, not padding: the auto is absolutely positioned against this box,
+     so padding would shift the motif down and leave the sprite behind. */
+  .peaks-cover { position: relative; display: block; margin-top: 20px; }
+  .peaks-motif {
+    display: block;
+    width: 100%;
+    height: 58px;
+    overflow: visible;
+  }
+  .peaks-motif polyline {
+    fill: none;
+    stroke: var(--tsoi-color-primary);
+    stroke-width: 1.5;
+    stroke-linejoin: round;
+    vector-effect: non-scaling-stroke;
+  }
+  /* the auto itself carries its own styles (components/play/PeaksAuto.astro) */
 
   /* Track capped at 480px: the game card holds the intro screen's proportion
      (see GameCard.astro), and the intro card itself is 560 wide — the rack's

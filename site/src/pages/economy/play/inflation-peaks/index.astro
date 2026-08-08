@@ -1,0 +1,31 @@
+---
+// Inflation Peaks lives at one address; the terrain it drives on is now a
+// generated artefact like every other series on the site, built from
+// TimescaleDB by scripts/build-inflation-peaks.mjs into
+// public/data/economy/play/inflation-peaks.json.
+//
+// It is read twice, on purpose. The browser fetches the content-hashed copy
+// at runtime, because 24 KB of monthly observations belongs in an immutably
+// cached file rather than inlined into the HTML on every visit. The build
+// reads the same file off disk for everything that has to be in the served
+// markup: the sources line, which is a disclosure and should not wait on a
+// fetch, and the rack, the notes and the scorecard, so the whole apparatus
+// around the canvas is real HTML that renders before any script runs. The
+// points go along for the sparkline on each cartridge, which is drawn at
+// build time and costs nothing at run time. hash-data.mjs copies rather than
+// moves, so the logical path is still on disk at build time.
+import { readFileSync } from 'node:fs';
+import InflationPeaks from '../../../../components/play/InflationPeaks.astro';
+import { dataUrl } from '../../../../lib/data-url';
+
+const LOGICAL = '/data/economy/play/inflation-peaks.json';
+const terrain = JSON.parse(readFileSync(`public${LOGICAL}`, 'utf8'));
+---
+
+<InflationPeaks
+  src={dataUrl(LOGICAL)}
+  sources={terrain.sources}
+  eras={terrain.eras}
+  annotations={terrain.annotations}
+  points={terrain.points}
+/>

@@ -1,0 +1,66 @@
+---
+// The India Inflation board: five desks over the Consumer Price Index on one
+// page. Canonical for CPI, the way explore/payments.astro is for the payment
+// systems, and the companion instrument to the inflation read.
+//
+// Thin by design, same as payments: which desks, in what order, under what bar
+// title, with which controls hoisted to page level is the BoardSpec in
+// lib/dashboards/boards.ts. What stays here is the page's own editorial
+// furniture — the folio, the headline and the deck.
+import StoryPage from '../../../layouts/StoryPage.astro';
+import BoardView from '../../../components/dashboard/BoardView.astro';
+import { getBoard } from '../../../lib/dashboards/boards';
+
+const board = getBoard('inflation')!;
+---
+
+<StoryPage
+  title="India Inflation — All Desks — TSOI"
+  description="Every India inflation desk on one page: the current headline and the long run behind it, what each division of the basket contributed, the whole aggregation tree, state by state, and what the 2024 base revision did to the basket. Built from official MoSPI data."
+  og_image="/og/explore/inflation.png"
+  wide
+>
+  <!-- folio, not a back button: states where the board lives ("Economy ·
+       Explore"), matching the Read and Play pages. The masthead is the only
+       road home; the browser owns history. -->
+  <nav class="folio" aria-label="Section">
+    <a href="/economy">Economy</a><span class="dot" aria-hidden="true">&middot;</span><a href="/economy/explore">Explore</a>
+  </nav>
+  <header class="all-head">
+    <h1>India Inflation</h1>
+    <!-- Four desks, one line. Everything the deck used to spell out — what each
+         desk holds, which control reaches it — the desks now say for
+         themselves on their own bars, and saying it twice made a reader read a
+         paragraph before reaching a number. -->
+    <p class="deck">
+      The headline, the basket behind it, how it lands state by state, and what the 2024
+      revision changed. From MoSPI's monthly Consumer Price Index.
+    </p>
+  </header>
+
+  <BoardView board={board} />
+
+  {/* Navigation, not a call to action — the same two-format folio the reads
+      and Inflation Peaks close on. No convention existed on this board
+      before; this is the minimal one, matching the read/play grammar rather
+      than inventing a new component. */}
+  <nav class="folio folio-end" aria-label="More on inflation">
+    <a href="/economy/read/price-of-nearly-everything">Read: Inflation: The Price of Nearly Everything</a><span class="dot" aria-hidden="true">&middot;</span><a href="/economy/play/inflation-peaks/">Game: Inflation Peaks</a>
+  </nav>
+</StoryPage>
+
+<style>
+  /* folio — matches ReadLayout / OffByHowMuch so all three formats state
+     where they live in the same voice */
+  .folio { font: var(--tsoi-text-byline); font-weight: 500; font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; padding: 4px 0; margin-bottom: calc(var(--tsoi-spacing-unit) * 2); }
+  .folio a { color: var(--tsoi-color-primary-text); text-decoration: none; }
+  .folio a:hover { text-decoration: underline; }
+  .folio .dot { color: var(--tsoi-color-on-surface-variant); padding-inline: 5px; }
+  /* Same register as the opening folio, at the other end of the page: this
+     is navigation, not a call to action (matches the reads' closing folio). */
+  .folio-end { margin-top: calc(var(--tsoi-spacing-unit) * 3); padding-top: calc(var(--tsoi-spacing-unit) * 2); border-top: 1px solid var(--tsoi-color-outline-variant); }
+
+  .all-head { max-width: 70ch; }
+  .all-head h1 { margin: 0; font: var(--tsoi-text-headline-lg); letter-spacing: var(--tsoi-text-headline-lg-tracking); }
+  .deck { margin: var(--tsoi-spacing-unit) 0 0; font: var(--tsoi-text-deck); color: var(--tsoi-color-on-surface-variant); }
+</style>

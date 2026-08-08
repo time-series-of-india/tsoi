@@ -1,0 +1,76 @@
+---
+/* The auto standing on an Inflation Peaks cover, drawn in its own un-stretched
+   svg over the terrain motif: the motif box scales non-uniformly and would
+   squash anything drawn inside it.
+
+   The silhouette is peaks-engine.ts drawCar's, path for path, so the sprite on
+   a card and the vehicle you drive are the same object. Two pages use it (the
+   front page's lead item and the Play rack), and they used to hold a copy each
+   until the livery landed and made the duplication expensive. Placement comes
+   from lib/play/peaks-cover. */
+interface Props {
+  /** rear-tyre contact point along the motif, 0-100 (a CSS percentage) */
+  x: number;
+  /** rear-tyre contact point, in the motif's own 0-30 viewBox */
+  y: number;
+  /** degrees, from the grade under the two tyres */
+  angle: number;
+}
+const { x, y, angle } = Astro.props;
+
+/* The motif is 30 viewBox units drawn 58px tall, so the y the search returns
+   has to be converted before it can be a CSS offset. */
+const MOTIF_H = 58;
+const top = ((y / 30) * MOTIF_H).toFixed(1);
+
+const BODY =
+  'M-20 11 L-20 -11 Q-19.5 -19.5 -11 -20 Q-2 -21 12.5 -18.5 Q15.5 -16.5 16.5 -9.5 ' +
+  'L17.5 -5 Q21 -2 23.5 7 Q24.5 11 22.5 14 Q20 17 15 16 L8 11 Z';
+---
+
+<svg
+  class="peaks-auto"
+  viewBox="-25 -22 50 44"
+  aria-hidden="true"
+  style={`left: ${x.toFixed(2)}%; top: ${top}px; transform: translate(-26%, -97.7%) rotate(${angle.toFixed(1)}deg);`}
+>
+  <defs>
+    <clipPath id="pk-shell"><use href="#pk-body" /></clipPath>
+  </defs>
+  <path id="pk-body" class="pk-body" d={BODY} />
+  {/* The canopy: yellow across the top half of the shell, clipped to the
+      silhouette, exactly as the engine paints it. Not a roof stripe — on a
+      real CNG auto the yellow comes down the rear, over the top and down the
+      windscreen, meeting the green at the window line. */}
+  <rect class="pk-roof" x="-22" y="-22" width="48" height="18" clip-path="url(#pk-shell)" />
+  <rect class="pk-cut" x="-9" y="-16" width="9" height="19" rx="3" />
+  <rect class="pk-cut" x="2.5" y="-16" width="10" height="19" rx="3" />
+  <circle class="pk-tyre" cx="-12" cy="13" r="6.75" />
+  <circle class="pk-tyre" cx="16" cy="13" r="6.75" />
+</svg>
+
+<style>
+  /* The anchor and the rotation pivot are the REAR TYRE's contact patch —
+     26% / 97.7% of the box, the point (-12, 21) of the -25..25 × -22..22
+     viewBox — so the back wheel sits planted on the line and the body rests
+     off it; an earlier bottom-centre anchor left both wheels hovering beside
+     the stroke. Deliberately small: a game sprite on a chart, not a chart
+     element. 20px keeps the canopy and both wheels legible while the terrain
+     stays the star. */
+  .peaks-auto {
+    position: absolute;
+    width: 20px;
+    height: 18px;
+    transform-origin: 26% 97.7%;
+  }
+  .peaks-auto .pk-body { fill: var(--tsoi-color-auto-body); }
+  .peaks-auto .pk-roof { fill: var(--tsoi-color-auto-roof); }
+  /* The cut-outs wear the card's own surface, and follow it on hover exactly
+     as the sibling gauge's pins do, so the openings stay openings. The tyres
+     are ink, the one part of an auto that is actually black. */
+  .peaks-auto .pk-cut,
+  .peaks-auto .pk-tyre { fill: var(--tsoi-color-surface-container-low); }
+  .peaks-auto .pk-tyre { stroke: var(--tsoi-color-on-surface); stroke-width: 2.5; }
+  :global(.game-card:hover) .peaks-auto .pk-cut,
+  :global(.game-card:hover) .peaks-auto .pk-tyre { fill: var(--tsoi-color-surface-container-high); }
+</style>

@@ -58,24 +58,30 @@ const fallback = (n: number) => fmtCountProse(n, false, 'word');
   </span>
   <span class="gc-title">{title}</span>
   {body && <span class="gc-body">{body}</span>}
+  {/* The cover is the one piece of art a game card is allowed to show, and it
+      has to be that game's own: the gauge below belongs to Off by How Much.
+      A second game passes its own motif in through the `cover` slot and the
+      gauge simply does not render — same slot, same box, same weight. */}
   <span class="cover">
-    <span class="gauge" aria-hidden="true">
-      <span class="ticks"></span>
-      <span class="track"></span>
-      <i class="pin-guess"></i>
-      <i class="pin-actual"></i>
-    </span>
-    {/* NOT aria-hidden like the gauge above it: these two labels carry real
-        information, and they are the card's only numbers. `.num[data-count]`
-        is the site-wide prose-figure contract — BaseLayout's applyProseUnits
-        rewrites them on load and again on every cr/bn toggle, so the card
-        tracks the masthead switch without any script of its own. */}
-    {scale && (
-      <span class="scale">
-        <span class="num" data-count={scale.minCount} data-style="word">{fallback(scale.minCount)}</span>
-        <span class="num" data-count={scale.maxCount} data-style="word">{fallback(scale.maxCount)}</span>
+    <slot name="cover">
+      <span class="gauge" aria-hidden="true">
+        <span class="ticks"></span>
+        <span class="track"></span>
+        <i class="pin-guess"></i>
+        <i class="pin-actual"></i>
       </span>
-    )}
+      {/* NOT aria-hidden like the gauge above it: these two labels carry real
+          information, and they are the card's only numbers. `.num[data-count]`
+          is the site-wide prose-figure contract — BaseLayout's applyProseUnits
+          rewrites them on load and again on every cr/bn toggle, so the card
+          tracks the masthead switch without any script of its own. */}
+      {scale && (
+        <span class="scale">
+          <span class="num" data-count={scale.minCount} data-style="word">{fallback(scale.minCount)}</span>
+          <span class="num" data-count={scale.maxCount} data-style="word">{fallback(scale.maxCount)}</span>
+        </span>
+      )}
+    </slot>
   </span>
   {peek && (
     <span class="peek">

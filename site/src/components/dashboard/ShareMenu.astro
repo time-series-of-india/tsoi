@@ -1,0 +1,78 @@
+---
+// The share popover, markup and styles — one implementation for the Rupee Time
+// Machine's panel, a board's page bar and every chart panel on a board. The
+// behaviour half is lib/share-menu.ts; what each item DOES belongs to whoever
+// renders it (the RTM page draws a card, a board copies a link).
+//
+// Text items only, right-aligned so the menu never leaves the panel on the side
+// the button sits on.
+interface Item {
+  /** Only where a page drives the item by id (the RTM page does). */
+  id?: string;
+  /** What the wiring looks for: 'copy', 'native', … */
+  action?: string;
+  label: string;
+  /** Rendered hidden, for an item a capability probe has to reveal. */
+  hidden?: boolean;
+}
+
+interface Props {
+  /** The popover's id, referenced by the trigger's aria-controls. */
+  menuId: string;
+  buttonId?: string;
+  label?: string;
+  /** 'board' or 'panel' — how the board's wiring tells the two apart. */
+  scope?: string;
+  /** The panel a panel-scoped trigger links to. */
+  panel?: string;
+  items: Item[];
+}
+
+const { menuId, buttonId, label = 'Share', scope, panel, items } = Astro.props;
+---
+
+<div class="share" data-share-scope={scope} data-share-panel={panel}>
+  <button type="button" id={buttonId} aria-haspopup="true" aria-expanded="false" aria-controls={menuId}>{label}</button>
+  <div class="share-menu" id={menuId} role="menu" hidden>
+    {items.map((it) => (
+      <button type="button" role="menuitem" id={it.id} data-share-action={it.action} hidden={it.hidden}>{it.label}</button>
+    ))}
+  </div>
+</div>
+
+<style>
+  /* ── share, as a small menu under its button ──────────────────────────
+     Text items only, right-aligned so the menu never leaves the panel on the
+     side the button sits on. */
+  .share { position: relative; }
+  .share > button {
+    font: var(--tsoi-text-byline); font-weight: 500; font-size: 10px; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--tsoi-color-primary-text);
+    background: transparent; border: 1px solid var(--tsoi-color-outline);
+    border-radius: 2px; padding: 4px 10px; cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+  }
+  .share > button:hover,
+  .share > button[aria-expanded='true'] {
+    border-color: var(--tsoi-color-primary); background: var(--tsoi-color-surface-container-high);
+  }
+  .share-menu {
+    position: absolute; top: calc(100% + 4px); right: 0; z-index: 20;
+    display: flex; flex-direction: column; min-width: 148px;
+    border: 1px solid var(--tsoi-color-outline);
+    background: var(--tsoi-color-surface);
+    /* The board's own menu shadow, verbatim: a popover floats over the panel
+       it belongs to, which is the one place the site allows elevation. */
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
+  }
+  .share-menu[hidden] { display: none; }
+  .share-menu button {
+    font: var(--tsoi-text-metric-sm); text-align: left; white-space: nowrap;
+    color: var(--tsoi-color-on-surface); background: transparent;
+    border: 0; border-bottom: 1px solid var(--tsoi-color-outline);
+    padding: 8px 12px; cursor: pointer;
+  }
+  .share-menu button:last-child { border-bottom: 0; }
+  .share-menu button:hover { background: var(--tsoi-color-surface-container-high); }
+  .share-menu button[disabled] { opacity: 0.5; cursor: default; }
+</style>

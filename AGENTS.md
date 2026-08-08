@@ -6,8 +6,9 @@ Canonical entry point for AI coding agents working on **Time Series of India**
 ## What this project is
 
 A public-good, mostly-static site charting India's public data — currently
-India's payment systems (UPI, IMPS, NEFT, RTGS, cards) from official RBI and NPCI
-releases. Maintained by one person in limited hours.
+India's payment systems (UPI, IMPS, NEFT, RTGS, cards) from official RBI and
+NPCI releases, and India's prices (the CPI back to 1969) from MoSPI and Labour
+Bureau releases. Maintained by one person in limited hours.
 
 ## Read these, in order
 
@@ -37,7 +38,8 @@ releases. Maintained by one person in limited hours.
 
 - **Never commit** `.env*`, secrets, `site/public/data/**`, or `etl/**/*.json`
   intermediates — all gitignored, keep them that way.
-- **No unsourced claim.** Every figure traces to a cited RBI/NPCI release; any
+- **No unsourced claim.** Every figure traces to a cited official release
+  (RBI, NPCI, MoSPI, Labour Bureau); any
   interpretation beyond the dataset (mechanism, cause, context) needs its own
   cited reference. Live figures hydrate from generated data at build time; don't
   hard-type them.

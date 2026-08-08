@@ -26,8 +26,13 @@ export default defineConfig({
   integrations: [
     sitemap({
       filter: (page) =>
-        (page.includes('/explore/payments') || !page.includes('/explore')) &&
+        (!page.includes('/explore') ||
+          page.includes('/explore/payments') ||
+          page.includes('/explore/inflation') ||
+          /\/explore\/$/.test(page) ||
+          /\/explore\/rupee-time-machine\/$/.test(page)) &&
         !page.includes('/play/payments') &&
+        !page.includes('/lab/') &&
         !SHORT_PATHS.some((p) => page.endsWith(p)) &&
         !/\/(environment|infrastructure|demographics|governance)\/$/.test(page),
     }),

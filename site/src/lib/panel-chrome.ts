@@ -1,9 +1,9 @@
 // Shared panel chrome for chart panels: maximize overlay, a "v"-while-hovered
 // keyboard shortcut (Grafana convention), dotted-underline info tooltips, and
 // the drag-to-select zoom activation used by time-series charts. Consumed by
-// both the spec-driven dashboard shell (DashboardView.astro) and the
-// self-contained meta.astro island, so the two stay visually/behaviourally
-// identical without either one owning the code.
+// both the spec-driven desks board (DesksView.astro) and the self-contained
+// meta.astro island, so the two stay visually/behaviourally identical without
+// either one owning the code.
 import type { ECharts } from 'echarts';
 
 const isCoarsePointer = () =>
