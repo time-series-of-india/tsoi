@@ -353,11 +353,18 @@ async function aggregate(env, { prefix, key, histSize, bin }, ops) {
   const processed = [];
   let after = st.cursor || undefined;
   while (processed.length < RUN_CAP) {
-    // A whole page reserved before it is listed, so the run always stops on a
-    // page boundary and the cursor is always somewhere it can resume from.
-    if (!ops.take(1 + 500)) break;
+    /* One subrequest to look, then exactly what the page holds. This used to
+       reserve a whole page (501) before listing, which charged every quiet
+       prefix as if it were full — and the five-minute tick walks nineteen of
+       these, so 19 × 502 outran the 9,000 budget and the last two era-modes
+       (E6-medium, E6-hard) were starved on every invocation. The first real
+       E6 run sat unfolded for three ticks before this was caught. A page the
+       budget cannot cover is left whole: nothing from it is processed, so the
+       cursor still stops on a page boundary. */
+    if (!ops.take()) break;
     const l = await env.PLAY.list({ prefix, startAfter: after, limit: 500 });
     if (!l.objects.length) break;
+    if (!ops.take(l.objects.length)) break;
     for (let i = 0; i < l.objects.length; i += 25) {
       const chunk = l.objects.slice(i, i + 25);
       const bodies = await Promise.all(chunk.map((o) => env.PLAY.get(o.key)));

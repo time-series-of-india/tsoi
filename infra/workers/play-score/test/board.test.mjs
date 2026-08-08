@@ -459,3 +459,23 @@ test('the folded time table equals the one a rescore builds', async (t) => {
   const cells = Object.values(folded.times).reduce((a, c) => a + Object.keys(c).length, 0);
   console.log(`      ${Object.keys(folded.times).length} scores, ${cells} cells, ${JSON.stringify(folded.times).length} bytes`);
 });
+
+test('the last prefix in the walk still folds on a quiet tick', async (t) => {
+  /* The five-minute tick walks nineteen prefixes: the puzzle, then six eras
+     by three modes, in order. The aggregation used to reserve a whole page of
+     budget before listing each one, so eighteen quiet prefixes could spend
+     the tick's allowance on nothing and leave the ones at the end of the walk
+     — E6-medium and E6-hard — starved on every invocation. The first real E6
+     run on prod sat unfolded for three ticks this way. One raw under the very
+     last prefix, one tick, one histogram is the whole regression. */
+  const w = await boot();
+  t.after(w.dispose);
+  await w.R2.put('peaks/raw/E6-hard/0000000000001-regress.json',
+    JSON.stringify({ months: 5, t: 1 }));
+  await w.cron();
+  const r = await w.get('/api/peaks-stats/E6-hard.json');
+  assert.equal(r.status, 200, 'E6-hard folded on the first tick after the run');
+  const s = await r.json();
+  assert.equal(s.plays, 1);
+  assert.equal(s.hist[5], 1);
+});
