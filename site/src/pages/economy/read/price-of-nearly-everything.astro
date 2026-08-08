@@ -1,0 +1,1431 @@
+---
+// Longform read: "Inflation: The Price of Nearly Everything" — WORKING DRAFT.
+// Blueprint: the read's anatomy plan in the internal editorial docs.
+// Parts I-III built. Part II restructured as the climb (Jul 2026), then
+// reversed into the descent (Aug 2026): headline first → divisions/beam →
+// funnel → the item that won't split → collectors → the two averages. The
+// averaging collapsible (AM/GM fold + UK RPI story) is TODO — see the marker
+// in Part II.
+// Finalization pass (2026-08-01): the base-effect section ("How to read the
+// chart") is PARKED, not cut — prose, wiring and restoration notes in
+// the base-effect parking note (internal editorial docs); initBase
+// stays exported from inflation-widgets.ts and wild.base stays in the payload.
+// Same pass: one averaging table instead of two, index promoted to its own
+// h2, rank-turnover paragraph cut, refs renumbered contiguously (1-9), and
+// the build script now guards the prose's static claims (silver on top,
+// edu ≥ 2x headline).
+// Fresh-eyes pass (2026-08-05): subtext rewritten to match the descent (it
+// still described the climb), figcaptions trimmed to encoding + source only
+// (anything the prose or a widget's live caption already says is gone), and
+// the core-inflation aside moved to close "The twelve divisions" so the fold
+// rule sits flush against the division indices. Same pass, later: the last
+// split's construction paragraph moved below the collectors and the two
+// averages, so the tomato's index is built only after the averaging choice
+// is on the table (the tell-then-rewind tease it replaced was a climb relic).
+//
+// Registered in reads-index (kind: 'read') and dispatch No. 2's lead item —
+// it ships in the racks, the feed, the sitemap and the index: the draft
+// resolved 2026-08-08 and the noindex window closed with it. Data still comes inline
+// from public/data/lab/inflation-read.json (scripts/build-read-inflation.mjs)
+// — outside the manifest until the read ships, when it moves to the hashed
+// /data/economy/ pipeline; its shelf/dispatch cover is a data-drawn line
+// (lib/reads/motif.ts) until build-read-thumbs.mjs has a real capture to run.
+import StoryPage from '../../../layouts/StoryPage.astro';
+import ReaderControls from '../../../components/chart/ReaderControls.astro';
+import ScrollProgress from '../../../components/read/ScrollProgress.astro';
+import ShareButtons from '../../../components/editorial/ShareButtons.astro';
+import { readingMinutes } from '../../../lib/reading-time';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+
+const data = JSON.parse(readFileSync(fileURLToPath(new URL('../../../../public/data/lab/inflation-read.json', import.meta.url)), 'utf8'));
+const payload = JSON.stringify(data);
+
+const MONTHS_FULL = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+const mFull = (m: string) => `${MONTHS_FULL[+m.slice(5) - 1]} ${m.slice(0, 4)}`;
+
+const last = data.gap.months[data.gap.months.length - 1];
+const month = mFull(last.m);
+const headline = last.headline.toFixed(2);
+const edu = last.edu.toFixed(2);
+
+const food = data.basket.find((b: any) => /^Food/.test(b.name));
+const food2012 = food.combined.w2012.toFixed(2);
+const food2024 = food.combined.w2024.toFixed(2);
+const ruralFood = food.rural.w2024.toFixed(2);
+const urbanFood = food.urban.w2024.toFixed(2);
+const housing = data.basket.find((b: any) => /^Housing/.test(b.name));
+const housingW = housing.combined.w2024.toFixed(2);
+const eduW = data.basket.find((b: any) => /^Education/.test(b.name)).combined.w2024.toFixed(2);
+
+// Part II interpolations — every load-bearing number in the prose comes from
+// the generated JSON, so the monthly refresh re-dates the whole read.
+// The index itself: the published level, its year-ago twin, the ratio between
+// them (which IS the headline), and the retired ruler's last reading.
+const lv = data.level;
+const lvIdx = lv.idx.toFixed(2);
+const lvAgo = lv.idxAgo.toFixed(2);
+const lvAgoM = mFull(lv.agoM);
+const lvRatio = (lv.idx / lv.idxAgo).toFixed(4);
+// the linking factor left the prose in the Aug 2026 tightening pass and
+// returned with the descent's long-run figure: the multiplier is now the
+// one-line explainer for how the merged index line is drawn
+const onOldRuler = (lv.idx / data.verify.linking.combined.official).toFixed(0);
+const linkF = data.verify.linking.combined.official.toFixed(4);
+// The reconstruction check (data.verify.recon — the twelve published division
+// indices reweighted against the published headline, residual under a
+// thousandth of a point) left the summit with the July 2026 pass. The figures
+// are still in the payload if the claim is ever wanted back.
+// The Delhi/Kerala chained-drift figure (data.mixer) left the page with the
+// climb restructure — the AM/GM case now lives in the planned collapsible, and
+// the mixer series is reserved for a later read.
+
+const tom = data.pyramid.path;
+// the same strand read as index levels, which is what actually merges: the
+// percentages are only what these come to against their own value a year back
+const tomIdx = tom[0].idx.toFixed(2);
+const subIdx = tom[1].idx.toFixed(2);
+const classIdx = tom[2].idx.toFixed(2);
+const groupIdx = tom[3].idx.toFixed(2);
+const divIdx = tom[4].idx.toFixed(2);
+const wRural = data.pyramid.sectors.rural.toFixed(2);
+const wUrban = data.pyramid.sectors.urban.toFixed(2);
+const tomInfl = tom[0].infl.toFixed(2);
+// the per-floor RATES (tom[1..4].infl) left the prose when the percentage walk
+// and the index walk merged into one paragraph: the descent is told in index
+// levels now, and the rates would only have said the same thing twice
+const tomPaise = Math.round(tom[0].w * 100);
+const nItems = data.pyramid.levels.find((l: any) => l.key === 'item').n;
+const tomDelta = ((tom[0].w * tom[0].infl) / 100).toFixed(2);
+
+// Part III — every figure below is read straight out of the generated data,
+// so the prose re-dates itself with the monthly refresh. (The `veg` block that
+// fed the parked base-effect section is gone with it; see the parked doc.)
+const wd = data.wild;
+// what the average hides: the headline rebuilt from the 358 item weights, and
+// rebuilt again without the two jewellery items. The build script refuses to
+// emit unless the full rebuild reproduces the published number, so `rebuilt`
+// and `published` agreeing below is a check the reader can be told about.
+const ct = wd.contrib;
+const ctItem = (needle: string) => ct.items.find((i: any) => i.name.startsWith(needle));
+const silver = ctItem('Silver');
+const petrol = ctItem('Petrol');
+const ctHead = ct.published.toFixed(2);
+const ctEx = ct.ex.toFixed(2);
+const ctDrop = (ct.published - ct.ex).toFixed(2);
+const ctJewelW = ct.jewelW.toFixed(2);
+const silverX = (petrol.w / silver.w).toFixed(0);
+const silverFrom = ct.silver.first.toFixed(0);
+const silverFromM = mFull(ct.silver.months[0]);
+const silverPeak = ct.silver.peak.toFixed(0);
+
+// many Indias: the p10-p90 band of state rates, month by month since 2016
+const st = wd.states;
+const stAt = (name: string) => st.latest.rows.find((r: any) => r.name === name);
+const stAI = st.latest.ai.toFixed(2);
+const stDelhi = stAt('Delhi').v.toFixed(2);
+const stYears = st.yearSpread.filter((y: any) => y.y >= '2016' && y.y <= '2025');
+const stNarrowest = Math.min(...stYears.map((y: any) => y.avg)).toFixed(1);
+const stWidest = Math.max(...stYears.map((y: any) => y.avg)).toFixed(1);
+// the rank-turnover paragraph (topHolders / Kerala's reign) was cut in the
+// Aug 2026 pass — it contradicted itself (a 12-month reign vs 8 top months of
+// 122) and leaned on thin-sample Manipur; the data stays in the payload
+const stFirstY = st.firstM.slice(0, 4);
+const repoNow = wd.repo.steps[wd.repo.steps.length - 1].r.toFixed(2);
+
+const title = 'Inflation: The Price of Nearly Everything';
+const deck = 'One number claims to describe a billion baskets. This is how it is made.';
+const subtext = `In three parts: the gap between the headline number and your life; the headline taken apart, floor by floor, down to a collector's tablet; and the number let out into the country.`;
+---
+
+<StoryPage title={title} description={deck} og_type="article" og_image="/og/reads/price-of-nearly-everything.png">
+  <ScrollProgress />
+  <article class="read">
+    <nav class="folio" aria-label="Section">
+      <a href="/economy">Economy</a><span class="dot" aria-hidden="true">&middot;</span><a href="/economy/read">Read</a>
+    </nav>
+    <header class="head">
+      <p class="kicker">How it works &middot; Prices &middot; {readingMinutes('price-of-nearly-everything')} min read &middot; data through {month}</p>
+      <h1>{title}</h1>
+      <p class="deck">{deck}</p>
+      <p class="subtext">{subtext}</p>
+      <div class="toolbar"><ReaderControls /><ShareButtons title={title} variant="icon" /></div>
+    </header>
+
+    <div class="prose">
+
+      {/* the opening bookend belongs to the whole read, so it sits above the
+          first part-mark rather than inside Part I */}
+      <figure class="hlfig">
+        <div class="hl-area"></div>
+        {/* one line: the drawing states the number itself and the opening para
+            repeats it; what only the caption can say is the source and the
+            splice (this line joins the 2012 and 2024 series with no seam) */}
+        <figcaption>Retail inflation since 2014. MoSPI, Consumer Price Index; 2012 series
+          to 2025, 2024 series from 2026.</figcaption>
+      </figure>
+
+      <p class="partmark partmark-first">Part I &middot; The number and you</p>
+
+      <p>On 13 July 2026 the Ministry of Statistics published the number it publishes every
+        month: retail inflation. Prices in India, taken together, were
+        <strong class="num e e-head">{headline}%</strong> higher than they had been a year
+        earlier.<sup class="c"><a href="#r1">1</a></sup> The evening bulletins read it out, the
+        papers filed it beside the month before, and by morning it had settled into the corner of
+        the page where numbers go to be believed.</p>
+
+      <p>If you were a parent in Delhi that week, holding a school-fee circular, belief may have
+        come harder. By the government&rsquo;s own count, the cost of education in the capital was
+        running <strong class="num e e-you">{edu}%</strong> above last year, more than double the all-India
+        pace,<sup class="c"><a href="#r2">2</a></sup> and the fight over fee hikes had already
+        produced a new law and a High Court
+        order.<sup class="c"><a href="#r4">4</a></sup><sup class="c"><a href="#r5">5</a></sup>
+        None of that turmoil is visible in the {headline} percent.</p>
+
+      <figure class="gapfig widgetfig">
+        <div class="gap-area"></div>
+        <figcaption>Education in Delhi against the all-India average, year on year; the shaded
+          column is the gap, at least double in every month so far. MoSPI, Consumer Price
+          Index.</figcaption>
+      </figure>
+
+      <p>Both numbers are honest. <span class="e e-you">The school bill</span> answers a question
+        about one kind of spending in one city. The number on the news answers a stranger
+        question: what happened to the price of nearly everything, everywhere, averaged across
+        everyone. Economists call it <span class="e e-head">headline inflation</span>, because it
+        is the one that makes the headlines. The rest of this piece is
+        about how that answer gets made, and how it can land so far from the one your own life
+        gives, in either direction, without anyone lying to you. It starts where the number
+        itself starts, with a shopping basket.</p>
+
+      <h2>The basket</h2>
+
+      <p>Ask the ministry what inflation measures and the answer is a basket: 358 kinds of things
+        Indian households buy, from rice to bus fares to a streaming subscription.<sup class="c"><a href="#r3">3</a></sup>
+        Each item carries a weight, its share of the average household&rsquo;s spending, taken from
+        a national survey of what households actually consume. Food and beverages carry
+        <strong class="num">&#8377;{food2024}</strong> of every &#8377;100; housing, water and fuel
+        carry &#8377;{housingW}; everything else divides what remains. Multiply each price change
+        by its weight, add it all up, and the sum, near enough, is the headline number.</p>
+
+      <p>Strictly there is not one basket but two. <span class="e e-rural">Rural</span> and
+        <span class="e e-urban">urban</span> India are surveyed separately, and they spend
+        differently: food is &#8377;{ruralFood} of the <span class="e e-rural">rural</span>
+        hundred and &#8377;{urbanFood} of the <span class="e e-urban">urban</span> one. The
+        number on the news is a blend of both.</p>
+
+      <figure class="rufig widgetfig">
+        <div class="ru-area"></div>
+        {/* the widget's caption reads the selected division's two rupee
+            figures and invites the tap; this one carries the encoding and
+            the source */}
+        <figcaption>Each division&rsquo;s share of the <span class="e e-rural">rural</span>
+          &#8377;100 against its share of the <span class="e e-urban">urban</span> one, 2024
+          basket, sorted by the gap between the two. MoSPI, HCES weights.</figcaption>
+      </figure>
+
+      <p>The important thing about the official basket is that no household actually divides its
+        hundred this way. Below is the real basket with its real weights
+        and each division&rsquo;s latest rate of inflation. The sliders are yours, and they hold
+        one shared &#8377;100. Set the mix to the way your own month actually goes, and watch
+        <span class="e e-you">your number</span> walk away from
+        <span class="e e-head">the headline</span>.</p>
+
+      <figure class="ybfig widgetfig">
+        <div class="yb-area"></div>
+        <figcaption>The official basket, yours to reweight; the line traces your number against
+          the headline. MoSPI, {month}.</figcaption>
+      </figure>
+
+      <p>Whatever you set, you are still pricing today&rsquo;s spending habits. Habits drift, and
+        every decade or so the basket is rebuilt from scratch to keep up. The latest rebuild
+        arrived with the January 2026 bulletin, after thirteen years on the old basket: a fresh
+        survey, fresh weights, fresh categories, and a fresh year to count from, with prices now
+        measured against 2024 instead of 2012. The list of what was thrown out is a country
+        cleaning out a drawer.</p>
+
+      <h2>The portrait</h2>
+
+      <p>Out went the video cassette recorder, the audio cassette, the tape recorder, the radio
+        set, second-hand clothing, coir rope. In came streaming subscriptions, pen drives, piped
+        cooking gas, the babysitter, the home exercise equipment, and, measured for the first
+        time, the rent a rural household pays.<sup class="c"><a href="#r3">3</a></sup> The 299 items of the 2012 basket
+        became 358, sorted for the first time into the twelve divisions of COICOP, the United
+        Nations classification most of the world&rsquo;s statistical agencies use, so
+        India&rsquo;s inflation is now stated in the same categories as nearly everyone
+        else&rsquo;s. A basket is a measuring instrument, but the two lists together are also a
+        portrait: a decade of Indian life, recorded in what a statistician decided was worth
+        pricing.</p>
+
+      <p>The weights moved with the habits, and one move matters more than all the others. Food&rsquo;s
+        share of the average wallet fell from &#8377;{food2012} to &#8377;{food2024} of every
+        &#8377;100, the largest fall in the basket.<sup class="c"><a href="#r3">3</a></sup>
+        It is the usual signature of a country getting richer: as households earn more, food
+        takes a smaller share of what they spend.</p>
+
+      <figure class="bkfig widgetfig">
+        <div class="bk-area"></div>
+        {/* the widget's own caption reads the selected line ("Of every ₹100
+            the average household spends…") and invites the tap, so this one
+            carries only what that caption never says: the vintages and the
+            like-for-like basis */}
+        <figcaption>The 2012 and 2024 CPI baskets, both restated on the 2024 classification
+          (MoSPI, HCES weights).</figcaption>
+      </figure>
+
+      <p>None of this rewrites a price anyone paid. The part of a rebuild that genuinely
+        changes the number is the weights, the same dials the basket figure above put in your
+        hands.</p>
+
+      <p>A basket, in the end, is a shopping list, and the headline is what the list turns into
+        once every item on it has been priced and weighed. So far the number has been taken at
+        its word. Part II takes it apart: starting at the {headline} percent itself, it opens
+        each number to find the numbers it was made from, floor by floor, down to a tomato on
+        one market counter.</p>
+
+      <p class="partmark">Part II &middot; How the number is made</p>
+
+      <h2>The index and the headline</h2>
+
+      {/* the descent opens where the climb used to end: the last step of
+          arithmetic first, so the reader holds the whole trick (index over
+          index) before any machinery arrives. Colour code, held through the
+          whole Part: the HEADLINE RATE is saffron, the INDEX it is read
+          from is ink. */}
+      <p>The <span class="e e-head">{headline} percent</span> makes one claim: prices in
+        {month} were {headline} percent higher than in the same month a year earlier. But
+        that number is derived, not built. What the ministry builds, and its monthly
+        bulletin carries, is an index:
+        <strong class="num">{lvIdx}</strong>, which says that the basket of Part I,
+        the one that cost &#8377;100 in 2024, cost &#8377;{lvIdx} in {month}. That is all an index
+        is: the basket&rsquo;s cost, written as a percentage of what it cost in the base year,
+        2024.</p>
+
+      <p>The bulletin also carries the same index for {lvAgoM}:
+        <strong class="num">{lvAgo}</strong>. Divide the newer by the older and the answer
+        is &times;{lvRatio}, which the news reads out
+        as <span class="e e-head">{headline} percent</span>. That is the whole of the last
+        step: two published numbers and one division, a month set against the same month a
+        year before. Holding the two months a year apart is what makes the seasons cancel:
+        December is set against December, harvest against harvest, so a winter spike in
+        onions reads as winter rather than inflation.</p>
+
+      <figure class="rlfig ixfig widgetfig">
+        <div class="rl-area"></div>
+        {/* the live caption owns the scrubbed month's arithmetic; this one
+            carries the encoding and the source */}
+        <figcaption>The index on top, the headline it produces beneath; scrub a month and
+          the mark scrubs twelve behind it. MoSPI, 2024-base series, all-India
+          combined.</figcaption>
+      </figure>
+
+      <p>The base year is a choice, and until the rebuild the choice was 2012. That retired
+        series, the one this basket replaced, ran alongside the new one through the whole of
+        2025, and the two rulers are joined by a single published number: divide an index
+        on the new scale by the linking factor, <span class="nl e-splice">{linkF}</span>, and
+        it restates itself on the old one.<sup class="c"><a href="#r3">3</a></sup>
+        {month}&rsquo;s <strong class="num">{lvIdx}</strong> sits near
+        <strong class="num">{onOldRuler}</strong> there, the plainest way of saying that
+        prices have roughly doubled since 2012. The figure below runs the whole line back on
+        that older ruler, the news&rsquo;s rate riding beneath it.</p>
+
+      <figure class="lrfig ixfig widgetfig">
+        <div class="lr-area"></div>
+        {/* index row: the retired series continued past the rebuild by the
+            linking factor, seam drawn rather than hidden; rate row: the one
+            splice the methodology permits (headline only, never categories —
+            see oneLine in the generator) */}
+        <figcaption>The long run: the index restated on the retired 2012 ruler, the spliced
+          headline beneath. The red seam is the 2024 rebuild. The break in the rate is the
+          spring of 2020, when the COVID lockdown stopped collection: the ministry imputed
+          the two index months but published no rate off an imputed number. MoSPI, all-India
+          combined.</figcaption>
+      </figure>
+
+      <p>And the <strong class="num">{lvIdx}</strong> is already a blend.
+        <span class="e e-rural">Rural</span> and
+        <span class="e e-urban">urban</span> India carry the two separate baskets of Part I,
+        each priced across its own markets and each with an index of its own, and the published
+        number folds the two together by their share of the country&rsquo;s household spending:
+        of every &#8377;100 spent nationally, rural households spend
+        <span class="nl e-rural">&#8377;{wRural}</span> and urban households
+        <span class="nl e-urban">&#8377;{wUrban}</span>. States fold in the same way, each with
+        its own baskets, by its share of the national wallet. Every number in this Part is that
+        kind of fold. The rest of it keeps opening them, floor by floor, until the numbers stop
+        having numbers inside them.</p>
+
+      <figure class="sxfig widgetfig">
+        <div class="sx-area"></div>
+        {/* the live caption does the blend arithmetic for the tapped month */}
+        <figcaption>The rural and urban indices, every month of the 2024 series, with the
+          published blend between them as the dashed ink line. MoSPI.</figcaption>
+      </figure>
+
+      <h2>The twelve divisions</h2>
+
+      <p>One floor down, the index splits into twelve. The
+        <span class="e e-lvl-div">divisions</span> of Part I, food and beverages, housing,
+        transport and the rest, each carry an index of their own, built the same way and
+        published every month beside the headline; in {month} the food and beverages division
+        stood at <span class="nl e-lvl-div">{divIdx}</span>. Set any of them against its own
+        year-ago self and you get that aisle&rsquo;s inflation.</p>
+
+      <figure class="aifig widgetfig">
+        <div class="ai-area"></div>
+        {/* three tabs, not twelve, and not a dropdown: the section narrates,
+            the explore board enumerates, and the funnel below reaches every
+            cell */}
+        <figcaption>One division&rsquo;s index at a time, 2024-base series; the scrubbed
+          month&rsquo;s mark sits on the same line, twelve months behind. MoSPI, all-India
+          combined.</figcaption>
+      </figure>
+
+      <p>How do twelve indices become one? Not by treating them as equals. Each division
+        counts in proportion to its share of the household &#8377;100, and the shares are
+        not read off any price: they come from the Household Consumption Expenditure Survey
+        of 2023&ndash;24, which asked 2,61,953 households what they actually
+        spend.<sup class="c"><a href="#r6">6</a></sup> Their answers are the &#8377;100 of
+        Part I, and the rural and urban shares that blended the two indices at the top of
+        the descent. The rule is one line: each division&rsquo;s index times its share,
+        summed.</p>
+
+      <p>A weighted average behaves like a beam balancing. Each division sits at its own rate
+        of price rise, heavy or light according to its share, and the headline is the point
+        where the beam balances. Drag any division along the beam and the fulcrum chases it,
+        by exactly its weight&rsquo;s worth. The button underneath is subtler: it picks one
+        vegetable inside food, the tomato, and doubles its pace, and how far the fulcrum moves
+        then is what a half-rupee share can do.</p>
+
+      <figure class="bmfig widgetfig">
+        <div class="bm-area"></div>
+        {/* "Drag a disc, or tap it for its numbers" is the widget caption's
+            opening line — stating it here too was the same sentence twice,
+            one line apart */}
+        <figcaption>Twelve discs, placed by rate, sized by share. MoSPI, {month}, all-India
+          combined.</figcaption>
+      </figure>
+
+      <p>The shares stay frozen until the next rebuild, and that is a known, accepted
+        distortion: households drift away from whatever gets dear, so an aging basket slightly
+        overstates the cost of living, which is why the ministry now intends to rebuild every
+        few years instead of once in thirteen.<sup class="c"><a href="#r3">3</a></sup></p>
+
+      <p>This floor is also where one more famous number is made by subtraction. Set aside the
+        aisles that swing with harvests and crude, food and fuel, and the inflation of what
+        remains is <span class="e e-core">core inflation</span>, the reading economists watch
+        for the trend underneath the weather.</p>
+
+      <figure class="cofig widgetfig">
+        <div class="co-area"></div>
+        <figcaption>Headline against core on the retired 2012 series, the one long enough to
+          show the shape; the buttons add food or fuel back in. MoSPI; ends December 2025,
+          where the old series does.</figcaption>
+      </figure>
+
+      <h2>The weighted descent</h2>
+
+      <p>The split does not stop at twelve. <span class="e e-lvl-div">Divisions</span> open
+        into <span class="e e-lvl-group">groups</span>, groups into
+        <span class="e e-lvl-class">classes</span>, classes into
+        <span class="e e-lvl-sub">sub-classes</span>, and sub-classes into the {nItems}
+        <span class="e e-lvl-item">items</span> of the basket: four more floors, and the same
+        rule binding every one of them to the floor above, each member&rsquo;s index times its
+        share, summed. Nothing else happens between a market price and the headline; the rule
+        just runs five times. The figure holds the whole tree. Follow the strand already lit,
+        from the headline down to the tomato, or tap any cell and follow your own.</p>
+
+      <figure class="pyfig widgetfig">
+        <div class="py-area"></div>
+        {/* cell-width = share of the ₹100 lives in the widget's own caption
+            (bolded, per stage), so it is not restated here */}
+        <figcaption>The whole tree, {month}: one number splitting into {nItems} items. Tap any
+          cell to follow its strand. MoSPI 2024 weighing diagram, all-India
+          combined.</figcaption>
+      </figure>
+
+      <p>Read down the tomato&rsquo;s strand and the indices tell it floor by floor: the food
+        and beverages <span class="e e-lvl-div">division</span> at
+        <span class="nl e-lvl-div">{divIdx}</span>; the food
+        <span class="e e-lvl-group">group</span> at
+        <span class="nl e-lvl-group">{groupIdx}</span>; the vegetables
+        <span class="e e-lvl-class">class</span> at
+        <span class="nl e-lvl-class">{classIdx}</span>, still under its base-year hundred,
+        because vegetables cost less than they did in 2024; the
+        <span class="e e-lvl-sub">sub-class</span> at
+        <span class="nl e-lvl-sub">{subIdx}</span>; and at the bottom the tomato itself at
+        <span class="nl e-lvl-item">{tomIdx}</span>. Each floor is the ones below it, weighed
+        and added, and the percentages the bulletin quotes are only what these indices come to
+        when set beside their own value a year earlier.</p>
+
+      <p>The strand also prices the tomato&rsquo;s vote in the headline. In {month} the tomato
+        stood <span class="nl e-lvl-item">{tomInfl}</span> percent dearer than a year before, and
+        its weight is {tomPaise} paise of the &#8377;100. A share does the same work on a
+        change as it does on an index: move times share, roughly
+        <span class="nl e-lvl-item">{tomDelta}</span> of the
+        <span class="e e-head">{headline}</span> points the news read out, from the tomato
+        alone.</p>
+
+      <h2>The last split</h2>
+
+      <p>At the bottom the machinery changes, because it has to. The tomato has an index, but
+        it has no members: there is no floor below it, only actual tomatoes with actual
+        prices, in market after market across the country. Its index has to be made from the
+        prices themselves, which makes it a different kind of number, what statisticians call
+        an elementary index: the floor the whole tree stands on. Building one means seeing
+        the prices first: where they come from.</p>
+
+      <h2>The collectors</h2>
+
+      {/* 1,395, not the annexure's 1,407 urban total: twelve of those are
+          online markets, priced without a visit, and this sentence is about
+          the walking. The twelve get their own clause in the no-walk
+          paragraph below. */}
+      {/* "June 2026" is deliberately NOT {month}: the payload carries no
+          response-rate field, so a variable month would silently claim 100
+          percent for bulletins nobody has checked. Re-pin, or wire a field
+          into the generator, when a newer rate is worth quoting. */}
+      <p>They come from a walk. Every month, field staff of the National Sample Survey walk
+        into 1,465 villages and 1,395 urban markets spread across 434 towns and price the
+        basket item by item, on a weekly roster, by personal
+        visit.<sup class="c"><a href="#r3">3</a></sup> The paper schedules are gone; since the
+        2024 series the prices go into a tablet that checks them as they are keyed. In June
+        2026 the collection&rsquo;s response rate was 100 percent, in both rural and urban
+        India.</p>
+
+      <p>Not every price requires a walk: streaming subscriptions and airfares are read off the
+        providers&rsquo; own pages, twelve of the urban markets are online ones priced the same
+        way, fuel prices arrive from the petroleum ministry, and rent has
+        a standing panel of 19,039 dwellings.<sup class="c"><a href="#r3">3</a></sup> Somewhere
+        in what the tablets bring back is the tomato, priced in market after market across the
+        country.</p>
+
+      <h2>The two averages</h2>
+
+      {/* what gets averaged is each counter's CHANGE, never the rupee
+          amounts themselves. The parable below stays deliberately unanchored
+          (month moves only); the real anchor, each market's own 2024 price,
+          arrives in the construction paragraph that closes the section */}
+      <p>The tomato comes back as hundreds of prices, and so does every other item; what never
+        comes back is how much anyone bought at which counter, so nothing says which counter
+        should matter most. Each
+        counter&rsquo;s price change has to collapse into a single figure for the item, and
+        there are two ways to average changes: the familiar way, add and divide; and the
+        ministry&rsquo;s way, multiply and take the root.</p>
+
+      <p>The familiar average has a weakness, and it takes only two months to show. Prices
+        bounce: a counter doubles in a bad month and comes back in the good one that follows,
+        and the counters never bounce quite in step. The table follows two of them through one
+        swap.</p>
+
+      <figure class="swfig">
+        <table class="sw-table">
+          <thead><tr><th>two counters, &#8377;20 each</th><th>the month&rsquo;s moves</th><th>multiplied average</th><th>added average</th></tr></thead>
+          <tbody>
+            <tr><td>month one</td><td>&#8377;40 (&times;2) and &#8377;10 (&times;0.5)</td><td class="sw-mult">&times;1</td><td>&times;1.25</td></tr>
+            <tr><td>month two</td><td>&#8377;20 (&times;0.5) and &#8377;20 (&times;2)</td><td class="sw-mult">&times;1</td><td>&times;1.25</td></tr>
+            <tr><td>the whole trip</td><td>back to &#8377;20</td><td class="sw-mult">&times;1</td><td class="sw-hot">&times;1.56</td></tr>
+          </tbody>
+        </table>
+        <figcaption>A doubling that reverses; &times;2 means the price doubled that month, and
+          the months multiply into the whole trip.</figcaption>
+      </figure>
+
+      <p>Every price ends back at &#8377;20, so the honest answer for the whole trip is that
+        nothing happened. Each month&rsquo;s moves are &times;2 and &times;0.5. Multiply them
+        and take the root: &times;1, both months, and the trip is &times;1. Add and divide:
+        &times;1.25, both months, and the overshoots multiply into &times;1.56, a little
+        inflation that never happened, permanently on the record.</p>
+
+      <p>That is why, in each state, an item&rsquo;s single figure is the multiplied average
+        of its market quotes: the changes multiplied together and the root
+        taken.<sup class="c"><a href="#r3">3</a></sup></p>
+
+      {/* TODO(collapsible) — "Why multiply? The averaging mistake that cost Britain billions".
+          Planned fold, in order: the two averages side by side with a drag-two-numbers
+          interactive (the AM/GM gap closes only when the numbers meet); the shopper-substitution
+          rationale (cut from the main text Aug 2026 — it asserted the GM-tracks-shoppers link
+          without the property that earns it); the semicircle proof
+          (rebuild initProof from git history); and Britain in one paragraph — RPI's added
+          average, the ~0.9pp/yr formula effect, the pensions, student loans and rail fares it
+          governed, the 2013 loss of National Statistic status. (The ₹156 ledger and the
+          two-routes table from earlier plans are covered by the two main-text tables now.)
+          The Delhi/Kerala drift figure (initDrift + data.mixer) is reserved for a
+          later read. The cut UK RPI sources return with this fold
+          (unnumbered — since the Aug 2026 renumbering, r7 is the RBI repo ref). */}
+
+      {/* deliberately elided (Aug 2026, flagged and accepted): the GM is
+          really per state x sector, and the strand's combined item index is
+          those folds blended — the recap's "two trees blended into one" and
+          the sentence added to ref r3 carry the sector story, and spelling
+          the folds out here was load at the exact moment of the payoff.
+          Don't "fix" this back in. */}
+      <p>The tomato&rsquo;s index can now be built end to end. Every price the ministry
+        holds for it is one market&rsquo;s quote, and each is first read against what the
+        tomato cost in that same market in 2024: not a rupee amount but a ratio, a
+        &#8377;30 tomato that cost &#8377;20 back then reading as &times;1.5. Multiply every
+        market&rsquo;s ratio together, take the root, put the answer on a scale of a hundred,
+        and the result is the
+        <span class="e e-lvl-item">item</span>&rsquo;s index for the month, the
+        <span class="nl e-lvl-item">{tomIdx}</span> of the strand.</p>
+
+      <p>That is the floor of the tree, and the whole of the machine. Ratios averaged into an
+        item&rsquo;s index; indices weighed and summed, floor over floor, five times; two trees
+        blended into one; the result divided by its own year-ago self and read out on the
+        news. The descent ends where the number begins, at a counter where somebody sells
+        tomatoes. Everything above it is the same move repeated: many numbers folded into
+        one.</p>
+
+      <p class="partmark">Part III &middot; The number and the country</p>
+
+      <p>Everything so far has been about how the number is built. What follows is about what
+        the averaging folds away, and about the one thing that makes the folding matter: this
+        average is not only published. It is obeyed.</p>
+
+      {/* PARKED (2026-08-01): the base-effect section ("How to read the chart" — the
+          rate/index/mark hues, the vegetables July-2024 case, the two-strip scrubber)
+          moved out whole. Prose, wiring and restoration notes:
+          the base-effect parking note in the internal editorial docs.
+          Undecided: its own read, a collapsible near "The index and the headline",
+          or a full cut. initBase stays in inflation-widgets.ts; wild.base stays
+          in the payload. */}
+
+      <h2>What the average hides</h2>
+
+      <p>Part II opened a single number into a tree of weights. Weights are easy
+        to nod at and hard to feel, so here is what one does when the price behind it moves. In
+        {month} the item that pushed the headline hardest was none of the usual heavyweights.
+        It was <span class="nl e-lvl-item">silver jewellery</span>, which carries
+        &#8377;{silver.w.toFixed(2)} of the hundred and rose
+        <span class="nl e-lvl-item">{silver.yoy.toFixed(0)}</span> percent on the year. Weight
+        times rise comes to {silver.c.toFixed(3)} of a percentage point, which is more than
+        petrol contributed, and petrol carries {silverX} times the weight.</p>
+
+      <p>The metal did something unusual to get there. The silver jewellery index stood at
+        {silverFrom} in {silverFromM} and has since touched {silverPeak}: it nearly tripled
+        inside two years, which is not a thing food or rent can do. Weight decides how loudly
+        an item can speak; the price decides whether it shouts.</p>
+
+      <figure class="ctfig widgetfig">
+        <div class="ct-area"></div>
+        {/* the widget's caption already opens "Each bar is one item's
+            contribution: its own rate times its share of the ₹100", and the
+            re-run-not-subtracted method note lives in the next paragraph and
+            ref 8 — this one keeps only the scope */}
+        <figcaption>The twelve largest contributions of {nItems} items, {month}. MoSPI item
+          indices; weights from the 2024 weighing diagram.</figcaption>
+      </figure>
+
+      <p>The button under the figure is worth dwelling on. Gold and silver jewellery together are
+        &#8377;{ctJewelW} of the hundred, less than a rupee. Rebuild the index over the other
+        356 items, using the same arithmetic the ministry uses, and {month}&rsquo;s headline
+        falls from <span class="e e-head">{ctHead}</span> percent to
+        <span class="e e-head">{ctEx}</span>.<sup class="c"><a href="#r8">8</a></sup> That is {ctDrop} points of a national inflation
+        rate coming from two items most households did not buy this year.</p>
+
+      <p>None of this is an error. The weights are published, the item indices are published, and
+        the rebuild above reproduces the ministry&rsquo;s own headline to the second decimal
+        before it removes anything. That is the point. The average is working exactly as
+        designed, and the design lets a sliver of the basket carry a visible share of the
+        result.</p>
+
+      <h2>Many Indias</h2>
+
+      <p>The other thing the average folds away is the country. India&rsquo;s inflation is
+        published as one rate, and there has never been a month in which one rate was close to
+        true. In {month} the {st.latest.n} states and union territories ran from
+        {st.latest.lo.toFixed(2)} percent to {st.latest.hi.toFixed(2)}, with the All-India
+        number at <span class="e e-head">{stAI}</span> and Delhi at {stDelhi}.</p>
+
+      <figure class="sdfig widgetfig">
+        <div class="sd-area"></div>
+        {/* the widget's caption counts and dates them ("36 states and union
+            territories, {month}…"), so the count and month stay out of this
+            one */}
+        <figcaption>One dot per state, stacked where they crowd, with
+          <span class="e e-head">All India</span> as the line through them. Tap a dot for its
+          name. MoSPI, 2024 series, combined.</figcaption>
+      </figure>
+
+      <p>This is not one bad month. Ignore the extremes at both ends, which are mostly small
+        union territories with thin samples, and the middle eighty percent of states was between
+        {stNarrowest} and {stWidest} points wide in every year of the old basket, {stFirstY} to
+        2025.<sup class="c"><a href="#r9">9</a></sup> The gap has never closed.</p>
+
+      <h2>The number answers back</h2>
+
+      <p>Most numbers describe the country. This one is also asked to steer it. Since 2016 the
+        Reserve Bank&rsquo;s Monetary Policy Committee has been bound by law to keep the number
+        this piece has been building at 4 percent, give or take two, and its instrument is
+        <span class="e e-repo">the repo rate</span>: what banks pay to borrow overnight from the
+        Reserve Bank, and so the floor under every other rate in the
+        country.<sup class="c"><a href="#r7">7</a></sup></p>
+
+      <p>The mechanism is blunt and slow: raise it and borrowing gets dearer, households and
+        firms spend less, demand cools, and prices rise more slowly, most of it arriving about
+        a year later. That lag is why <span class="e e-repo">the staircase</span> below always
+        looks late against the line; it has held at {repoNow} percent since the June 2026
+        meeting.</p>
+
+      <figure class="rofig widgetfig">
+        <div class="ro-area"></div>
+        <figcaption><span class="e e-repo">The policy repo rate</span> as a staircase over
+          <span class="e e-head">headline inflation</span>, 2014 to {month}, the mandate drawn
+          as its three numbers. CPI spliced across the 2024 rebuild; repo steps from RBI
+          announcements.</figcaption>
+      </figure>
+
+      <p>The limit matters more than the mechanism. Dearer money works on demand, not supply. It
+        cannot make it rain on a failed crop, and it cannot move the world price of a metal. The
+        latest number in front of the committee is {ctHead} percent, of which {ctDrop} points is
+        jewellery. Worse, the usual defence against exactly this problem does not catch it: core
+        inflation removes only food and fuel, which leaves gold and silver sitting inside
+        it.</p>
+
+      <figure class="scfig">
+        <div class="sc-area"></div>
+        <figcaption>The line the read opened on, drawn to its end, and the end opened: one
+          number unfolding back into <span class="nl e-lvl-div">12 divisions</span>,
+          <span class="nl e-lvl-group">43 groups</span>,
+          <span class="nl e-lvl-class">92 classes</span>,
+          <span class="nl e-lvl-sub">162 sub-classes</span> and
+          <span class="nl e-lvl-item">358 items</span>. Tap to redraw. MoSPI.</figcaption>
+      </figure>
+
+      <p>Which brings us back to the school-fee circular in Delhi. It was inside the headline the
+        whole time. Education carries &#8377;{eduW} of the hundred; Delhi is one state&rsquo;s
+        share of that; and what comes out of the merge is averaged with every household that paid
+        no fees at all. The parent&rsquo;s year is in the number, and it is outvoted.</p>
+
+      <p>That is not a flaw to repair. An average is a decision about what to fold together, and
+        this one is read by a committee that can move the price of money. Next month it will be
+        back in the same corner of the page, one number, unchanged. What has changed is that it
+        comes apart in the hand. It is the price of nearly everything, and the heavy word in that
+        phrase has always been <em>nearly</em>.</p>
+
+      {/* Open items live in the plan doc, not on the page: the Part II averaging
+          fold (AM/GM + UK RPI) and the parked base-effect section. */}
+
+      <ShareButtons title={title} />
+
+      <nav class="folio folio-end" aria-label="More in this dispatch">
+        <a href="/economy/play/inflation-peaks/">Game: Inflation Peaks</a><span class="dot" aria-hidden="true">&middot;</span><a href="/economy/explore/inflation">Dashboard: India Inflation</a>
+      </nav>
+
+      <h2>Sources</h2>
+      <ol class="refs">
+        <li id="r1">Ministry of Statistics and Programme Implementation, Consumer Price Index for
+          June 2026, press release, 13 July 2026. Series 2024=100, provisional.</li>
+        <li id="r2">MoSPI CPI (2024 series), education services division, NCT of Delhi, combined,
+          year-on-year. Retrieved from the eSankhyiki CPI service.</li>
+        <li id="r3"><a href="https://www.mospi.gov.in/uploads/documents/documents/1770891066052-Annexure_V.pdf">MoSPI,
+          FAQs on the CPI 2024 series (Annexure V)</a> &mdash; basket, weights, collection network,
+          alternative price sources, formulas, and the linking factors between the two series
+          (all-India combined 0.5267, rural 0.5222, urban 0.5320; each reproduced here as the ratio
+          of the two series&rsquo; geometric means over the twelve overlap months of 2025).
+          Elementary indices are compiled per state and sector; every higher index is a
+          weighted fold within its sector, and rural and urban are blended at every published
+          level &mdash; &ldquo;combined&rdquo; throughout this read is that blend. Basket weights for both vintages are compared
+          on the 2024 (COICOP 2018) classification structure throughout, the like-for-like basis
+          MoSPI itself recommends (FAQ 40); cross-structure comparisons give different
+          figures.</li>
+        <li id="r4"><a href="https://www.outlookindia.com/national/delhi-private-schools-must-justify-fee-hikes-as-govt-releases-18-parameters">&ldquo;Delhi private schools must justify fee hikes as govt releases 18 parameters&rdquo;</a>, Outlook India, 2026.</li>
+        <li id="r5"><a href="https://www.tribuneindia.com/news/delhi/delhi-private-schools-must-set-up-fee-regulation-committees-for-2026-27-doe-issues-fresh-guidelines/">&ldquo;Delhi private schools must set up fee regulation committees for 2026-27&rdquo;</a>, The Tribune, 2026.</li>
+        {/* Renumbered contiguously in the Aug 2026 pass (old r8/r15/r16/r17 → r6-r9); the
+            in-text superscripts now match the <ol>'s rendered numbers. Cut along the way,
+            all recoverable from git history: the drift figure + UK RPI sources (return with the
+            planned averaging collapsible), the five-machines press sources (r9-r13), and
+            the Onmanorama state-ranking piece (r14, left with the rank-turnover cut). */}
+        <li id="r6">MoSPI / National Sample Survey, Household Consumption Expenditure Survey
+          2023&ndash;24 &mdash; the source of the 2024-series weights.</li>
+        <li id="r7"><a href="https://www.business-standard.com/finance/news/rbi-mpc-december-2025-rate-cut-announcement-sanjay-malhotra-cpi-inflation-125120500161_1.html">&ldquo;RBI
+          MPC cuts repo rate by 25 bps to 5.25%&rdquo;</a>, Business Standard, 5 December 2025.
+          The staircase itself is hand-keyed from RBI Monetary Policy Committee announcements,
+          2014 through the June 2026 hold.</li>
+        <li id="r8">MoSPI, CPI (2024 series) item indices and the Annexure 5.3 weighing
+          diagram, All India Combined, {month} &mdash; the item contributions, and the same
+          index rebuilt over the basket without COICOP 13.2.1.1.1.01 and 13.2.1.1.1.02
+          (gold and silver jewellery). In the tree figure, class and sub-class shares are
+          sums of their items. The full rebuild reproduces the published headline to
+          the second decimal in every month of 2026.</li>
+        <li id="r9">MoSPI, CPI state and union-territory series, Combined, General:
+          2012 base January 2016 to December 2025, 2024 base from January 2026. The band is
+          the 10th to 90th percentile across {st.latest.n} states and union territories,
+          computed here.</li>
+      </ol>
+
+    </div>
+  </article>
+
+  <script type="application/json" id="inflation-read-data" set:html={payload}></script>
+</StoryPage>
+
+<script>
+  import { readTokens } from '../../../lib/dashboards/runtime';
+  // initDrift (Delhi/Kerala chained drift) and initProof (the AM/GM semicircle) left with
+  // the climb restructure; both are reserved for the Part II averaging collapsible (TODO).
+  // initBase left with the parked base-effect section (Aug 2026) — still exported from the
+  // widgets module for whatever that section becomes. initMerge/initStrands (the old
+  // strands close) retired the same day for initClose; kept in the module, unused.
+  // Three closes exist in the module: initClose (companion line),
+  // initCloseLayers (haze — rejected as too noisy), and initCloseUnfold
+  // (the line ends and its dot unfolds into the funnel — CHOSEN, 2026-08-01).
+  // Swap the import + call + caption to change.
+  import { initGap, initOneLine, initPyramid, initBeam, initIndexRate, initLongRun, initSectors, initAisles, initCore, initContrib, initStates, initRepo, initCloseUnfold } from '../../../lib/reads/inflation-widgets';
+  import type { CoreData, GapData, LongRunData, OneLineData, PyramidData, RulerData, StrandsData, WildData } from '../../../lib/reads/inflation-widgets';
+  import { initYourBasket, initBasketSlope, initSectorWeights } from '../../../lib/reads/basket-widgets';
+  import type { BasketDiv, YourBasketData } from '../../../lib/reads/basket-widgets';
+
+  const data: {
+    gap: GapData; basket: BasketDiv[]; yourBasket: YourBasketData; oneLine: OneLineData;
+    ruler: RulerData; core: CoreData; longRun: LongRunData;
+    pyramid: PyramidData & { sectors: { rural: number; urban: number } };
+    strands: StrandsData; wild: WildData;
+    layers: { groups: { name: string; months: string[]; yoy: (number | null)[] }[] };
+  } = JSON.parse(document.getElementById('inflation-read-data')!.textContent!);
+
+  const yb = initYourBasket(document.querySelector<HTMLElement>('.ybfig'), data.yourBasket);
+  const widgets = [
+    initOneLine(document.querySelector<HTMLElement>('.hlfig'), data.oneLine),
+    yb,
+    initSectorWeights(document.querySelector<HTMLElement>('.rufig'), data.basket),
+    initBasketSlope(document.querySelector<HTMLElement>('.bkfig'), data.basket),
+    initIndexRate(document.querySelector<HTMLElement>('.rlfig'), { months: data.ruler.months, idx: data.ruler.combined }),
+    initLongRun(document.querySelector<HTMLElement>('.lrfig'), data.longRun),
+    initSectors(document.querySelector<HTMLElement>('.sxfig'), data.ruler, data.pyramid.sectors),
+    initAisles(document.querySelector<HTMLElement>('.aifig'), data.ruler.months, data.strands.divisions),
+    initCore(document.querySelector<HTMLElement>('.cofig'), data.core),
+    initPyramid(document.querySelector<HTMLElement>('.pyfig'), data.pyramid),
+    initBeam(document.querySelector<HTMLElement>('.bmfig'), data.yourBasket, data.pyramid.path[0]),
+    initContrib(document.querySelector<HTMLElement>('.ctfig'), data.wild.contrib),
+    initStates(document.querySelector<HTMLElement>('.sdfig'), data.wild.states),
+    initRepo(document.querySelector<HTMLElement>('.rofig'), data.wild.repo),
+    initCloseUnfold(document.querySelector<HTMLElement>('.scfig'), data.oneLine, data.pyramid),
+  ];
+
+  // echarts serves only the gap figure, so its ~1MB stays off the critical
+  // path: every hand-drawn widget above initializes the moment this small
+  // module runs, and the gap figure fills its reserved 300px when the library
+  // lands. Pushed into the same array so theme/font rerenders reach it too.
+  import('echarts').then((echarts) => {
+    widgets.push(initGap(document.querySelector<HTMLElement>('.gapfig'), data.gap, { echarts, tokens: readTokens }));
+  });
+
+  const rerender = () => widgets.forEach((w) => w.refresh());
+  new MutationObserver(rerender)
+    .observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'data-units'] });
+  document.fonts?.ready.then(rerender);
+</script>
+
+<style>
+  .read { max-width: 720px; margin-inline: auto; }
+  .folio { font: var(--tsoi-text-byline); font-weight: 500; font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; padding: 4px 0; margin-bottom: calc(var(--tsoi-spacing-unit) * 2); }
+  .folio a { color: var(--tsoi-color-primary-text); text-decoration: none; }
+  .folio a:hover { text-decoration: underline; }
+  .folio .dot { color: var(--tsoi-color-on-surface-variant); padding-inline: 5px; }
+  /* Same register as upi-architecture's closing folio: navigation past the
+     sources, not a call to action. ShareButtons sits between it and the
+     closing paragraph, so nothing is appended directly to the prose. */
+  .folio-end { margin-top: calc(var(--tsoi-spacing-unit) * 3); margin-bottom: calc(var(--tsoi-spacing-unit) * 3); padding-top: calc(var(--tsoi-spacing-unit) * 2); border-top: 1px solid var(--tsoi-color-outline-variant); }
+  .head { margin-bottom: calc(var(--tsoi-spacing-unit) * 4); }
+  .kicker { margin: 0 0 var(--tsoi-spacing-unit); font: var(--tsoi-text-byline); font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; color: var(--tsoi-color-primary-text); }
+  .head h1 { margin: 0; font: var(--tsoi-text-headline-lg); letter-spacing: var(--tsoi-text-headline-lg-tracking); }
+  .deck { margin: var(--tsoi-spacing-unit) 0 0; font: var(--tsoi-text-deck); font-size: 17px; color: var(--tsoi-color-on-surface-variant); }
+  @media (max-width: 600px) { .head h1 { font-size: 20px; line-height: 1.25; } .deck { font-size: 15px; } }
+  .subtext { margin: calc(var(--tsoi-spacing-unit) * 0.75) 0 0; font: var(--tsoi-text-body); font-size: 15px; color: var(--tsoi-color-on-surface-variant); }
+  .toolbar { display: flex; align-items: center; gap: calc(var(--tsoi-spacing-unit) * 2); flex-wrap: wrap; margin-top: calc(var(--tsoi-spacing-unit) * 2); }
+
+  .prose :global(p) { font: var(--tsoi-text-body); font-size: calc(17px * var(--tsoi-reading-scale, 1)); line-height: 1.7; margin: 0 0 calc(var(--tsoi-spacing-unit) * 2.5); }
+  .prose :global(h2) { font: var(--tsoi-text-headline-md); font-size: 22px; margin: calc(var(--tsoi-spacing-unit) * 5) 0 calc(var(--tsoi-spacing-unit) * 1.5); }
+  .prose :global(em) { font-style: italic; }
+  .prose .num { font-variant-numeric: tabular-nums; }
+  sup.c { font-size: 0.62em; vertical-align: super; line-height: 0; }
+  sup.c a { color: var(--tsoi-color-primary-text); text-decoration: none; padding: 0 1px; }
+
+  /* ---- entity hues: the read's recurring characters (the Anatomy device) ---- */
+  /* Two characters carry a hue: saffron = the headline number, teal = the reader's own
+     numbers. The mark is the same series a year older, so it wears faded saffron and a
+     dotted underline rather than a hue of its own. The tomato deliberately has none —
+     it is a worked example, not a party to the gap the read is about. Strokes and fills
+     take the raw chart tokens; colored text takes the -text variants (contrast in
+     both themes). */
+  :global(.e-head) { --ent: var(--tsoi-color-chart-1); --ent-text: var(--tsoi-color-chart-1-text, var(--tsoi-color-chart-1)); }
+  :global(.e-you) { --ent: var(--tsoi-color-chart-2); --ent-text: var(--tsoi-color-chart-2-text, var(--tsoi-color-chart-2)); }
+  /* (The e-idx / e-rate / e-mark hues left with the parked base-effect section —
+     see the parked doc. If it returns, they come back with it.) */
+  /* the repo rate is the only non-CPI quantity in the read. Ink, deliberately:
+     a chart hue would imply it is another slice of the same thing. */
+  :global(.e-repo) { --ent: var(--tsoi-color-on-surface); --ent-text: var(--tsoi-color-on-surface); }
+  /* One hue per floor of the tree, so a level noun in the prose and its row in
+     the funnel are the same colour. Saffron stays reserved for the headline at
+     the top, where the descent begins.
+     The order is not arbitrary: all 120 arrangements of TSOI's five non-saffron
+     chart hues were run through the palette validator, and this one wins on
+     adjacent-pair separation in both themes — worst adjacent pair ΔE 10.1
+     (deutan) / 21.4 (normal vision) in light, 11.0 / 22.4 in dark. Two known
+     flags, both properties of the brand tokens rather than this ordering:
+     chart-2 is low-chroma in light mode, and chart-3 and chart-6 sit under 3:1
+     against the surface. The validator's required relief is visible labels,
+     which every funnel cell and every prose span carries. */
+  .prose {
+    --lvl-item: var(--tsoi-color-chart-3);      --lvl-item-text: var(--tsoi-color-chart-3-text, var(--tsoi-color-chart-3));
+    --lvl-sub: var(--tsoi-color-chart-4);       --lvl-sub-text: color-mix(in srgb, var(--tsoi-color-chart-4) 84%, #000);
+    --lvl-class: var(--tsoi-color-chart-6);     --lvl-class-text: var(--tsoi-color-chart-6-text, var(--tsoi-color-chart-6));
+    --lvl-group: var(--tsoi-color-chart-5);     --lvl-group-text: color-mix(in srgb, var(--tsoi-color-chart-5) 86%, #000);
+    --lvl-div: var(--tsoi-color-chart-2);       --lvl-div-text: var(--tsoi-color-chart-2-text, var(--tsoi-color-chart-2));
+  }
+  /* The two-baskets pair: rural wears chart-3, urban chart-4 — saffron and
+     teal stay reserved for the headline and the reader's own numbers. The
+     same hues serve as funnel floors in Part II, which is tolerable where
+     sharing the headline's saffron would not be: both figures label every
+     use, and the two sections never share a screen. */
+  .prose {
+    --ru-rural: var(--tsoi-color-chart-3);
+    --ru-rural-text: var(--tsoi-color-chart-3-text, var(--tsoi-color-chart-3));
+    --ru-urban: var(--tsoi-color-chart-4);
+    --ru-urban-text: color-mix(in srgb, var(--tsoi-color-chart-4) 84%, #000);
+    /* the rebuild's seam and its multiplier wear the red chart hue (the one
+       hue with no other meaning in this read); core inflation wears the
+       gold, since ink now means index */
+    --splice: var(--tsoi-color-chart-5);
+    --splice-text: color-mix(in srgb, var(--tsoi-color-chart-5) 86%, #000);
+    --core-c: var(--tsoi-color-chart-6);
+    --core-text: var(--tsoi-color-chart-6-text, var(--tsoi-color-chart-6));
+  }
+  :global(.e-rural) { --ent: var(--ru-rural); --ent-text: var(--ru-rural-text); }
+  :global(.e-urban) { --ent: var(--ru-urban); --ent-text: var(--ru-urban-text); }
+  :global(.e-splice) { --ent: var(--splice); --ent-text: var(--splice-text); }
+  :global(.e-core) { --ent: var(--core-c); --ent-text: var(--core-text); }
+  /* dark mode lifts the chart hues instead of deepening them, so the
+     darkened text mixes above have to be undone rather than re-tuned */
+  :global([data-theme='dark']) .prose {
+    --lvl-sub-text: var(--tsoi-color-chart-4);
+    --lvl-group-text: var(--tsoi-color-chart-5);
+    --ru-urban-text: var(--tsoi-color-chart-4);
+    --splice-text: var(--tsoi-color-chart-5);
+  }
+  /* .nl is the number-only variant of .e: a figure takes its floor's colour but
+     not the underline — a paragraph that walks the tomato up five floors would
+     otherwise carry a dozen ruled spans and read as a hyperlink farm */
+  .prose :global(.nl) { color: var(--ent-text); font-weight: 600; font-variant-numeric: tabular-nums; }
+  :global(.e-lvl-item) { --ent: var(--lvl-item); --ent-text: var(--lvl-item-text); }
+  :global(.e-lvl-sub) { --ent: var(--lvl-sub); --ent-text: var(--lvl-sub-text); }
+  :global(.e-lvl-class) { --ent: var(--lvl-class); --ent-text: var(--lvl-class-text); }
+  :global(.e-lvl-group) { --ent: var(--lvl-group); --ent-text: var(--lvl-group-text); }
+  :global(.e-lvl-div) { --ent: var(--lvl-div); --ent-text: var(--lvl-div-text); }
+  .prose :global(.e) { color: var(--ent-text); font-weight: 600; border-bottom: 2px solid color-mix(in srgb, var(--ent) 35%, transparent); }
+
+  figure { margin: calc(var(--tsoi-spacing-unit) * 4) 0; }
+  figcaption { font: var(--tsoi-text-byline); font-size: 13.5px; color: var(--tsoi-color-on-surface-variant); margin-top: var(--tsoi-spacing-unit); line-height: 1.6; }
+
+  .widgetfig { padding: calc(var(--tsoi-spacing-unit) * 2.5); border: 1px solid var(--tsoi-color-outline-variant); border-radius: var(--tsoi-radius-lg); background: var(--tsoi-color-surface-container-low); }
+  /* pan-y: a vertical swipe over a slider scrolls the page instead of being
+     captured as a drag — phone readers were reweighting the basket by accident */
+  .widgetfig :global(input[type='range']) { width: 100%; accent-color: var(--tsoi-color-primary); cursor: pointer; height: 22px; touch-action: pan-y; }
+  /* widget buttons sit filled, not ghosted: transparent buttons on the
+     figure's own surface read as annotations and get missed (review note,
+     Aug 2026). The page background is the fill — lighter than the card, so
+     the button lifts without the muddy cast surface-container-high had. */
+  .widgetfig :global(button) { font: var(--tsoi-text-byline); font-size: 12px; letter-spacing: 0.04em; text-transform: uppercase; cursor: pointer;
+    color: var(--tsoi-color-on-surface); background: var(--tsoi-color-background); border: 1px solid var(--tsoi-color-outline); border-radius: 2px; padding: 6px 13px; }
+  .widgetfig :global(button:hover) { border-color: var(--tsoi-color-primary); }
+
+  /* ---- one line (opening bookend) ---- */
+  /* A drawing, not a chart: no panel card, no border — it sits directly on
+     the page surface, like Anatomy's opening strip. The closing bookend
+     (Part III) reuses the same grammar to fan this line back out. */
+  .hlfig { margin-top: 0; }
+  /* the SVG is built by JS; reserving its exact shape (viewBox 720×230) keeps
+     the opening from rendering collapsed and jumping once the script runs */
+  .hlfig .hl-area { aspect-ratio: 720 / 230; }
+  .hlfig :global(.hl-svg) { width: 100%; display: block; }
+  .hlfig :global(.hl-line) { fill: none; stroke: var(--tsoi-color-chart-1); stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+  .hlfig :global(.hl-dot) { fill: var(--tsoi-color-chart-1); opacity: 0; transition: opacity 0.9s ease; }
+  .hlfig :global(.st-num) { font-family: var(--tsoi-font-mono); font-size: 17px; font-weight: 700; fill: var(--tsoi-color-chart-1-text, var(--tsoi-color-chart-1)); font-variant-numeric: tabular-nums;
+    opacity: 0; transition: opacity 0.9s ease; }
+  .hlfig :global(.st-sub) { font-family: var(--tsoi-font-mono); font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; fill: var(--tsoi-color-on-surface-variant);
+    opacity: 0; transition: opacity 0.9s ease 0.15s; }
+  .hlfig :global(.hl-svg.done .st-num), .hlfig :global(.hl-svg.done .st-sub), .hlfig :global(.hl-svg.done .hl-dot) { opacity: 1; }
+  .hlfig figcaption { text-align: center; max-width: 52ch; margin-inline: auto; }
+
+  /* ---- the gap ---- */
+  /* echarts loads lazily and sets the chart's 300px height itself; holding the
+     space keeps the figure from collapsing while the library is in flight */
+  .gapfig .gap-area { min-height: 300px; }
+  .gapfig :global(.gap-chart) { width: 100%; }
+
+  /* ---- your basket (shared widget, styles as on the lab page) ---- */
+  /* The whole widget has to be usable without scrolling: a slider you cannot
+     see the answer to is a slider you cannot read. Above 640px the twelve
+     dials sit beside what they drive; below it the stack tightens instead. */
+  /* The dials are saffron while the basket is the official one and turn teal the
+     moment it stops being official — a slider moved, or the whole hundred
+     cleared. The signal is the "official basket" chip losing its lit state,
+     which is exactly the condition the widget already tracks. */
+  .ybfig { --yb-dial: var(--tsoi-color-primary); --yb-dial-text: var(--tsoi-color-primary-text); }
+  .ybfig :global(.yb-area:has(.yb-reset:not(.yb-zero):not(.on))) {
+    --yb-dial: var(--tsoi-color-chart-2);
+    --yb-dial-text: var(--tsoi-color-chart-2-text, var(--tsoi-color-chart-2));
+  }
+  /* twelve dials and a chart need more room than the reading column gives; the
+     widget alone steps outside it, and stops well short of the viewport edge */
+  @media (min-width: 920px) { .ybfig { margin-inline: -60px; } }
+  @media (min-width: 1120px) { .ybfig { margin-inline: -110px; } }
+  .ybfig :global(.yb-area) { display: grid; gap: 10px; }
+  /* twelve rows have to fit whatever is left of the screen: names on one line,
+     the rate tucked directly under it */
+  .ybfig :global(.yb-name) { line-height: 1.15; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ybfig :global(.yb-rate) { line-height: 1.15; }
+  .ybfig :global(.yb-read) { display: flex; justify-content: center; gap: calc(var(--tsoi-spacing-unit) * 6); margin-bottom: 4px; }
+  .ybfig :global(.yb-num) { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+  .ybfig :global(.yb-lbl) { font: var(--tsoi-text-byline); font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--tsoi-color-on-surface-variant); }
+  .ybfig :global(.yb-big) { font: var(--tsoi-text-headline-lg); font-size: 34px; color: var(--tsoi-color-on-surface); font-variant-numeric: tabular-nums; }
+  /* the two readings wear the read's two hues: your basket teal, the headline saffron */
+  .ybfig :global(.yb-num:first-child .yb-big) { color: var(--tsoi-color-chart-2-text, var(--tsoi-color-chart-2)); }
+  .ybfig :global(.yb-num:last-child .yb-big) { color: var(--tsoi-color-chart-1-text, var(--tsoi-color-chart-1)); }
+  .ybfig :global(.yb-phrase) { margin: 0 0 12px !important; font-size: calc(14.5px * var(--tsoi-reading-scale, 1)) !important; line-height: 1.55 !important; color: var(--tsoi-color-on-surface-variant); text-align: center; min-height: 1.6em; }
+  /* native range chrome differs wildly per engine (Safari draws a fat track
+     and an oversized thumb); draw the control ourselves so every browser
+     shows the same thin track and dot, the fill painted by --p */
+  .ybfig :global(.yb-slider) { -webkit-appearance: none; appearance: none; background: transparent; }
+  .ybfig :global(.yb-slider::-webkit-slider-runnable-track) { height: 5px; border-radius: 2.5px;
+    background: linear-gradient(to right, var(--yb-dial) var(--p, 0%), var(--tsoi-color-outline-variant) var(--p, 0%)); }
+  .ybfig :global(.yb-slider::-webkit-slider-thumb) { -webkit-appearance: none; appearance: none; width: 15px; height: 15px; margin-top: -5px;
+    border-radius: 50%; background: var(--yb-dial); border: 2px solid var(--tsoi-color-surface); box-sizing: border-box; }
+  .ybfig :global(.yb-slider::-moz-range-track) { height: 5px; border-radius: 2.5px; background: var(--tsoi-color-outline-variant); }
+  .ybfig :global(.yb-slider::-moz-range-progress) { height: 5px; border-radius: 2.5px; background: var(--yb-dial); }
+  .ybfig :global(.yb-slider::-moz-range-thumb) { width: 15px; height: 15px; border-radius: 50%; background: var(--yb-dial);
+    border: 2px solid var(--tsoi-color-surface); box-sizing: border-box; }
+  /* the time-series panel: the headline as published, your line re-drawing.
+     Entity hues (local override — the shared widget ships its own colors, food
+     read untouched): saffron = the headline, teal = your basket */
+  .ybfig :global(.yb-ts) { margin: 2px 0 10px; }
+  .ybfig :global(.yb-ts-svg) { width: 100%; display: block; }
+  .ybfig :global(.yb-ts-head) { fill: none; stroke: var(--tsoi-color-chart-1); stroke-width: 1.8; }
+  /* drawn under the headline (see drawTs): where the two coincide the saffron
+     line covers it, and it peels out from behind as the sliders move */
+  .ybfig :global(.yb-ts-you) { fill: none; stroke: var(--tsoi-color-chart-2); stroke-width: 2.2; stroke-linecap: round; }
+  .ybfig :global(.yb-ts-lab) { font-family: var(--tsoi-font-mono); font-size: 11.5px; font-variant-numeric: tabular-nums; }
+  .ybfig :global(.yb-ts-svg.narrow .yb-ts-lab) { font-size: 10px; }
+  .ybfig :global(.yb-ts-lab-head) { fill: var(--tsoi-color-chart-1-text, var(--tsoi-color-chart-1)); }
+  .ybfig :global(.yb-ts-lab-you) { fill: var(--tsoi-color-chart-2-text, var(--tsoi-color-chart-2)); font-weight: 700; }
+  .ybfig :global(.yb-ts-tick) { font-family: var(--tsoi-font-mono); font-size: 11px; fill: var(--tsoi-color-on-surface-variant); }
+  .ybfig :global(.yb-ts-zero) { stroke: var(--tsoi-color-outline-variant); stroke-width: 1; stroke-dasharray: 3 4; }
+  /* the reserved strip above the bar is where the hot-segment label lives */
+  .ybfig :global(.yb-barwrap) { position: relative; padding-top: 20px; }
+  .ybfig :global(.yb-hotlab) { position: absolute; top: 0; transform: translateX(-50%); white-space: nowrap; pointer-events: none;
+    font-family: var(--tsoi-font-mono); font-size: 11.5px; letter-spacing: 0.04em; color: var(--yb-dial-text);
+    opacity: 0; transition: opacity 0.25s ease; }
+  .ybfig :global(.yb-hotlab.show) { opacity: 1; }
+  .ybfig :global(.yb-bar) { display: flex; height: 16px; border-radius: 4px; overflow: hidden; margin: 0 0 14px; }
+  .ybfig :global(.yb-unspent) { background: repeating-linear-gradient(45deg, transparent 0 4px, var(--tsoi-color-outline-variant) 4px 5px); }
+  .ybfig :global(.yb-seg) { flex: 0 0 auto; transition: flex-basis 0.18s ease; }
+  .ybfig :global(.yb-seg + .yb-seg) { border-left: 1px solid var(--tsoi-color-surface-container-low); }
+  .ybfig :global(.yb-seg-a) { background: var(--tsoi-color-outline-variant); }
+  .ybfig :global(.yb-seg-b) { background: var(--tsoi-color-surface-dim); }
+  .ybfig :global(.yb-seg.hot) { background: var(--yb-dial); opacity: 0.9; transition: flex-basis 0.18s ease, background 0.25s ease; }
+  .ybfig :global(.yb-seg) { transition: flex-basis 0.18s ease, background 0.45s ease; }
+  .ybfig :global(.yb-rows) { display: flex; flex-direction: column; gap: 6px; }
+  .ybfig :global(.yb-row) { display: grid; grid-template-columns: 168px 1fr 64px; align-items: center; gap: 12px; }
+  .ybfig :global(.yb-name) { display: flex; flex-direction: column; gap: 1px; font-family: var(--tsoi-font-mono); font-size: 12.5px; color: var(--tsoi-color-on-surface); }
+  .ybfig :global(.yb-rate) { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--tsoi-color-on-surface-variant); }
+  .ybfig :global(.yb-val) { font-family: var(--tsoi-font-mono); font-size: 13.5px; font-weight: 700; color: var(--tsoi-color-on-surface); text-align: right; font-variant-numeric: tabular-nums; }
+  .ybfig :global(.yb-btns) { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; margin: 0 0 12px; }
+  .ybfig :global(.yb-reset:disabled) { opacity: 0.4; cursor: default; }
+  /* the lit chip marks the starting point the basket currently sits on, and it
+     lights in whichever hue the dials are wearing: saffron for the official
+     basket, teal once the hundred is the reader's own */
+  .ybfig :global(.yb-reset.on) { border-color: var(--yb-dial); color: var(--yb-dial-text); }
+  @media (min-width: 640px) {
+    /* minmax(0, …): without it the fr tracks float up to the sliders' own
+       min-content width and starve the range inputs */
+    .ybfig :global(.yb-area) { grid-template-columns: minmax(0, 1.02fr) minmax(0, 1fr); gap: 20px; align-items: center; }
+    .ybfig :global(.yb-out) { order: 2; }
+    .ybfig :global(.yb-rows) { order: 1; gap: 5px; }
+    .ybfig :global(.yb-row) { grid-template-columns: 138px 1fr 52px; gap: 8px; }
+    .ybfig :global(.yb-name) { font-size: 11.5px; }
+    .ybfig :global(.yb-rate) { font-size: 10px; }
+    .ybfig :global(.yb-rate-yr) { display: none; }
+  }
+  /* once the figure breaks out of the reading column there is room for the
+     names and rates to come back up to a comfortable size */
+  @media (min-width: 920px) {
+    .ybfig :global(.yb-row) { grid-template-columns: 168px 1fr 62px; gap: 12px; }
+    .ybfig :global(.yb-name) { font-size: 12.5px; }
+    .ybfig :global(.yb-rate) { font-size: 11px; }
+    .ybfig :global(.yb-rows) { gap: 7px; }
+  }
+  @media (max-width: 639px) {
+    /* one screen on a phone: every band of the widget gives up a few pixels
+       rather than one of them disappearing */
+    /* the row flips on a phone: slider left, then the value, then the name on
+       the RIGHT edge — where a (mostly right-handed) thumb naturally scrolls.
+       The right rail is now ~170px of text, so a scroll that starts there
+       cannot move a slider; pan-y still guards the slider itself. */
+    .ybfig :global(.yb-row) { grid-template-columns: 1fr 48px 122px; gap: 8px; }
+    .ybfig :global(.yb-row .yb-slider) { grid-column: 1; grid-row: 1; }
+    .ybfig :global(.yb-row .yb-val) { grid-column: 2; grid-row: 1; }
+    .ybfig :global(.yb-row .yb-name) { grid-column: 3; grid-row: 1; }
+    .ybfig :global(.yb-name) { font-size: 10px; }
+    .ybfig :global(.yb-rate) { font-size: 9px; }
+    .ybfig :global(.yb-rows) { gap: 4px; }
+    .ybfig :global(.yb-big) { font-size: 24px; }
+    .ybfig :global(.yb-lbl) { font-size: 10px; }
+    .ybfig :global(.yb-ts) { margin: 0 0 4px; }
+    /* the two chips have to share one line at 360px */
+    .ybfig :global(.yb-btns button) { font-size: 11px; padding: 4px 9px; letter-spacing: 0.02em; }
+    .ybfig :global(.yb-phrase) { margin: 0 0 8px !important; font-size: calc(13.5px * var(--tsoi-reading-scale, 1)) !important; }
+    .ybfig :global(.yb-btns) { margin: 0 0 8px; }
+    .ybfig :global(.yb-barwrap) { padding-top: 17px; }
+    .ybfig :global(.yb-bar) { margin-bottom: 10px; }
+    /* the rate stays (it is why dragging moves your number) but sheds the
+       words — the caption carries "on the year" for the narrow layout */
+    .ybfig :global(.yb-rate-yr) { display: none; }
+  }
+
+  /* ---- the basket slopegraph (shared widget, styles as on the lab page) ---- */
+  /* ---- rural against urban (the two-hundreds dumbbells) ---- */
+  .rufig :global(.ru-svg) { width: 100%; display: block; }
+  .rufig :global(.ru-grid) { stroke: var(--tsoi-color-outline-variant); stroke-width: 1; }
+  .rufig :global(.ru-tick) { font-family: var(--tsoi-font-mono); fill: var(--tsoi-color-on-surface-variant); font-variant-numeric: tabular-nums; }
+  .rufig :global(.ru-name) { font-family: var(--tsoi-font-mono); fill: var(--tsoi-color-on-surface-variant); cursor: pointer; }
+  .rufig :global(.ru-name.on) { fill: var(--tsoi-color-on-surface); font-weight: 700; }
+  .rufig :global(.ru-gap) { stroke: var(--tsoi-color-outline); stroke-linecap: round; }
+  .rufig :global(.ru-dot) { stroke: var(--tsoi-color-surface-container-low); stroke-width: 1; }
+  .rufig :global(circle.ru-rural) { fill: var(--ru-rural); }
+  .rufig :global(circle.ru-urban) { fill: var(--ru-urban); }
+  .rufig :global(text.ru-leg) { font-family: var(--tsoi-font-mono); letter-spacing: 0.04em; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .rufig :global(text.ru-rural), .rufig :global(tspan.ru-rural) { fill: var(--ru-rural-text); }
+  .rufig :global(text.ru-urban), .rufig :global(tspan.ru-urban) { fill: var(--ru-urban-text); }
+  .rufig :global(tspan.ru-sep) { fill: var(--tsoi-color-on-surface-variant); }
+  .rufig :global(.ru-hit) { fill: transparent; cursor: pointer; }
+  .rufig :global(.ru-cap) { margin: 10px 0 0 !important; font-size: calc(14.5px * var(--tsoi-reading-scale, 1)) !important; line-height: 1.55 !important; color: var(--tsoi-color-on-surface-variant); min-height: 3.2em; text-align: center; }
+  /* the caption's figures wear the sector hues (the phone fallback for the
+     on-dot labels) */
+  .rufig :global(.ru-cap-r) { color: var(--ru-rural-text); font-weight: 600; font-variant-numeric: tabular-nums; }
+  .rufig :global(.ru-cap-u) { color: var(--ru-urban-text); font-weight: 600; font-variant-numeric: tabular-nums; }
+
+  .bkfig :global(.bk-svg) { width: 100%; display: block; }
+  .bkfig :global(.bk-pole) { stroke: var(--tsoi-color-outline-variant); stroke-width: 1; }
+  .bkfig :global(.bk-head) { font-family: var(--tsoi-font-mono); font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; fill: var(--tsoi-color-on-surface-variant); }
+  .bkfig :global(.bk-line) { fill: none; stroke-linecap: round; transition: stroke-width 0.2s; }
+  .bkfig :global(.bk-hit) { stroke: transparent; stroke-width: 15; cursor: pointer; }
+  .bkfig :global(.bk-dot) { stroke: var(--tsoi-color-surface-container-low); stroke-width: 1; }
+  .bkfig :global(.bk-lead) { stroke: var(--tsoi-color-outline-variant); stroke-width: 1; }
+  .bkfig :global(.bk-ll), .bkfig :global(.bk-rl) { font-family: var(--tsoi-font-mono); cursor: pointer; fill: var(--tsoi-color-on-surface-variant); font-variant-numeric: tabular-nums; }
+  .bkfig :global(.bk-ll.on), .bkfig :global(.bk-rl.on) { fill: var(--tsoi-color-on-surface); font-weight: 700; }
+  .bkfig :global(.bk-cap) { margin: 10px 0 0 !important; font-size: calc(14.5px * var(--tsoi-reading-scale, 1)) !important; line-height: 1.55 !important; color: var(--tsoi-color-on-surface-variant); min-height: 3.2em; text-align: center; }
+
+  /* ---- part divider ---- */
+  .prose :global(.partmark) { margin: calc(var(--tsoi-spacing-unit) * 6) 0 calc(var(--tsoi-spacing-unit) * 1) !important;
+    font: var(--tsoi-text-byline) !important; font-size: 12px !important; font-weight: 500; letter-spacing: 0.12em; text-transform: uppercase;
+    color: var(--tsoi-color-primary-text); text-align: center; }
+  /* the Part I mark opens the piece, so it takes the header's spacing, not the
+     long gap the later part breaks need */
+  .prose :global(.partmark-first) { margin: 0 0 calc(var(--tsoi-spacing-unit) * 2.5) !important; }
+
+  /* ---- the two-averages tables ---- */
+  .swfig { margin: calc(var(--tsoi-spacing-unit) * 2.5) 0; }
+  .sw-table { width: 100%; border-collapse: collapse; }
+  .sw-table th, .sw-table td { font-family: var(--tsoi-font-mono); font-size: 13px; padding: 7px 10px; text-align: right; border-bottom: 1px solid var(--tsoi-color-outline-variant); font-variant-numeric: tabular-nums; color: var(--tsoi-color-on-surface); }
+  .sw-table th { font-weight: 400; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--tsoi-color-on-surface-variant); }
+  .sw-table th:first-child, .sw-table td:first-child { text-align: left; }
+  .sw-table td:first-child { color: var(--tsoi-color-on-surface-variant); }
+  /* the multiplied average wears saffron — it graduates into the official index two
+     sections later; the added average's failures are bold ink, not saffron, so the
+     brand hue never marks the wrong answer. Both averages are bold: saffron alone
+     lost the column to the ink the failures were set in. */
+  .sw-table td.sw-mult { color: var(--tsoi-color-primary-text); font-weight: 700; }
+  .sw-table td.sw-hot { color: var(--tsoi-color-on-surface); font-weight: 700; }
+  @media (max-width: 520px) {
+    .sw-table th, .sw-table td { font-size: 10.5px; padding: 6px 5px; }
+  }
+
+  /* The semicircle proof (.proofbox .pf-*) and Delhi/Kerala drift (.dffig .mx-*) styles left
+     with the climb restructure — recover from git history when the Part II averaging
+     collapsible is built. */
+
+  /* ---- the funnel ---- */
+  /* One hue per floor, the same five the prose spans wear, with saffron kept
+     for the headline row at the top. Cell widths are shares of the ₹100, so a
+     row is a real division of the hundred and not a row of equal boxes. */
+  .pyfig :global(.fn-wrap) { position: relative; }
+  /* the click target is the svg root (668 cells is 668 listeners otherwise), so
+     a tap lights the WHOLE figure blue on mobile — the browser is highlighting
+     the clickable element, and the clickable element is the entire funnel.
+     Killing the highlight and the selection flash leaves the cell's own
+     selected outline to say what was picked. */
+  .pyfig :global(.fn-svg) { width: 100%; display: block; cursor: pointer; touch-action: pan-y;
+    -webkit-tap-highlight-color: transparent; -webkit-user-select: none; user-select: none; }
+  .pyfig :global(.fn-cell) { transition: opacity 0.45s ease; }
+  .pyfig :global(.fn-row-general .fn-cell) { fill: var(--tsoi-color-chart-1); }
+  .pyfig :global(.fn-row-division .fn-cell) { fill: var(--lvl-div); }
+  .pyfig :global(.fn-row-group .fn-cell) { fill: var(--lvl-group); }
+  .pyfig :global(.fn-row-class .fn-cell) { fill: var(--lvl-class); }
+  .pyfig :global(.fn-row-subclass .fn-cell) { fill: var(--lvl-sub); }
+  .pyfig :global(.fn-row-item .fn-cell) { fill: var(--lvl-item); }
+  /* the selected lineage keeps a surface-coloured hairline so it reads as
+     picked out even where its neighbours are painted the same strength */
+  .pyfig :global(.fn-cell.on) { stroke: var(--tsoi-color-on-surface); stroke-width: 1.4; paint-order: stroke; }
+  .pyfig :global(.fn-thread) { fill: none; stroke-width: 2; opacity: 0.9; }
+  .pyfig :global(.fn-thread-division) { stroke: var(--lvl-div); }
+  .pyfig :global(.fn-thread-group) { stroke: var(--lvl-group); }
+  .pyfig :global(.fn-thread-class) { stroke: var(--lvl-class); }
+  .pyfig :global(.fn-thread-subclass) { stroke: var(--lvl-sub); }
+  .pyfig :global(.fn-thread-item) { stroke: var(--lvl-item); }
+  .pyfig :global(.fn-count) { font-family: var(--tsoi-font-mono); font-size: 10px; letter-spacing: 0.05em; text-transform: uppercase; fill: var(--tsoi-color-on-surface-variant); }
+  .pyfig :global(.fn-num) { font-family: var(--tsoi-font-mono); font-size: 11.5px; font-weight: 700; font-variant-numeric: tabular-nums; fill: var(--tsoi-color-on-surface); }
+  .pyfig :global(.fn-name) { font-family: var(--tsoi-font-mono); font-size: 10.5px; fill: var(--tsoi-color-on-surface-variant); }
+  /* A halo in the page colour: the thread joining two floors runs through
+     the gap these labels are printed in, and under a caption it is a rule
+     drawn across the reading. paint-order puts the stroke behind the fill
+     so the letters keep their own shape. */
+  .pyfig :global(.fn-num), .pyfig :global(.fn-name) { paint-order: stroke; stroke: var(--tsoi-color-surface); stroke-width: 3px; stroke-linejoin: round; }
+  /* each floor's own label takes that floor's hue, so the name under a strip
+     and the level noun in the prose match without a legend */
+  .pyfig :global(.fn-row-general .fn-num) { fill: var(--tsoi-color-chart-1-text, var(--tsoi-color-chart-1)); }
+  .pyfig :global(.fn-row-division .fn-num) { fill: var(--lvl-div-text); }
+  .pyfig :global(.fn-row-group .fn-num) { fill: var(--lvl-group-text); }
+  .pyfig :global(.fn-row-class .fn-num) { fill: var(--lvl-class-text); }
+  .pyfig :global(.fn-row-subclass .fn-num) { fill: var(--lvl-sub-text); }
+  .pyfig :global(.fn-row-item .fn-num) { fill: var(--lvl-item-text); }
+  /* one line on a wide screen, two at worst on a phone — the narration is short
+     enough now that the old three-line reservation was just a hole */
+  .pyfig :global(.fn-cap) { margin: 10px 0 10px !important; font-size: calc(14.5px * var(--tsoi-reading-scale, 1)) !important; line-height: 1.55 !important;
+    color: var(--tsoi-color-on-surface-variant); text-align: center; min-height: 1.6em; }
+  .pyfig :global(.fn-cap strong) { color: var(--tsoi-color-on-surface); font-weight: 700; }
+  @media (max-width: 520px) { .pyfig :global(.fn-cap) { min-height: 3.2em; } }
+  .pyfig :global(.fn-btns) { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+  .pyfig :global(.fn-btn:disabled) { opacity: 0.4; cursor: default; }
+  /* the tooltip does the identifying work the thin rows cannot */
+  .pyfig :global(.fn-tip) { position: absolute; z-index: 2; pointer-events: none; opacity: 0; transition: opacity 0.15s ease;
+    display: flex; flex-direction: column; gap: 1px; padding: 7px 10px; max-width: 260px;
+    background: var(--tsoi-color-surface-container-high); border: 1px solid var(--tsoi-color-outline-variant); border-radius: var(--tsoi-radius-sm, 3px);
+    font-family: var(--tsoi-font-mono); font-size: 11px; line-height: 1.45; color: var(--tsoi-color-on-surface-variant); }
+  .pyfig :global(.fn-tip.show) { opacity: 1; }
+  .pyfig :global(.fn-tip-name) { color: var(--tsoi-color-on-surface); font-weight: 700; }
+  .pyfig :global(.fn-tip-lvl) { font-size: 9.5px; letter-spacing: 0.07em; text-transform: uppercase; }
+  .pyfig :global(.fn-tip-row) { font-variant-numeric: tabular-nums; }
+  .pyfig :global(.fn-svg.narrow .fn-num) { font-size: 10.5px; }
+  .pyfig :global(.fn-svg.narrow .fn-name) { font-size: 9px; }
+  .pyfig :global(.fn-svg.narrow .fn-count) { font-size: 8.5px; }
+
+  /* ---- the index/rate strips (rlfig + lrfig), sectors (sxfig), core (cofig) ---- */
+  /* Colour code, held across all four figures and the prose: the HEADLINE
+     RATE is saffron, the INDEX it is read from is ink. Rural and urban keep
+     their green and purple; core wears the gold chart hue, because ink now
+     means index. */
+  .ixfig :global(.ix-svg), .sxfig :global(.sx-svg), .cofig :global(.co-svg) { width: 100%; display: block; touch-action: pan-y; cursor: ew-resize; }
+  .ixfig :global(.ix-title), .sxfig :global(.ix-title) { font-family: var(--tsoi-font-mono); font-size: 10.5px; letter-spacing: 0.06em; text-transform: uppercase; fill: var(--tsoi-color-on-surface-variant); }
+  .ixfig :global(.ix-tick), .sxfig :global(.ix-tick), .cofig :global(.ix-tick) { stroke: var(--tsoi-color-outline-variant); stroke-width: 1; }
+  .ixfig :global(.ix-ticklab), .sxfig :global(.ix-ticklab), .cofig :global(.ix-ticklab) { font-family: var(--tsoi-font-mono); font-size: 10px; fill: var(--tsoi-color-on-surface-variant); }
+  .ixfig :global(.ix-base), .sxfig :global(.ix-base) { stroke: var(--tsoi-color-outline); stroke-width: 1; stroke-dasharray: 3 3; }
+  .ixfig :global(.ix-baselab), .sxfig :global(.ix-baselab) { font-family: var(--tsoi-font-mono); font-size: 10px; fill: var(--tsoi-color-on-surface-variant); }
+  .ixfig :global(.ix-zero), .cofig :global(.co-zero) { stroke: var(--tsoi-color-outline-variant); stroke-width: 1; }
+  .cofig :global(.co-grid) { stroke: var(--tsoi-color-outline-variant); stroke-width: 0.5; opacity: 0.55; }
+  .ixfig :global(.ix-guide), .sxfig :global(.ix-guide), .cofig :global(.ix-guide) { stroke: var(--tsoi-color-outline); stroke-width: 1; stroke-dasharray: 2 3; }
+  .ixfig :global(.ix-line) { fill: none; stroke: var(--tsoi-color-on-surface); stroke-width: 2; stroke-linejoin: round; }
+  .ixfig :global(.ix-rline) { fill: none; stroke: var(--tsoi-color-primary); stroke-width: 2; stroke-linejoin: round; }
+  .ixfig :global(.ix-dot) { fill: var(--tsoi-color-on-surface); }
+  .ixfig :global(.ix-dot-rate) { fill: var(--tsoi-color-primary); }
+  .ixfig :global(.ix-markdot) { fill: var(--tsoi-color-surface-container-low); stroke: var(--tsoi-color-on-surface); stroke-width: 1.5; }
+  .ixfig :global(.ix-val) { font-family: var(--tsoi-font-mono); font-size: 11.5px; font-weight: 700; fill: var(--tsoi-color-on-surface); }
+  .ixfig :global(.ix-val-rate) { fill: var(--tsoi-color-primary-text); }
+  .ixfig :global(.ix-marklab), .ixfig :global(.ix-sum) { font-family: var(--tsoi-font-mono); font-size: 10px; fill: var(--tsoi-color-on-surface-variant); }
+  .ixfig :global(.ix-arc) { fill: none; stroke: var(--tsoi-color-outline); stroke-width: 1; stroke-dasharray: 3 3; }
+  /* the long-run figure's seam wears the splice red, as do the multiplier
+     annotations; the hollow ink dot is the old series' last print */
+  .lrfig :global(.lr-seam) { stroke: var(--splice); stroke-width: 1; stroke-dasharray: 4 3; }
+  .lrfig :global(.lr-seamlab) { font-family: var(--tsoi-font-mono); font-size: 10px; fill: var(--splice-text); }
+  .lrfig :global(.lr-math) { font-family: var(--tsoi-font-mono); font-size: 10px; font-weight: 600; fill: var(--splice-text); }
+  .lrfig :global(.lr-lf) { color: var(--splice-text); font-weight: 700; }
+  .ixfig :global(.ix-cap), .sxfig :global(.ix-cap), .cofig :global(.ix-cap) { margin: 10px 0 6px !important; font-size: calc(14.5px * var(--tsoi-reading-scale, 1)) !important; line-height: 1.55 !important;
+    color: var(--tsoi-color-on-surface-variant); text-align: center; min-height: 3.2em; }
+  .ixfig :global(.ix-cap strong), .sxfig :global(.ix-cap strong), .cofig :global(.ix-cap strong) { color: var(--tsoi-color-on-surface); font-weight: 700; }
+  .ixfig :global(.ix-h), .sxfig :global(.ix-h), .cofig :global(.ix-h) { color: var(--tsoi-color-primary-text); font-weight: 700; }
+  .sxfig :global(.ix-r) { color: var(--ru-rural-text); font-weight: 700; }
+  .sxfig :global(.ix-u) { color: var(--ru-urban-text); font-weight: 700; }
+  /* sectors: the prose's own green and purple, the blend as dashed ink */
+  .sxfig :global(.sx-rural) { fill: none; stroke: var(--ru-rural); stroke-width: 2; stroke-linejoin: round; }
+  .sxfig :global(.sx-urban) { fill: none; stroke: var(--ru-urban); stroke-width: 2; stroke-linejoin: round; }
+  .sxfig :global(.sx-blend) { fill: none; stroke: var(--tsoi-color-on-surface); stroke-width: 1.5; stroke-linejoin: round; stroke-dasharray: 4 3; }
+  .sxfig :global(.sx-dot-rural) { fill: var(--ru-rural); }
+  .sxfig :global(.sx-dot-urban) { fill: var(--ru-urban); }
+  .sxfig :global(.sx-dot-blend) { fill: var(--tsoi-color-on-surface); }
+  .sxfig :global(.sx-endlab) { font-family: var(--tsoi-font-mono); font-size: 10.5px; }
+  .sxfig :global(.sx-endlab-rural) { fill: var(--ru-rural-text); }
+  .sxfig :global(.sx-endlab-urban) { fill: var(--ru-urban-text); }
+  .sxfig :global(.sx-endlab-blend) { fill: var(--tsoi-color-on-surface); }
+  /* the aisles: one division at a time, in the division teal the prose wears */
+  .aifig :global(.ai-svg) { width: 100%; display: block; touch-action: pan-y; cursor: ew-resize; }
+  .aifig :global(.ix-title), .aifig :global(.ix-ticklab), .aifig :global(.ix-baselab) { font-family: var(--tsoi-font-mono); fill: var(--tsoi-color-on-surface-variant); }
+  .aifig :global(.ix-title) { font-size: 10.5px; letter-spacing: 0.06em; text-transform: uppercase; }
+  .aifig :global(.ix-ticklab), .aifig :global(.ix-baselab) { font-size: 10px; }
+  .aifig :global(.ix-tick) { stroke: var(--tsoi-color-outline-variant); stroke-width: 1; }
+  .aifig :global(.ix-base) { stroke: var(--tsoi-color-outline); stroke-width: 1; stroke-dasharray: 3 3; }
+  .aifig :global(.ix-guide) { stroke: var(--tsoi-color-outline); stroke-width: 1; stroke-dasharray: 2 3; }
+  .aifig :global(.ai-line) { fill: none; stroke: var(--lvl-div); stroke-width: 2; stroke-linejoin: round; }
+  .aifig :global(.ai-dot) { fill: var(--lvl-div); }
+  .aifig :global(.ix-markdot) { fill: var(--tsoi-color-surface-container-low); stroke: var(--tsoi-color-on-surface); stroke-width: 1.5; }
+  .aifig :global(.ix-val) { font-family: var(--tsoi-font-mono); font-size: 11.5px; font-weight: 700; fill: var(--tsoi-color-on-surface); }
+  .aifig :global(.ix-cap) { margin: 10px 0 6px !important; font-size: calc(14.5px * var(--tsoi-reading-scale, 1)) !important; line-height: 1.55 !important;
+    color: var(--tsoi-color-on-surface-variant); text-align: center; min-height: 3.2em; }
+  .aifig :global(.ix-cap strong) { color: var(--tsoi-color-on-surface); font-weight: 700; }
+  .aifig :global(.ai-r) { color: var(--lvl-div-text); font-weight: 700; }
+  .aifig :global(.ai-tabs) { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-top: 4px; }
+  /* the active tab wears the aisles' own teal, not saffron: saffron means
+     the headline, and a division tab is not the headline */
+  .aifig :global(.ai-tab.on) { border-color: var(--lvl-div); color: var(--lvl-div-text); }
+  .cofig :global(.co-g) { color: var(--core-text); font-weight: 700; }
+  .cofig :global(.co-head) { fill: none; stroke: var(--tsoi-color-primary); stroke-width: 1.8; stroke-linejoin: round; }
+  /* core wears the gold chart hue: ink is reserved for the index */
+  .cofig :global(.co-core) { fill: none; stroke: var(--tsoi-color-chart-6); stroke-width: 1.8; stroke-linejoin: round; }
+  .cofig :global(.co-dot-head) { fill: var(--tsoi-color-primary); }
+  .cofig :global(.co-dot-core) { fill: var(--tsoi-color-chart-6); }
+  .cofig :global(.co-endlab) { font-family: var(--tsoi-font-mono); font-size: 10.5px; }
+  .cofig :global(.co-endlab-head) { fill: var(--tsoi-color-primary-text); }
+  .cofig :global(.co-endlab-core) { fill: var(--tsoi-color-chart-6-text, var(--tsoi-color-chart-6)); }
+  /* no engaged state on these buttons: the label itself flips (Add food /
+     Subtract food), so the wording carries the state */
+  .cofig :global(.co-btns) { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-top: 4px; }
+
+  /* ---- the balance beam ---- */
+  .bmfig :global(.bm-svg) { width: 100%; display: block; }
+  .bmfig :global(.mx-tick) { stroke: var(--tsoi-color-outline-variant); stroke-width: 1; }
+  .bmfig :global(.mx-ticklab) { font-family: var(--tsoi-font-mono); font-size: 10px; fill: var(--tsoi-color-on-surface-variant); }
+  .bmfig :global(.bm-beam) { stroke: var(--tsoi-color-on-surface); stroke-width: 2; }
+  .bmfig :global(.bm-disc-g) { cursor: pointer; transition: transform 0.45s cubic-bezier(0.35, 0, 0.2, 1); }
+  .bmfig :global(.bm-namelab) { font-family: var(--tsoi-font-mono); font-size: 10.5px; letter-spacing: 0.05em; text-transform: uppercase; fill: var(--tsoi-color-on-surface); pointer-events: none; }
+  .bmfig :global(.bm-disc) { fill: var(--tsoi-color-surface-dim); stroke: var(--tsoi-color-outline); stroke-width: 1.2; transition: fill 0.3s, stroke 0.3s; }
+  /* the discs are the twelve divisions, so a selected one lights in the division
+     hue; the fulcrum and its number stay saffron, because that is the headline */
+  .bmfig :global(.bm-disc-g.on .bm-disc) { fill: var(--lvl-div); stroke: var(--lvl-div); opacity: 0.92; }
+  .bmfig :global(.bm-disclab) { font-family: var(--tsoi-font-mono); font-size: 9px; letter-spacing: 0.05em; text-transform: uppercase; fill: var(--tsoi-color-on-surface-variant); pointer-events: none; }
+  .bmfig :global(.bm-disc-g.on .bm-disclab) { fill: var(--tsoi-color-surface-container-low); }
+  .bmfig :global(.bm-ful-g) { transition: transform 0.8s cubic-bezier(0.35, 0, 0.2, 1); }
+  .bmfig :global(.bm-ful) { fill: var(--tsoi-color-chart-1); }
+  .bmfig :global(.bm-fullab) { font-family: var(--tsoi-font-mono); font-size: 11.5px; font-weight: 700; font-variant-numeric: tabular-nums; fill: var(--tsoi-color-chart-1-text, var(--tsoi-color-chart-1)); }
+  .bmfig :global(.bm-fuldelta) { font-family: var(--tsoi-font-mono); font-size: 10px; fill: var(--tsoi-color-on-surface-variant); }
+  .bmfig :global(.bm-btns) { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+  .bmfig :global(.bm-btn:disabled) { opacity: 0.4; cursor: default; }
+  /* the drag is delegated to the svg root, and touch-action has to live there:
+     WebKit ignores it on SVG children. pan-y keeps vertical scrolling through
+     the figure while the horizontal gesture belongs to the beam. */
+  .bmfig :global(.bm-svg) { touch-action: pan-y; }
+  .bmfig :global(.bm-cap) { margin: 8px 0 10px !important; font-size: calc(14.5px * var(--tsoi-reading-scale, 1)) !important; line-height: 1.55 !important;
+    color: var(--tsoi-color-on-surface-variant); text-align: center; min-height: 1.6em; }
+
+  /* ---- shared axis chrome (was shared with the parked base-effect scrubber;
+          its .bsfig rules left with the section — see the parked doc) ---- */
+  .rofig :global(.mx-tick), .sdfig :global(.mx-tick) { stroke: var(--tsoi-color-outline-variant); stroke-width: 1; }
+  .rofig :global(.mx-ticklab), .sdfig :global(.mx-ticklab) { font-family: var(--tsoi-font-mono); font-size: 10px; fill: var(--tsoi-color-on-surface-variant); }
+  .rofig :global(.bs-zero), .sdfig :global(.bs-zero) { stroke: var(--tsoi-color-outline-variant); stroke-width: 1; }
+
+  /* ---- Part III: what the average hides ---- */
+  .ctfig :global(.ct-head) { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
+  .ctfig :global(.ct-big) { font-family: var(--tsoi-font-mono); font-size: 30px; font-weight: 700; font-variant-numeric: tabular-nums;
+    color: var(--tsoi-color-primary-text); line-height: 1; }
+  .ctfig :global(.ct-biglab) { font-size: 13px; color: var(--tsoi-color-on-surface-variant); }
+  .ctfig :global(.ct-svg) { width: 100%; display: block; }
+  .ctfig :global(.ct-name) { font-size: 11.5px; fill: var(--tsoi-color-on-surface); }
+  .ctfig :global(.ct-num) { font-family: var(--tsoi-font-mono); font-size: 10.5px; fill: var(--tsoi-color-on-surface-variant); font-variant-numeric: tabular-nums; }
+  /* item green: the bars are items, and Part II taught that colour */
+  .ctfig :global(.ct-bar) { fill: var(--lvl-item); opacity: 0.75; transition: opacity 0.45s ease, width 0.45s ease; }
+  .ctfig :global(.ct-row.jewel .ct-bar) { opacity: 1; }
+  .ctfig :global(.ct-row.jewel .ct-name) { font-weight: 700; }
+  .ctfig :global(.ct-row.gone) { opacity: 0.18; }
+  .ctfig :global(.ct-row.gone .ct-bar) { opacity: 0.25; }
+  .ctfig :global(.ct-btn) { margin-top: 10px; }
+  .ctfig :global(.ct-cap) { margin: 8px 0 4px !important; font-size: calc(14.5px * var(--tsoi-reading-scale, 1)) !important; line-height: 1.55 !important;
+    color: var(--tsoi-color-on-surface-variant); min-height: 3em; }
+
+  /* ---- Part III: many Indias ---- */
+  .sdfig :global(.sd-svg) { width: 100%; display: block; touch-action: pan-y; }
+  .sdfig :global(.sd-grid) { stroke: var(--tsoi-color-outline-variant); stroke-width: 1; opacity: 0.4; }
+  .sdfig :global(.sd-axis) { stroke: var(--tsoi-color-outline-variant); stroke-width: 1; }
+  /* every state the same weight: the figure is a distribution, not a ranking */
+  /* the three prose-named states and the hovered dot wear saffron — the
+     swarm stays ink so the highlight is the only warm thing in it */
+  .sdfig :global(.sd-dot) { fill: var(--tsoi-color-on-surface); opacity: 0.42; stroke: var(--tsoi-color-surface); stroke-width: 1.5; }
+  .sdfig :global(.sd-dot.named) { fill: var(--tsoi-color-primary); opacity: 0.95; }
+  .sdfig :global(.sd-dot.on) { fill: var(--tsoi-color-primary); opacity: 1; }
+  /* All India: one line straight through everybody */
+  .sdfig :global(.sd-ai) { stroke: var(--tsoi-color-chart-1); stroke-width: 2; }
+  .sdfig :global(.sd-ailab) { font-family: var(--tsoi-font-mono); font-size: 11px; font-weight: 700; font-variant-numeric: tabular-nums;
+    fill: var(--tsoi-color-chart-1-text, var(--tsoi-color-chart-1)); }
+  .sdfig :global(.sd-leader) { stroke: var(--tsoi-color-outline-variant); stroke-width: 1; }
+  .sdfig :global(.sd-name) { font-family: var(--tsoi-font-mono); font-size: 10px; fill: var(--tsoi-color-primary-text);
+    paint-order: stroke fill; stroke: var(--tsoi-color-surface); stroke-width: 3px; stroke-linejoin: round; }
+  .sdfig :global(.sd-cap) { margin: 8px 0 4px !important; font-size: calc(14.5px * var(--tsoi-reading-scale, 1)) !important; line-height: 1.55 !important;
+    color: var(--tsoi-color-on-surface-variant); min-height: 3em; }
+  .sdfig :global(.sd-hot) { color: var(--tsoi-color-primary-text); font-weight: 700; }
+
+  /* ---- Part III: the staircase ---- */
+  .rofig :global(.ro-svg) { width: 100%; display: block; }
+  .rofig :global(.ro-cpi) { fill: none; stroke: var(--tsoi-color-chart-1); stroke-width: 1.6; opacity: 0.9; }
+  .rofig :global(.ro-repo) { fill: none; stroke: var(--tsoi-color-on-surface); stroke-width: 2.4; stroke-linejoin: round; }
+  /* the mandate as three rules: the wash was invisible, and it never drew the
+     4 percent the whole section is about */
+  .rofig :global(.ro-target) { stroke: var(--tsoi-color-on-surface); stroke-width: 1; opacity: 0.4; }
+  .rofig :global(.ro-tol) { stroke: var(--tsoi-color-outline-variant); stroke-width: 1; stroke-dasharray: 5 4; }
+  .rofig :global(.ro-bandlab) { font-family: var(--tsoi-font-mono); font-size: 10px; fill: var(--tsoi-color-on-surface-variant); opacity: 0.9; }
+  .rofig :global(.ro-lab) { font-family: var(--tsoi-font-mono); font-size: 11.5px; font-weight: 700; font-variant-numeric: tabular-nums; fill: var(--tsoi-color-on-surface-variant); }
+  .rofig :global(.ro-lab2) { font-weight: 400; font-size: 10px; }
+  .rofig :global(.ro-lab-repo) { fill: var(--tsoi-color-on-surface); }
+  .rofig :global(.ro-lab-cpi) { fill: var(--tsoi-color-chart-1-text, var(--tsoi-color-chart-1)); }
+
+  /* ---- Part III: the close — the opening bookend again, with company ---- */
+  /* Same drawing grammar as the opening (.hlfig): page-surface drawing, the
+     same jagged 148-month line, same slow stroke draw; the teal companion
+     strokes in over its real months as the draw finishes. Tap replays.
+     The old strands-merge styles left with initMerge (2026-08-01). */
+  .scfig { margin: calc(var(--tsoi-spacing-unit) * 4) 0 calc(var(--tsoi-spacing-unit) * 2); }
+  .scfig :global(.sc-svg) { width: 100%; display: block; }
+  .scfig :global(.sc-line) { fill: none; stroke-linecap: round; stroke-linejoin: round; }
+  /* the haze: what the line is made of. Ink, hair-width, well under the
+     saffron line — texture, not characters (initCloseLayers only) */
+  .scfig :global(.sc-strand) { fill: none; stroke: var(--tsoi-color-on-surface-variant); stroke-width: 0.9; opacity: 0.26; stroke-linejoin: round; }
+  /* the unfold (initCloseUnfold): the funnel hangs out of the line's dot,
+     each strip in the level hue Part II taught, revealed on a stagger the
+     widget sets per strip via transition-delay */
+  .scfig :global(.sc-strip) { opacity: 0; transform: translateY(-9px); transition: opacity 0.55s ease, transform 0.55s ease; }
+  .scfig :global(.sc-fold) { fill: none; stroke: var(--tsoi-color-outline-variant); stroke-width: 1; opacity: 0; transition: opacity 0.55s ease; }
+  .scfig :global(.sc-svg.done .sc-strip) { opacity: 1; transform: translateY(0); }
+  .scfig :global(.sc-svg.done .sc-fold) { opacity: 0.7; }
+  .scfig :global(.sc-cell) { stroke: var(--tsoi-color-surface); stroke-width: 0.4; opacity: 0.85; }
+  .scfig :global(.sc-cell-division) { fill: var(--lvl-div); }
+  .scfig :global(.sc-cell-group) { fill: var(--lvl-group); }
+  .scfig :global(.sc-cell-class) { fill: var(--lvl-class); }
+  .scfig :global(.sc-cell-subclass) { fill: var(--lvl-sub); }
+  .scfig :global(.sc-cell-item) { fill: var(--lvl-item); }
+  .scfig :global(.sc-count) { font-family: var(--tsoi-font-mono); font-size: 9.5px; letter-spacing: 0.06em; text-transform: uppercase; fill: var(--tsoi-color-on-surface-variant); }
+  .scfig :global(.sc-line-head) { stroke: var(--tsoi-color-chart-1); stroke-width: 2.2; }
+  /* the companion spans only its real months at the tail of a 12-year axis, so
+     it earns a little extra weight to read as a line rather than a tick */
+  .scfig :global(.sc-line-you) { stroke: var(--tsoi-color-chart-2); stroke-width: 2.6; }
+  .scfig :global(.sc-dot) { opacity: 0; transition: opacity 0.9s ease; }
+  .scfig :global(.sc-dot-head) { fill: var(--tsoi-color-chart-1); }
+  .scfig :global(.sc-dot-you) { fill: var(--tsoi-color-chart-2); }
+  .scfig :global(.st-num) { font-family: var(--tsoi-font-mono); font-size: 17px; font-weight: 700; font-variant-numeric: tabular-nums;
+    opacity: 0; transition: opacity 0.9s ease; }
+  .scfig :global(.sc-num-head) { fill: var(--tsoi-color-chart-1-text, var(--tsoi-color-chart-1)); }
+  .scfig :global(.sc-num-you) { fill: var(--tsoi-color-chart-2-text, var(--tsoi-color-chart-2)); }
+  .scfig :global(.st-sub) { font-family: var(--tsoi-font-mono); font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; fill: var(--tsoi-color-on-surface-variant);
+    opacity: 0; transition: opacity 0.9s ease 0.15s; }
+  .scfig :global(.sc-tick) { font-family: var(--tsoi-font-mono); font-size: 10px; fill: var(--tsoi-color-on-surface-variant);
+    opacity: 0; transition: opacity 0.9s ease 0.3s; }
+  .scfig :global(.sc-svg.done .st-num), .scfig :global(.sc-svg.done .st-sub),
+  .scfig :global(.sc-svg.done .sc-dot), .scfig :global(.sc-svg.done .sc-tick) { opacity: 1; }
+  .scfig figcaption { text-align: center; max-width: 52ch; margin-inline: auto; }
+
+  /* ---- the verification collapsible ---- */
+  .verifybox { margin: calc(var(--tsoi-spacing-unit) * 3) 0; border: 1px solid var(--tsoi-color-outline-variant); border-radius: var(--tsoi-radius-lg); background: var(--tsoi-color-surface-container-low); }
+  .verifybox summary { padding: 12px 18px; cursor: pointer; font: var(--tsoi-text-byline); font-size: 13px; letter-spacing: 0.05em; text-transform: uppercase; color: var(--tsoi-color-primary-text); }
+  .verifybox .vb-body { padding: 4px 18px 14px; }
+  .verifybox .vb-body p { font-size: 14.5px; line-height: 1.65; color: var(--tsoi-color-on-surface-variant); margin: 0 0 12px; }
+  .verifybox .vb-body p strong { color: var(--tsoi-color-on-surface); font-weight: 600; }
+
+
+  .refs { font: var(--tsoi-text-byline); font-size: 13.5px; color: var(--tsoi-color-on-surface-variant); line-height: 1.7; padding-left: 1.2em; }
+  .refs li { margin-bottom: 6px; }
+  .refs a { color: var(--tsoi-color-primary-text); }
+</style>

@@ -1,0 +1,736 @@
+---
+// The Rupee Time Machine — the second explore product: a calculator over one
+// continuous monthly price line, August 1969 to the latest MoSPI print.
+//
+// The dataset is read twice, the same way Inflation Peaks reads its terrain.
+// The build reads it off disk for everything that must be in the served
+// markup — the as-of month, the year and month options, the sources
+// disclosure, and the default answer, so a reader with no JavaScript still
+// gets a sentence rather than an empty frame — and the browser fetches the
+// content-hashed copy for the 683 index values the controls need.
+//
+// The arithmetic and every user-facing sentence live in lib/rtm.ts, which is
+// DOM-free and unit-tested in tests/rtm/. This file lays them out.
+import { readFileSync } from 'node:fs';
+import StoryPage from '../../../layouts/StoryPage.astro';
+import ShareMenu from '../../../components/dashboard/ShareMenu.astro';
+import { dataUrl } from '../../../lib/data-url';
+import {
+  DEFAULT_AMOUNT, DEFAULT_FROM, MONTH_NAMES, SAME_MONTH_LINE,
+  answer, chartKicker, clampMonth, inverseHtml, primaryHtml, type RtmData,
+} from '../../../lib/rtm';
+
+const LOGICAL = '/data/economy/rupee-time-machine.json';
+const data: RtmData = JSON.parse(readFileSync(`public${LOGICAL}`, 'utf8'));
+
+// The state the page is SERVED in, which is also the state the deep link falls
+// back to field by field.
+const initial = {
+  amount: DEFAULT_AMOUNT,
+  from: clampMonth(DEFAULT_FROM, data),
+  to: data.asOf,
+};
+const a0 = answer(data, initial);
+
+const startYear = +data.start.slice(0, 4);
+const asOfYear = +data.asOf.slice(0, 4);
+const years = Array.from({ length: asOfYear - startYear + 1 }, (_, i) => startYear + i);
+const startMonth = +data.start.slice(5);
+const asOfMonth = +data.asOf.slice(5);
+
+/** Months that a boundary year cannot reach: the series starts in August 1969
+ *  and ends in the as-of month, so those two years carry fewer than twelve. */
+const monthDisabled = (year: number, month: number) =>
+  (year === startYear && month < startMonth) || (year === asOfYear && month > asOfMonth);
+
+const ends = [
+  { key: 'from', label: 'From', ym: initial.from },
+  { key: 'to', label: 'To', ym: initial.to },
+] as const;
+
+/** Decade doors into the year pages (/economy/explore/rupee-time-machine/1990
+ *  and its siblings), which link on to every other year from there. */
+const DECADES = [1970, 1980, 1990, 2000, 2010, 2020];
+---
+
+<StoryPage
+  title="Rupee Time Machine — Time Series of India"
+  description="What is ₹100 from 1990 worth today? An inflation calculator for India on one continuous monthly price line from August 1969, built from official Labour Bureau and MoSPI indices."
+  og_image="/og/explore/rupee-time-machine.png"
+>
+  <!-- folio, not a back button: states where the machine lives, matching the
+       board and the reads. -->
+  <nav class="folio" aria-label="Section">
+    <a href="/economy">Economy</a><span class="dot" aria-hidden="true">&middot;</span><a href="/economy/explore">Explore</a>
+  </nav>
+
+  <header class="rtm-head">
+    <h1>Rupee Time Machine</h1>
+    <p class="deck">
+      Pick an amount and two months. The machine runs them along one continuous price
+      line from August 1969.
+    </p>
+  </header>
+
+  <!-- ── the machine ──────────────────────────────────────────────────── -->
+  <section class="machine" aria-label="Controls">
+    <div class="controls">
+      <div class="field">
+        <label class="lbl" for="rtm-amount">Amount</label>
+        <span class="money">
+          <span class="rupee" aria-hidden="true">&#8377;</span>
+          <input
+            id="rtm-amount"
+            type="text"
+            inputmode="numeric"
+            autocomplete="off"
+            spellcheck="false"
+            value={String(initial.amount)}
+          />
+        </span>
+      </div>
+
+      {ends.map((end) => (
+        <div class="field">
+          <span class="lbl" id={`rtm-${end.key}-lbl`}>{end.label}</span>
+          <span class="pair">
+            <select id={`rtm-${end.key}-month`} aria-label={`${end.label} month`}>
+              {MONTH_NAMES.map((name, i) => (
+                <option
+                  value={String(i + 1).padStart(2, '0')}
+                  selected={i + 1 === +end.ym.slice(5)}
+                  disabled={monthDisabled(+end.ym.slice(0, 4), i + 1)}
+                >{name}</option>
+              ))}
+            </select>
+            <select id={`rtm-${end.key}-year`} aria-label={`${end.label} year`}>
+              {years.map((y) => (
+                <option value={String(y)} selected={y === +end.ym.slice(0, 4)}>{y}</option>
+              ))}
+            </select>
+          </span>
+        </div>
+      ))}
+    </div>
+
+    <p class="asof">Prices through {data.asOfLabel} &middot; MoSPI and Labour Bureau indices, All India.</p>
+  </section>
+
+  <!-- ── the instrument: the answer and its line, read together ───────────
+       Two columns from 1024px up, so a reader on a 13-inch laptop has the
+       controls, the sentence and the whole price line in one viewport. Below
+       that the chart stacks under the answer. -->
+  <div class="instrument">
+    <section class="answer" id="rtm-answer" aria-live="polite">
+      <p class="primary" id="rtm-primary" set:html={primaryHtml(a0)}></p>
+      <p class="line" id="rtm-mult">{a0.multiplierLine}</p>
+      <p class="line" id="rtm-inv" set:html={inverseHtml(a0)}></p>
+      <p class="line degenerate" id="rtm-same" hidden>{SAME_MONTH_LINE}</p>
+    </section>
+
+    <!-- The cost line, as a panel in the board's grammar: kicker on the left
+         of the bar, the one control on the right. -->
+    <section class="panel" aria-label="Chart">
+      <div class="panel-bar">
+        <span class="dot" aria-hidden="true"></span>
+        <span class="panel-title" id="rtm-kicker">{chartKicker(initial.amount, a0.fromLabel)}</span>
+        <div class="panel-right">
+          {/* The same popover the boards carry (components/dashboard/ShareMenu.astro);
+              what the three items do is this page's own, below.
+
+              Share image / Download image are held back for this release —
+              the same image/share-card deferral as the board panels
+              (BoardView.astro) and Inflation Peaks' own share, which is
+              plain text only. composeShareCard/downloadShareCard and the
+              drawing() wiring below are untouched; the script null-guards
+              shareImgEl/downloadEl so their absence here is safe. Un-comment
+              both lines to restore. */}
+          <ShareMenu
+            menuId="rtm-share-menu"
+            buttonId="rtm-share"
+            items={[
+              { id: 'rtm-copy', label: 'Copy link' },
+              // { id: 'rtm-share-img', label: 'Share image', hidden: true },
+              // { id: 'rtm-download', label: 'Download image' },
+            ]}
+          />
+        </div>
+      </div>
+      <div class="chart" id="rtm-chart" data-src={dataUrl(LOGICAL)}></div>
+    </section>
+  </div>
+
+  <!-- ── how it is built ──────────────────────────────────────────────── -->
+  <details class="fold">
+    <summary>How the machine is built</summary>
+    <div class="fold-body">
+      <p>India has no single price index running the whole distance, so the machine chains
+        three official segments:</p>
+      <table class="segments">
+        <thead>
+          <tr><th>Months</th><th>Series</th><th>Source</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Aug 1969 &ndash; Dec 2013</td><td>CPI, Industrial Workers</td><td>Labour Bureau</td></tr>
+          <tr><td>Jan 2014 &ndash; Dec 2025</td><td>CPI Combined, 2012=100</td><td>MoSPI</td></tr>
+          <tr><td>Jan 2026 &ndash; {data.asOfLabel}</td><td>CPI Combined, 2024=100</td><td>MoSPI</td></tr>
+        </tbody>
+      </table>
+      <p>Every monthly step is a ratio of two published levels of the same series. CPI-IW's
+        own base changes use the Labour Bureau's linking factors (4.93 and 4.63), the
+        January 2014 handover steps inside CPI Combined's own published levels, and the
+        January 2026 recast steps inside the 2024 base.</p>
+      <p>CPI-IW follows industrial-worker households and CPI Combined follows all
+        households, which is what the word &ldquo;about&rdquo; is for. April and May 2020
+        enter through index levels MoSPI published from fewer lockdown markets.</p>
+      <p class="sources">
+        Sources:
+        <a href="https://labourbureau.gov.in/cpi-iw" rel="noopener">Labour Bureau, CPI-IW</a>
+        <span class="dot" aria-hidden="true">&middot;</span>
+        <a href="https://www.mospi.gov.in/cpi" rel="noopener">MoSPI, Consumer Price Index</a>
+      </p>
+    </div>
+  </details>
+
+  <!-- The decade doors into the year pages. One line rather than a mesh: the
+       machine is the product, and the fifty-six year pages link to each other
+       from there. -->
+  <p class="by-year">
+    <span class="by-year-label">By year:</span>
+    {/* One line, no line breaks between the links: a newline inside the loop
+        would put a text space on one side of every separator dot and not the
+        other. */}
+    {DECADES.map((y, i) => (<>{i > 0 ? <span class="dot" aria-hidden="true">&middot;</span> : null}<a href={`/economy/explore/rupee-time-machine/${y}`}>{y}</a></>))}
+  </p>
+
+  {/* Navigation, not a call to action — the same two-format folio the reads
+      and Inflation Peaks close on. No convention existed on this page
+      before; this is the minimal one, matching the read/play grammar rather
+      than inventing a new component. */}
+  <nav class="folio folio-end" aria-label="More on inflation">
+    <a href="/economy/read/price-of-nearly-everything">Read: Inflation: The Price of Nearly Everything</a><span class="dot" aria-hidden="true">&middot;</span><a href="/economy/play/inflation-peaks/">Game: Inflation Peaks</a>
+  </nav>
+</StoryPage>
+
+<style>
+  /* folio — matches inflation.astro so all three formats state where they live
+     in the same voice */
+  .folio { font: var(--tsoi-text-byline); font-weight: 500; font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; padding: 4px 0; margin-bottom: calc(var(--tsoi-spacing-unit) * 2); }
+  .folio a { color: var(--tsoi-color-primary-text); text-decoration: none; }
+  .folio a:hover { text-decoration: underline; }
+  .folio .dot { color: var(--tsoi-color-on-surface-variant); padding-inline: 5px; }
+  /* Same register as the opening folio, at the other end of the page: this
+     is navigation, not a call to action (matches the reads' closing folio). */
+  .folio-end { margin-top: calc(var(--tsoi-spacing-unit) * 3); padding-top: calc(var(--tsoi-spacing-unit) * 2); border-top: 1px solid var(--tsoi-color-outline-variant); }
+
+  .rtm-head { max-width: 70ch; }
+  .rtm-head h1 { margin: 0; font: var(--tsoi-text-headline-lg); letter-spacing: var(--tsoi-text-headline-lg-tracking); }
+  .deck { margin: var(--tsoi-spacing-unit) 0 0; font: var(--tsoi-text-deck); color: var(--tsoi-color-on-surface-variant); }
+
+  /* ── the machine: one card, thin saffron top rule as the format motif ── */
+  .machine {
+    margin-top: calc(var(--tsoi-spacing-unit) * 3);
+    border: var(--tsoi-rule-column) solid var(--tsoi-color-outline);
+    border-top: 2px solid var(--tsoi-color-primary);
+    background: var(--tsoi-color-surface-container-low);
+    padding: calc(var(--tsoi-spacing-unit) * 2.5) calc(var(--tsoi-spacing-unit) * 3);
+  }
+  .controls {
+    display: flex; flex-wrap: wrap; align-items: flex-end;
+    gap: calc(var(--tsoi-spacing-unit) * 2) calc(var(--tsoi-spacing-unit) * 3);
+  }
+  .field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+  .lbl {
+    font: var(--tsoi-text-label-caps); letter-spacing: var(--tsoi-text-label-caps-tracking);
+    text-transform: uppercase; color: var(--tsoi-color-on-surface-variant);
+  }
+  .money {
+    display: inline-flex; align-items: baseline; gap: 4px;
+    border: 1px solid var(--tsoi-color-outline); border-radius: 2px;
+    background: var(--tsoi-color-background);
+    padding: 4px 8px;
+  }
+  .rupee { font: var(--tsoi-text-metric-md); color: var(--tsoi-color-on-surface-variant); }
+  .money input {
+    font: var(--tsoi-text-metric-md); color: var(--tsoi-color-on-surface);
+    background: transparent; border: 0; padding: 0; width: 10ch; min-width: 0;
+  }
+  .money input:focus { outline: none; }
+  .money:focus-within { border-color: var(--tsoi-color-primary); }
+
+  .pair { display: inline-flex; gap: var(--tsoi-spacing-unit); }
+  .pair select {
+    font: var(--tsoi-text-metric-sm); letter-spacing: var(--tsoi-text-metric-sm-tracking);
+    color: var(--tsoi-color-on-surface); background: var(--tsoi-color-background);
+    border: 1px solid var(--tsoi-color-outline); border-radius: 2px;
+    padding: 7px 6px; min-width: 0;
+  }
+
+  .asof {
+    margin: calc(var(--tsoi-spacing-unit) * 1.5) 0 0;
+    font: var(--tsoi-text-byline); font-size: 11px; letter-spacing: var(--tsoi-text-byline-tracking);
+    color: var(--tsoi-color-on-surface-variant);
+  }
+
+  /* ── the instrument: answer beside line ───────────────────────────────
+     The whole point of R2: on anything laptop-sized the sentence and the line
+     it describes are one region, seen at once. minmax(0, …) on both tracks so
+     the chart panel's bar cannot widen the grid past the container. */
+  .instrument {
+    margin-top: calc(var(--tsoi-spacing-unit) * 3);
+    display: grid; gap: calc(var(--tsoi-spacing-unit) * 3);
+    align-items: start;
+  }
+  @media (min-width: 1024px) {
+    .instrument { grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); }
+  }
+
+  /* ── the answer: prose, largest first ─────────────────────────────────── */
+  .answer { max-width: 62ch; }
+  .primary {
+    margin: 0;
+    font: var(--tsoi-text-deck); font-size: 20px; line-height: 1.5;
+    color: var(--tsoi-color-on-surface);
+  }
+  .primary :global(.rtm-fig) {
+    font: var(--tsoi-text-headline-lg); letter-spacing: var(--tsoi-text-headline-lg-tracking);
+    font-size: 28px; white-space: nowrap;
+  }
+  .primary :global(.rtm-result) { color: var(--tsoi-color-primary-text); }
+  .line {
+    margin: calc(var(--tsoi-spacing-unit) * 1.5) 0 0;
+    font: var(--tsoi-text-body); color: var(--tsoi-color-on-surface-variant);
+  }
+  /* The one figure the backwards run answers with, in the second chart colour:
+     it is the counterpart of the saffron figure above it, and reading as plain
+     body text left the sentence with nothing to land on. */
+  .line :global(.rtm-inv-fig) { color: var(--tsoi-color-chart-2-text); }
+  .degenerate { color: var(--tsoi-color-on-surface); }
+  @media (min-width: 768px) {
+    .primary { font-size: 22px; }
+    .primary :global(.rtm-fig) { font-size: 30px; }
+  }
+
+  /* ── the cost line, as a panel ────────────────────────────────────────
+     Same bar the board's panels wear: a hairline frame, a chart-1 dot, a
+     label-caps title on the left and the controls pushed right. Background
+     matches BoardView.astro's own panel correction: light takes the read's
+     widget-panel tone (--surface-container-low) instead of the yellower
+     --surface; dark is unchanged. */
+  .panel {
+    border: var(--tsoi-rule-column) solid var(--tsoi-color-outline);
+    background: var(--tsoi-color-surface-container-low);
+    display: flex; flex-direction: column; min-width: 0;
+  }
+  :global(html[data-theme='dark']) .panel {
+    background: var(--tsoi-color-surface);
+  }
+  .panel-bar {
+    display: flex; align-items: center; gap: var(--tsoi-spacing-unit);
+    padding: var(--tsoi-spacing-unit);
+    border-bottom: var(--tsoi-rule-column) solid var(--tsoi-color-outline);
+  }
+  /* Scoped under the bar: the folio and the sources line carry a textual
+     `.dot` of their own, and an unscoped rule painted those too. */
+  .panel-bar .dot {
+    width: 6px; height: 6px; border-radius: var(--tsoi-radius-full);
+    background: var(--tsoi-color-chart-1); flex-shrink: 0;
+  }
+  .panel-title {
+    font: var(--tsoi-text-label-caps); letter-spacing: 0.04em;
+    text-transform: uppercase; color: var(--tsoi-color-on-surface); min-width: 0;
+  }
+  .panel-right { margin-left: auto; display: flex; align-items: center; gap: var(--tsoi-spacing-unit); }
+  /* 284px is measured, not chosen: it is the tallest the line can be and still
+     land the panel's bottom rule clear of an 820px viewport, which is what a
+     13-inch laptop gives the instrument once the masthead, the header and the
+     controls card have taken theirs. */
+  .chart { height: 284px; width: 100%; flex: 1 1 auto; }
+  @media (max-width: 1023px) { .chart { height: 240px; } }
+  @media (max-width: 600px) { .chart { height: 200px; } }
+
+  /* The share popover's own styles moved with its markup into
+     components/dashboard/ShareMenu.astro, which the boards render too. */
+
+  /* ── the fold ─────────────────────────────────────────────────────────── */
+  .fold {
+    margin-top: calc(var(--tsoi-spacing-unit) * 4);
+    border-top: var(--tsoi-rule-column) solid var(--tsoi-color-outline);
+    padding-top: calc(var(--tsoi-spacing-unit) * 2);
+  }
+  .fold summary {
+    font: var(--tsoi-text-label-caps); letter-spacing: var(--tsoi-text-label-caps-tracking);
+    text-transform: uppercase; color: var(--tsoi-color-primary-text); cursor: pointer;
+  }
+  .fold-body { max-width: 70ch; }
+  .segments {
+    margin: calc(var(--tsoi-spacing-unit) * 2) 0 0;
+    border-collapse: collapse;
+    font: var(--tsoi-text-metric-sm); letter-spacing: var(--tsoi-text-metric-sm-tracking);
+  }
+  .segments th {
+    font: var(--tsoi-text-label-caps); letter-spacing: var(--tsoi-text-label-caps-tracking);
+    text-transform: uppercase; color: var(--tsoi-color-on-surface-variant);
+    text-align: left; font-weight: 500;
+  }
+  .segments th, .segments td {
+    padding: 6px 0; padding-right: calc(var(--tsoi-spacing-unit) * 3);
+    border-bottom: var(--tsoi-rule-column) solid var(--tsoi-color-outline);
+    color: var(--tsoi-color-on-surface-variant); white-space: nowrap;
+  }
+  .segments td:first-child { color: var(--tsoi-color-on-surface); }
+  .fold-body p { margin: calc(var(--tsoi-spacing-unit) * 2) 0 0; font: var(--tsoi-text-body); color: var(--tsoi-color-on-surface-variant); }
+  .fold-body .sources {
+    font: var(--tsoi-text-metric-sm); line-height: 1.6;
+    letter-spacing: var(--tsoi-text-metric-sm-tracking);
+  }
+  .fold-body .sources a { color: var(--tsoi-color-primary-text); }
+  .fold-body .sources .dot { padding-inline: 4px; }
+
+  /* ── the decade doors ─────────────────────────────────────────────────── */
+  .by-year {
+    margin: calc(var(--tsoi-spacing-unit) * 3) 0 0;
+    font: var(--tsoi-text-metric-sm); letter-spacing: var(--tsoi-text-metric-sm-tracking);
+    color: var(--tsoi-color-on-surface-variant);
+  }
+  .by-year-label {
+    font: var(--tsoi-text-label-caps); letter-spacing: var(--tsoi-text-label-caps-tracking);
+    text-transform: uppercase; color: var(--tsoi-color-on-surface-variant);
+    margin-right: var(--tsoi-spacing-unit);
+  }
+  .by-year a { color: var(--tsoi-color-primary-text); text-decoration: none; }
+  .by-year a:hover { text-decoration: underline; }
+  .by-year .dot { padding-inline: 6px; }
+
+  @media (max-width: 600px) {
+    .machine { padding: calc(var(--tsoi-spacing-unit) * 2); }
+    .controls { gap: calc(var(--tsoi-spacing-unit) * 2); }
+    .money input { width: 8ch; }
+  }
+</style>
+
+<script>
+  import * as echarts from 'echarts';
+  import { monthLabel, readTokens } from '../../../lib/dashboards/runtime';
+  import {
+    MAX_AMOUNT, SAME_MONTH_LINE, answer, chartKicker, clampMonth, costSeries, fmtINR,
+    fmtTick, inverseHtml, parseParams, primaryHtml, toQuery,
+    type RtmData, type RtmParams,
+  } from '../../../lib/rtm';
+  import { composeShareCard, downloadShareCard, type ShareCardInput } from '../../../lib/rtm-card';
+  import { wireShareMenu } from '../../../lib/share-menu';
+
+  /* Can this browser put a FILE into the system share sheet? Asked once, with a
+     one-byte PNG, because navigator.canShare answers about the payload and not
+     about the API: Chrome on a desktop has navigator.share and still says no to
+     files. A no means the 'Share image' item is never built, rather than built
+     and then failing under the reader's finger. */
+  const CAN_SHARE_FILES = (() => {
+    try {
+      const probe = new File([new Uint8Array([0])], 'probe.png', { type: 'image/png' });
+      return !!navigator.canShare?.({ files: [probe] });
+    } catch {
+      return false;
+    }
+  })();
+
+  const chartEl = document.getElementById('rtm-chart') as HTMLElement | null;
+
+  if (chartEl) {
+    fetch(chartEl.dataset.src!)
+      .then((r) => {
+        if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
+        return r.json();
+      })
+      .then((data: RtmData) => boot(data, chartEl))
+      .catch((err) => {
+        // The served markup already carries a real answer for the default
+        // view, so a failed fetch costs the controls rather than the page.
+        console.error('[rtm] the price line did not load', err);
+        chartEl.textContent = 'The price line did not load. Reloading usually fixes it.';
+        chartEl.setAttribute('style', 'display:grid;place-items:center;font:var(--tsoi-text-body);color:var(--tsoi-color-on-surface-variant);');
+      });
+  }
+
+  function boot(data: RtmData, host: HTMLElement) {
+    const el = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
+    const amountEl = el<HTMLInputElement>('rtm-amount');
+    const shareEl = el<HTMLButtonElement>('rtm-share');
+    const copyEl = el<HTMLButtonElement>('rtm-copy');
+    // Plain document.getElementById here, not the `el<T>` cast above: these
+    // two are commented out of the ShareMenu markup for this release (see
+    // the note there), so both are genuinely null until that ships again.
+    const shareImgEl = document.getElementById('rtm-share-img') as HTMLButtonElement | null;
+    const downloadEl = document.getElementById('rtm-download') as HTMLButtonElement | null;
+    const primaryEl = el('rtm-primary');
+    const multEl = el('rtm-mult');
+    const invEl = el('rtm-inv');
+    const sameEl = el('rtm-same');
+    const kickerEl = el('rtm-kicker');
+    const sel = (end: 'from' | 'to') => ({
+      month: el<HTMLSelectElement>(`rtm-${end}-month`),
+      year: el<HTMLSelectElement>(`rtm-${end}-year`),
+    });
+
+    const startYear = +data.start.slice(0, 4);
+    const asOfYear = +data.asOf.slice(0, 4);
+    const startMonth = +data.start.slice(5);
+    const asOfMonth = +data.asOf.slice(5);
+
+    const state: RtmParams = parseParams(location.search, data);
+
+    let chart: echarts.ECharts | null = null;
+
+    /* The cost line, as an ECharts option. One builder for both surfaces: the
+       panel on the page and the offscreen instance the share card rasterizes,
+       so a reader's download is the chart they were looking at rather than a
+       second chart that resembles it. */
+    function costOption(t: ReturnType<typeof readTokens>, big: boolean) {
+      // From the older month through the newer one, whichever way the reader
+      // picked them: the line ends on the sentence's own figure.
+      const { months, values } = costSeries(data, state.amount, state.from, state.to);
+      /* Saffron AS TEXT, not saffron as a fill: the end label is a number a
+         reader reads, so it takes the same token the sentence's figure does. */
+      const saffronText = getComputedStyle(document.documentElement)
+        .getPropertyValue('--tsoi-color-chart-1-text').trim() || t.c1;
+      return {
+        backgroundColor: 'transparent',
+        textStyle: { fontFamily: t.mono, color: t.subtle },
+        animation: !big,
+        grid: { left: 8, right: big ? 96 : 76, top: 18, bottom: 8, containLabel: true },
+        tooltip: {
+          trigger: 'axis',
+          confine: true,
+          backgroundColor: t.surfaceDim,
+          borderColor: t.line,
+          textStyle: { color: t.text, fontFamily: t.mono, fontSize: 11 },
+          formatter: (ps: { axisValue: string; data: number }[]) =>
+            `${monthLabel(ps[0].axisValue)} · ₹${fmtINR(ps[0].data)}`,
+        },
+        xAxis: {
+          type: 'category' as const,
+          data: months,
+          axisLabel: { color: t.subtle, hideOverlap: true, fontSize: big ? 12 : 11,
+            formatter: (m: string) => monthLabel(m) },
+          axisLine: { lineStyle: { color: t.line } },
+          axisTick: { show: false },
+        },
+        yAxis: {
+          type: 'value' as const,
+          // No axis name: every tick already carries the ₹, and a name on top
+          // of a zero-based money axis just sits on the first gridline.
+          splitLine: { lineStyle: { color: t.line, type: 'dashed' as const, opacity: 0.5 } },
+          axisLabel: {
+            color: t.subtle,
+            fontSize: big ? 12 : 11,
+            /* Crore-scale figures compact ("₹120 Cr"): a fourteen-character
+               tick clips against the card's frame. See fmtTick. */
+            formatter: fmtTick,
+          },
+        },
+        series: [{
+          type: 'line' as const,
+          smooth: true,
+          showSymbol: false,
+          data: values,
+          lineStyle: { color: t.c1, width: big ? 2.5 : 2 },
+          itemStyle: { color: t.c1 },
+          // The endpoint IS the primary sentence's saffron figure, drawn in
+          // the same colour: the number the line climbs to and the number the
+          // sentence prints are one number, computed once.
+          endLabel: {
+            show: true,
+            color: saffronText,
+            fontFamily: t.mono,
+            fontSize: big ? 13 : 11,
+            formatter: () => fmtTick(values[values.length - 1]),
+          },
+          markPoint: {
+            silent: true,
+            symbol: 'circle',
+            symbolSize: big ? 8 : 6,
+            itemStyle: { color: t.c1 },
+            label: { show: false },
+            data: [{ coord: [months[months.length - 1], values[values.length - 1]] }],
+          },
+        }],
+      };
+    }
+
+    function renderChart() {
+      if (!chart) chart = echarts.init(host, undefined, { renderer: 'canvas' });
+      chart.setOption(costOption(readTokens(), false), true);
+    }
+
+    /* The URL is the machine's only persistence, and it is rewritten rather
+       than pushed: a reader dragging a year picker should not have to press
+       Back forty times to leave the page. */
+    let urlTimer = 0;
+    function syncUrl() {
+      clearTimeout(urlTimer);
+      urlTimer = window.setTimeout(() => {
+        history.replaceState(null, '', toQuery(state));
+      }, 300);
+    }
+
+    /** Grey out the months a boundary year cannot reach, both ends. */
+    function syncMonthOptions() {
+      for (const end of ['from', 'to'] as const) {
+        const s = sel(end);
+        const year = +s.year.value;
+        for (const opt of Array.from(s.month.options)) {
+          const m = +opt.value;
+          opt.disabled = (year === startYear && m < startMonth) || (year === asOfYear && m > asOfMonth);
+        }
+      }
+    }
+
+    function syncControls() {
+      amountEl.value = state.amount.toLocaleString('en-IN');
+      for (const end of ['from', 'to'] as const) {
+        const s = sel(end);
+        s.year.value = state[end].slice(0, 4);
+        s.month.value = state[end].slice(5);
+      }
+      syncMonthOptions();
+    }
+
+    function render() {
+      const a = answer(data, state);
+      primaryEl.innerHTML = primaryHtml(a);
+      multEl.textContent = a.multiplierLine;
+      invEl.innerHTML = inverseHtml(a);
+      sameEl.textContent = SAME_MONTH_LINE;
+      for (const node of [primaryEl, multEl, invEl]) node.hidden = a.same;
+      sameEl.hidden = !a.same;
+      kickerEl.textContent = chartKicker(state.amount, a.fromLabel);
+      renderChart();
+      syncUrl();
+    }
+
+    // ── controls ──────────────────────────────────────────────────────────
+    // Every change recomputes on the spot; there is no submit button, because
+    // a calculator that waits for permission to answer is a form.
+    amountEl.addEventListener('input', () => {
+      const raw = amountEl.value.replace(/[,\s]/g, '');
+      if (!/^\d+$/.test(raw)) return; // mid-edit junk is left alone, not fought
+      const n = Number(raw);
+      if (n < 1 || n > MAX_AMOUNT) return;
+      state.amount = n;
+      render();
+    });
+    // Grouping arrives on blur rather than on every keystroke: rewriting the
+    // value under the caret while somebody is typing moves the caret.
+    amountEl.addEventListener('blur', () => {
+      amountEl.value = state.amount.toLocaleString('en-IN');
+    });
+    amountEl.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); amountEl.blur(); }
+    });
+
+    for (const end of ['from', 'to'] as const) {
+      const s = sel(end);
+      for (const control of [s.month, s.year]) {
+        control.addEventListener('change', () => {
+          // A year change can strand the month — December 2026 on a series
+          // that ends in June — so the pair is clamped and written back.
+          const wanted = `${s.year.value}-${s.month.value}`;
+          state[end] = clampMonth(wanted, data);
+          syncControls();
+          render();
+        });
+      }
+    }
+
+    // ── share ─────────────────────────────────────────────────────────────
+    // One button, three ways out: the link, the system sheet, the file. The
+    // sheet item exists only where the platform can actually take a file —
+    // and, for this release, only where the markup above still offers it.
+    if (shareImgEl) {
+      if (CAN_SHARE_FILES) shareImgEl.hidden = false;
+      else shareImgEl.remove();
+    }
+
+    /** The card's ingredients for the state on screen, drawn once per click. */
+    function cardInput(): ShareCardInput & { primary: string } {
+      const a = answer(data, state);
+      return {
+        headline: a.same ? SAME_MONTH_LINE : a.primary,
+        sub: a.same ? '' : a.multiplierLine,
+        footer: `MoSPI · Labour Bureau · through ${data.asOfLabel}`,
+        filename: `rupee-time-machine-${a.from}-${a.to}.png`,
+        chartOption: costOption(readTokens(), true),
+        primary: a.same ? SAME_MONTH_LINE : a.primary,
+      };
+    }
+
+    /* The deep link is SERIALIZED, never read off location.href: the URL is
+       rewritten on a 300ms debounce, so a reader who changes a month and
+       copies straight away would otherwise be handed the previous view. */
+    const deepLink = () => location.origin + location.pathname + toQuery(state);
+
+    // Open/close, Escape, outside-click: the same wiring every share popover on
+    // explore uses (lib/share-menu.ts), rather than a second copy of it here.
+    const shareMenu = wireShareMenu(shareEl.closest('.share') as HTMLElement);
+    const openMenu = (open: boolean) => shareMenu.open(open);
+
+    let copyTimer = 0;
+    copyEl.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(deepLink());
+        copyEl.textContent = 'Link copied';
+        clearTimeout(copyTimer);
+        copyTimer = window.setTimeout(() => { copyEl.textContent = 'Copy link'; }, 1500);
+      } catch (err) {
+        console.error('[rtm] the link could not be copied', err);
+      }
+    });
+
+    /** Run a menu item that has to draw the card, with its label held open. */
+    async function drawing(btn: HTMLButtonElement, run: (i: ReturnType<typeof cardInput>) => Promise<void>) {
+      const label = btn.textContent;
+      btn.disabled = true;
+      btn.textContent = 'Drawing…';
+      try {
+        await run(cardInput());
+      } catch (err) {
+        // A reader who dismisses the system sheet has not hit an error.
+        if ((err as { name?: string })?.name !== 'AbortError') {
+          console.error('[rtm] the share card could not be drawn', err);
+        }
+      } finally {
+        btn.textContent = label;
+        btn.disabled = false;
+        openMenu(false);
+      }
+    }
+
+    if (CAN_SHARE_FILES && shareImgEl) {
+      shareImgEl.addEventListener('click', () => drawing(shareImgEl, async (input) => {
+        const blob = await composeShareCard(input);
+        const file = new File([blob], input.filename, { type: 'image/png' });
+        await navigator.share({
+          files: [file],
+          title: 'Rupee Time Machine',
+          text: input.primary,
+          url: deepLink(),
+        });
+      }));
+    }
+
+    if (downloadEl) downloadEl.addEventListener('click', () => drawing(downloadEl, async (input) => {
+      await downloadShareCard(input);
+    }));
+
+    // ── boot ──────────────────────────────────────────────────────────────
+    syncControls();
+    render();
+
+    // The same theme/units observer the dashboards use: tokens change under a
+    // rendered chart, so the chart is rebuilt rather than recoloured.
+    new MutationObserver(renderChart)
+      .observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'data-units'] });
+    window.addEventListener('resize', () => chart?.resize());
+    document.fonts?.ready.then(renderChart);
+  }
+</script>

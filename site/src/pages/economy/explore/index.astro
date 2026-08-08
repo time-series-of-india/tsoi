@@ -17,33 +17,100 @@
 //
 // Meta here is freshness (the trust signal for a tool), not dispatch
 // provenance: that's what the reads shelf carries.
+import { readFileSync } from 'node:fs';
 import StoryPage from '../../../layouts/StoryPage.astro';
 import SectionHeader from '../../../components/editorial/SectionHeader.astro';
 import ViewToggle from '../../../components/editorial/ViewToggle.astro';
+import { lineMotif } from '../../../lib/lineMotif';
 
 const sectionDate = new Date()
   .toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })
   .toUpperCase();
 
-// One entry per explore product — a gateway card each.
-const PRODUCTS = [
+// Both Inflation products' cover-in-waiting: the one continuous CPI index
+// line the time machine runs on (public/data/economy/rupee-time-machine.json,
+// the same series described as "the headline back to 1969" — build-dashboard-
+// thumbs.mjs hasn't captured either page yet, so this stands in the way
+// Inflation Peaks' terrain stands in for its own screenshot-less card.
+const rtmSeries = (JSON.parse(
+  readFileSync('public/data/economy/rupee-time-machine.json', 'utf8'),
+).idx as number[]);
+// width is 8px narrower than the 240 viewBox, leaving a 4px margin either
+// side (translated in the markup below) so the last point — and the time
+// machine's solid "to" pin sitting on it — never clips against the card edge.
+const boardLine = lineMotif(rtmSeries, { samples: 140, width: 232, top: 12, bottom: 118 });
+// The time machine draws the same line, plus the two points a reader picks —
+// an earlier month (hollow) and the one it's compared against (solid), the
+// same hollow/solid pairing FormatMotif's game mark uses for guess vs actual.
+const rtmFrom = boardLine.coords[Math.round(boardLine.coords.length * 0.22)];
+const rtmTo = boardLine.coords[boardLine.coords.length - 1];
+
+// One THEME group per subject, holding one or more product cards. It was one
+// group per product until Aug 2026, when the Rupee Time Machine arrived and
+// Inflation became a subject with two instruments on it rather than a single
+// dashboard: the group header carries the subject and its cadence, and the
+// cards under it are the things a reader can open. Payments still has one.
+// Newest subject first (dispatch No. 2's Inflation ahead of dispatch No. 1's
+// Payments) — only the group order encodes recency; within Inflation the two
+// products sit in the order a reader meets them (the board, then the machine
+// built on the same series).
+//
+// `thumb` is optional: the covers are captured by
+// scripts/build-dashboard-thumbs.mjs and committed, so a product can be
+// published here before its thumbs have been generated. Until then `motif`
+// draws the product's own line instead of leaving the card bare — the card
+// drops the cover and runs full width only once neither exists. `go` is the
+// card's own verb: a dashboard is opened, a machine is opened, and neither
+// should borrow the other's line.
+const GROUPS = [
+  {
+    id: 'inflation',
+    label: 'Inflation',
+    cadence: 'Monthly · MoSPI releases',
+    products: [
+      {
+        href: '/economy/explore/inflation',
+        title: 'India Inflation',
+        deck: 'Every inflation desk on one page: the headline back to 1969, the divisions that moved it, the whole basket it is built from, and where in the country it lands hardest.',
+        go: 'Open the dashboard →',
+        thumb: '/thumbs/explore/inflation.png',
+        thumbDark: '/thumbs/explore/inflation-dark.png',
+        motif: 'board' as const,
+      },
+      {
+        href: '/economy/explore/rupee-time-machine',
+        title: 'Rupee Time Machine',
+        deck: 'Any amount, any two months since August 1969: what it spent like then against what it spends like now, on one continuous price line.',
+        go: 'Open the machine →',
+        thumb: '/thumbs/explore/rupee-time-machine.png',
+        thumbDark: '/thumbs/explore/rupee-time-machine-dark.png',
+        motif: 'rtm' as const,
+      },
+    ],
+  },
   {
     id: 'payments',
     label: 'Payments',
     cadence: 'Monthly · RBI / NPCI releases',
-    href: '/economy/explore/payments',
-    title: 'India Payments',
-    deck: 'Every payments desk on one page: the headline totals first, then one desk per question, from bank performance to what India buys on UPI.',
-    thumb: '/thumbs/explore/payments.png',
-    thumbDark: '/thumbs/explore/payments-dark.png',
+    products: [
+      {
+        href: '/economy/explore/payments',
+        title: 'India Payments',
+        deck: 'Every payments desk on one page: the headline totals first, then one desk per question, from bank performance to what India buys on UPI.',
+        go: 'Open the dashboard →',
+        thumb: '/thumbs/explore/payments.png',
+        thumbDark: '/thumbs/explore/payments-dark.png',
+        motif: null,
+      },
+    ],
   },
 ];
 ---
 
 <StoryPage
   title="Explore — Time Series of India"
-  description="Interactive dashboards of India's economy — payment systems — built from official RBI and NPCI data."
-  noindex
+  description="Interactive dashboards of India's economy — payments and prices — built from official RBI, NPCI, MoSPI and Labour Bureau data."
+  og_image="/og/explore/index.png"
 >
   <SectionHeader label="Economy · Explore" date={sectionDate}>
     <ViewToggle active="explore" slot="actions" />
@@ -56,27 +123,49 @@ const PRODUCTS = [
     Interactive views of India's economy.
   </p>
 
-  {PRODUCTS.map((p) => (
-    <section class="theme-group" id={p.id}>
+  {GROUPS.map((g) => (
+    <section class="theme-group" id={g.id}>
       <h2 class="theme-head">
-        <span class="theme-label">{p.label}</span>
+        <span class="theme-label">{g.label}</span>
         <span class="hair" aria-hidden="true"></span>
-        <span class="cadence">{p.cadence}</span>
+        <span class="cadence">{g.cadence}</span>
       </h2>
 
-      <!-- the dashboard card — the only thing on the page, so it needs no
-           "Start here" telling the reader where to begin -->
-      <a class="gateway" href={p.href}>
-        <span class="gw-cover">
-          <img class="t-light" src={p.thumb} alt="" loading="lazy" />
-          <img class="t-dark" src={p.thumbDark} alt="" loading="lazy" />
-        </span>
-        <span class="gw-body">
-          <span class="gw-title">{p.title}</span>
-          <span class="gw-deck">{p.deck}</span>
-          <span class="go">Open the dashboard &rarr;</span>
-        </span>
-      </a>
+      <!-- the product cards — siblings, no elevation between them: a group
+           with two instruments is not a group with a headline and a footnote -->
+      {g.products.map((p) => (
+        <a class:list={['gateway', { 'no-cover': !p.thumb && !p.motif }]} href={p.href}>
+          {p.thumb ? (
+            <span class="gw-cover">
+              <img class="t-light" src={p.thumb} alt="" loading="lazy" />
+              <img class="t-dark" src={p.thumbDark} alt="" loading="lazy" />
+            </span>
+          ) : p.motif === 'board' ? (
+            <span class="gw-cover">
+              <svg class="gw-motif" viewBox="0 0 240 135" preserveAspectRatio="none" aria-hidden="true">
+                <g transform="translate(4, 0)">
+                  <polyline points={boardLine.points} />
+                </g>
+              </svg>
+            </span>
+          ) : p.motif === 'rtm' ? (
+            <span class="gw-cover">
+              <svg class="gw-motif" viewBox="0 0 240 135" preserveAspectRatio="none" aria-hidden="true">
+                <g transform="translate(4, 0)">
+                  <polyline points={boardLine.points} />
+                  <circle class="pin-from" cx={rtmFrom.x} cy={rtmFrom.y} r="3.25" />
+                  <circle class="pin-to" cx={rtmTo.x} cy={rtmTo.y} r="3.25" />
+                </g>
+              </svg>
+            </span>
+          ) : null}
+          <span class="gw-body">
+            <span class="gw-title">{p.title}</span>
+            <span class="gw-deck">{p.deck}</span>
+            <span class="go">{p.go}</span>
+          </span>
+        </a>
+      ))}
     </section>
   ))}
 </StoryPage>
@@ -126,6 +215,9 @@ const PRODUCTS = [
     transition: background 0.15s, border-color 0.15s;
   }
   .gateway:hover { background: var(--tsoi-color-surface-container-high); border-color: var(--tsoi-color-primary); }
+  /* A product whose covers have not been captured yet runs full width; the
+     card keeps its weight on the page instead of reserving an empty frame. */
+  .gateway.no-cover { grid-template-columns: 1fr; }
   .gw-cover {
     display: block; overflow: hidden; aspect-ratio: 16 / 9;
     border-right: var(--tsoi-rule-column) solid var(--tsoi-color-outline);
@@ -137,6 +229,27 @@ const PRODUCTS = [
   .gw-cover .t-dark { display: none; }
   :global(html[data-theme='dark']) .gw-cover .t-light { display: none; }
   :global(html[data-theme='dark']) .gw-cover .t-dark { display: block; }
+  /* the two Inflation products' stand-in cover: the CPI index line itself,
+     same drawing (vector-effect keeps a true 1.5px stroke through the
+     non-uniform viewBox scaling) Inflation Peaks' terrain uses on the play
+     rack. The time machine adds the two months a reader is comparing — a
+     hollow pin for the earlier one, solid for the one it's read against,
+     the same pairing the game format's own mark uses for guess vs actual. */
+  .gw-motif { display: block; width: 100%; height: 100%; }
+  .gw-motif polyline {
+    fill: none;
+    stroke: var(--tsoi-color-primary);
+    stroke-width: 1.5;
+    stroke-linejoin: round;
+    vector-effect: non-scaling-stroke;
+  }
+  .gw-motif .pin-from {
+    fill: var(--tsoi-color-surface-container-low);
+    stroke: var(--tsoi-color-on-surface-variant);
+    stroke-width: 1.5;
+    vector-effect: non-scaling-stroke;
+  }
+  .gw-motif .pin-to { fill: var(--tsoi-color-primary); }
   .gw-body {
     display: flex; flex-direction: column; justify-content: center;
     padding: calc(var(--tsoi-spacing-unit) * 2.5) calc(var(--tsoi-spacing-unit) * 3);

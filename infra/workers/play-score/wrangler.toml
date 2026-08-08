@@ -5,16 +5,28 @@
 # 13-bucket histogram; cursor+hist commit in ONE atomic stats PUT
 # (idempotent reruns); processed raws deleted after commit.
 # Stats: GET /api/play-stats/<n>.json — client computes the Hazen percentile.
+# Inflation Peaks rides the same bucket under peaks/: runs are signed with a
+# per-run token (PEAKS_KEY, a Worker secret) and folded into one histogram per
+# {era}-{mode}. Filed baskets write peaks/index/<pid>.json and a peaks/journal/
+# note; the */5 cron folds the notes since its cursor into a private
+# peaks/board-state.json (which carries pids) and publishes peaks/board.json
+# (which never has). The 30 18 cron rescores the whole board from the per-pid
+# files — the nightly self-heal, and the only thing that reads them.
+# See ../README.md for endpoints, the secret and the redeploy rule.
 name = "tsoi-play-score"
 main = "worker.js"
 compatibility_date = "2026-07-01"
 
 routes = [
   { pattern = "timeseriesofindia.com/api/play-*", zone_name = "timeseriesofindia.com" },
+  { pattern = "timeseriesofindia.com/api/peaks-*", zone_name = "timeseriesofindia.com" },
 ]
 
 [triggers]
-crons = ["*/5 * * * *"]
+# The second is the nightly rescore and must stay in step with NIGHTLY_CRON in
+# worker.js — the cron string is the only thing telling the handler which
+# trigger woke it. 18:30 UTC is midnight IST, the quietest hour on the site.
+crons = ["*/5 * * * *", "30 18 * * *"]
 
 [[r2_buckets]]
 binding = "PLAY"

@@ -1,0 +1,34 @@
+{
+  "generated": "2026-08-02",
+  "modes": {
+    "easy": 0.6,
+    "medium": 1,
+    "hard": 1.4
+  },
+  "eras": {
+    "E1": {
+      "target": 124,
+      "weight": 0.2778
+    },
+    "E2": {
+      "target": 119,
+      "weight": 0.1499
+    },
+    "E3": {
+      "target": 119,
+      "weight": 0.1919
+    },
+    "E4": {
+      "target": 119,
+      "weight": 0.1175
+    },
+    "E5": {
+      "target": 119,
+      "weight": 0.1285
+    },
+    "E6": {
+      "target": 77,
+      "weight": 0.1344
+    }
+  }
+}

@@ -9,7 +9,7 @@
 // muted stack cards below read as smaller instances of the same object.
 // The fold is a motif, not a mechanic: the below-the-fold blocks self-unfold
 // in ~600ms on load (prefers-reduced-motion gets it instantly); never a gate.
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import StoryPage from '../layouts/StoryPage.astro';
 import FormatMotif from '../components/editorial/FormatMotif.astro';
@@ -19,6 +19,14 @@ import { DISPATCH_LIST, FORMAT_LABELS, type DispatchFormat } from '../lib/dispat
 import { SECTION_LABELS, THEME_LABELS } from '../lib/themes';
 import { readingMinutes } from '../lib/reading-time';
 import { dataThrough } from '../lib/data-through';
+import { readCoverMotif } from '../lib/reads/motif';
+import { lineMotif } from '../lib/lineMotif';
+import {
+  INFLATION_PEAKS_HREF,
+  INFLATION_PEAKS_KICKER,
+} from '../lib/play/inflation-peaks';
+import { coverAuto } from '../lib/play/peaks-cover';
+import PeaksAuto from '../components/play/PeaksAuto.astro';
 import obhm from '../data/play/off-by-how-much.json';
 
 const [latest, ...previous] = DISPATCH_LIST;
@@ -32,6 +40,17 @@ const [lead, ...secondary] = latest.items;
 // Decks are retired: their URLs stay alive but nothing lists them any more.
 const gameItems = secondary.filter((it) => it.format === 'game');
 const otherItems = secondary.filter((it) => it.format !== 'game');
+
+// The first board is the dispatch's data centerpiece and takes the wide
+// column ALONE; any further boards stack under the game in the narrow column
+// (dispatch No. 2: India Inflation wide, the Rupee Time Machine under the
+// game). Two boards stacked in the wide column was tried and read wrong: the
+// column twice the game's height left the game's own column mostly empty
+// below it. Without a game there is no narrow column to stack into, so every
+// board goes wide (.no-game).
+const [leadBoard, ...restBoards] = otherItems;
+const mainBoards = gameItems.length > 0 ? (leadBoard ? [leadBoard] : []) : otherItems;
+const sideBoards = gameItems.length > 0 ? restBoards : [];
 
 // The game card's gauge labels + Round 1 peek come from the game's own data,
 // exactly as the Play rack builds them (see economy/play.astro for why the
@@ -58,6 +77,38 @@ const coverOf = (dir: string, href: string) => {
     : undefined;
 };
 
+// Inflation Peaks' own terrain with the game's own auto standing on it: the
+// game item's cover has to be the game it actually links to, and to SAY game.
+// The full 57-year spine at 58px is a texture, and nothing about a texture
+// says game, so the line is cropped to the stretch the machine arrives loaded
+// with (2020 onward). Same crop and overlay as the Play rack's card
+// (economy/play.astro) so the two read as the same object; the auto's
+// placement is shared between them in lib/play/peaks-cover.
+const peaks = (() => {
+  const all = JSON.parse(
+    readFileSync('public/data/economy/play/inflation-peaks.json', 'utf8'),
+  ).points as { ym: string; yoy: number }[];
+  const stretch = all.filter((p) => p.ym >= '2020-01');
+  const line = lineMotif(stretch.map((p) => p.yoy), { samples: 96 });
+  return { points: line.points, auto: coverAuto(line) };
+})();
+
+// Stand-in covers for any explore product whose screenshot isn't captured
+// yet (both inflation boards have real /thumbs/explore captures now —
+// build-dashboard-thumbs.mjs): a thin line drawn from the same continuous
+// CPI index the time machine runs on, exactly as the explore gateway draws
+// them (economy/explore/index.astro). Kept wired so a new board never breaks
+// the front page before its thumbs run.
+const rtmSeries = (JSON.parse(
+  readFileSync('public/data/economy/rupee-time-machine.json', 'utf8'),
+).idx as number[]);
+// width is 8px narrower than the 300 viewBox, leaving a 4px margin either
+// side (translated in the markup below) so the last point — and the time
+// machine's solid "to" pin sitting on it — never clips against the card edge.
+const boardLine = lineMotif(rtmSeries, { samples: 140, width: 292, top: 14, bottom: 127 });
+const rtmFrom = boardLine.coords[Math.round(boardLine.coords.length * 0.22)];
+const rtmTo = boardLine.coords[boardLine.coords.length - 1];
+
 // The dispatch's manifest — "1 read · 1 deck · 2 dashboards" — so the head
 // declares everything the dispatch contains at zero scroll (on mobile the
 // lead otherwise owns the first screen and the dispatch reads as just a read).
@@ -81,6 +132,11 @@ const leadMeta =
         ...(dataThrough(leadSlug) ? [`data through ${dataThrough(leadSlug)}`] : []),
       ].join(' · ')
     : FORMAT_LABELS[lead.format];
+
+// A read's own cover is a captured chart screenshot; before that capture
+// exists, a data-drawn line stands in (lib/reads/motif.ts) rather than
+// leaving the lead bare.
+const leadMotif = lead.format === 'read' && !lead.thumb ? readCoverMotif(leadSlug) : null;
 ---
 
 <StoryPage
@@ -101,12 +157,19 @@ const leadMeta =
 
     <!-- lead story: the read gets the big slot -->
     <a class="lead" href={lead.href}>
-      {lead.thumb && (
+      {lead.thumb ? (
         <span class="cover">
           <img class="t-light" src={`${lead.thumb}.png`} alt="" loading="eager" />
           <img class="t-dark" src={`${lead.thumb}-dark.png`} alt="" loading="eager" />
         </span>
-      )}
+      ) : leadMotif ? (
+        <span class="cover">
+          <svg class="read-motif" viewBox="0 0 200 120" preserveAspectRatio="none" aria-hidden="true">
+            <line class="baseline" x1="2" y1="112" x2="198" y2="112" stroke-width="1" />
+            <polyline points={leadMotif} />
+          </svg>
+        </span>
+      ) : null}
       <span class="lead-body">
         <span class="tag">{SECTION_LABELS[latest.section]} &middot; {THEME_LABELS[latest.theme]} &middot; {leadMeta}</span>
         <FormatMotif format={lead.format} unlabelled />
@@ -120,28 +183,108 @@ const leadMeta =
       <!-- secondary cards: the rest of the dispatch -->
       <p class="list-label">Also in this dispatch</p>
       <div class:list={['item-row', { 'no-game': gameItems.length === 0 }]}>
-        {gameItems.map((it) => (
-          <GameCard
-            href={it.href}
-            kicker={`${FORMAT_LABELS[it.format]} · Puzzle № ${obhm.current}`}
-            title={it.title}
-            body={it.blurb}
-            peek={round1.q}
-            scale={gameScale}
-          />
-        ))}
-        {otherItems.length > 0 && (
-          <div class="item-col">
-            {otherItems.map((it) => (
-              <DashCard
-                href={it.href}
-                kicker={`${FORMAT_LABELS[it.format]}${it.meta ? ` · ${it.meta}` : ''}`}
-                title={it.title}
-                body={it.blurb}
-                cover={it.format === 'dashboard' ? coverOf('explore', it.href) : undefined}
-                cta={it.format === 'dashboard' ? 'Open the dashboard' : 'Open'}
-              />
+        {(gameItems.length > 0 || sideBoards.length > 0) && (
+          <div class="item-col side-col">
+            {gameItems.map((it) => (
+              it.href === INFLATION_PEAKS_HREF ? (
+                <GameCard
+                  href={it.href}
+                  kicker={INFLATION_PEAKS_KICKER}
+                  title={it.title}
+                  body={it.blurb}
+                  peek="Hold to accelerate, release to coast."
+                  peekLabel="Controls"
+                >
+                  <span slot="cover" class="peaks-cover">
+                    <svg
+                      class="peaks-motif"
+                      viewBox="0 0 100 30"
+                      preserveAspectRatio="none"
+                      aria-hidden="true"
+                    >
+                      <polyline points={peaks.points} />
+                    </svg>
+                    <PeaksAuto {...peaks.auto} />
+                  </span>
+                </GameCard>
+              ) : (
+                <GameCard
+                  href={it.href}
+                  kicker={`${FORMAT_LABELS[it.format]} · Puzzle № ${obhm.current}`}
+                  title={it.title}
+                  body={it.blurb}
+                  peek={round1.q}
+                  scale={gameScale}
+                />
+              )
             ))}
+            {/* the same board render as the wide column below — items move
+                between the two columns by position in the dispatch, so both
+                carry the full cover-or-motif fallback chain */}
+            {sideBoards.map((it) => {
+              const cover = it.format === 'dashboard' ? coverOf('explore', it.href) : undefined;
+              return (
+                <DashCard
+                  href={it.href}
+                  kicker={`${FORMAT_LABELS[it.format]}${it.meta ? ` · ${it.meta}` : ''}`}
+                  title={it.title}
+                  body={it.blurb}
+                  cover={cover}
+                  cta={it.cta ?? (it.format === 'dashboard' ? 'Open the dashboard' : 'Open')}
+                >
+                  {!cover && it.href === '/economy/explore/inflation' && (
+                    <svg slot="motif" class="board-motif" viewBox="0 0 300 141" preserveAspectRatio="none" aria-hidden="true">
+                      <g transform="translate(4, 0)">
+                        <polyline points={boardLine.points} />
+                      </g>
+                    </svg>
+                  )}
+                  {!cover && it.href === '/economy/explore/rupee-time-machine' && (
+                    <svg slot="motif" class="rtm-motif" viewBox="0 0 300 141" preserveAspectRatio="none" aria-hidden="true">
+                      <g transform="translate(4, 0)">
+                        <polyline points={boardLine.points} />
+                        <circle class="pin-from" cx={rtmFrom.x} cy={rtmFrom.y} r="3.25" />
+                        <circle class="pin-to" cx={rtmTo.x} cy={rtmTo.y} r="3.25" />
+                      </g>
+                    </svg>
+                  )}
+                </DashCard>
+              );
+            })}
+          </div>
+        )}
+        {mainBoards.length > 0 && (
+          <div class="item-col">
+            {mainBoards.map((it) => {
+              const cover = it.format === 'dashboard' ? coverOf('explore', it.href) : undefined;
+              return (
+                <DashCard
+                  href={it.href}
+                  kicker={`${FORMAT_LABELS[it.format]}${it.meta ? ` · ${it.meta}` : ''}`}
+                  title={it.title}
+                  body={it.blurb}
+                  cover={cover}
+                  cta={it.cta ?? (it.format === 'dashboard' ? 'Open the dashboard' : 'Open')}
+                >
+                  {!cover && it.href === '/economy/explore/inflation' && (
+                    <svg slot="motif" class="board-motif" viewBox="0 0 300 141" preserveAspectRatio="none" aria-hidden="true">
+                      <g transform="translate(4, 0)">
+                        <polyline points={boardLine.points} />
+                      </g>
+                    </svg>
+                  )}
+                  {!cover && it.href === '/economy/explore/rupee-time-machine' && (
+                    <svg slot="motif" class="rtm-motif" viewBox="0 0 300 141" preserveAspectRatio="none" aria-hidden="true">
+                      <g transform="translate(4, 0)">
+                        <polyline points={boardLine.points} />
+                        <circle class="pin-from" cx={rtmFrom.x} cy={rtmFrom.y} r="3.25" />
+                        <circle class="pin-to" cx={rtmTo.x} cy={rtmTo.y} r="3.25" />
+                      </g>
+                    </svg>
+                  )}
+                </DashCard>
+              );
+            })}
           </div>
         )}
       </div>
@@ -230,6 +373,10 @@ const leadMeta =
     transition: background 0.15s;
   }
   .lead:hover { background: var(--tsoi-color-surface-container-high); }
+  /* no cover at all (thumb-less, motif-less) — same guard DashCard and the
+     explore gateway use, so a bare lead never strands the text column in a
+     0.36fr slot with nothing to fill the rest of the row */
+  .lead:not(:has(.cover)) { grid-template-columns: 1fr; }
   .lead .cover {
     display: flex; align-items: center; justify-content: center;
     overflow: hidden;
@@ -254,6 +401,24 @@ const leadMeta =
   .lead .cover .t-dark { display: none; }
   :global(html[data-theme='dark']) .lead .cover .t-light { display: none; }
   :global(html[data-theme='dark']) .lead .cover .t-dark { display: block; }
+
+  /* the read's stand-in cover, before its thumbs are captured: a rising line
+     drawn from the read's own headline index (lib/reads/motif.ts), plus a
+     muted baseline so it reads as a chart rather than a stray mark. */
+  .read-motif {
+    display: block;
+    width: 100%;
+    max-width: 280px;
+    height: auto;
+  }
+  .read-motif .baseline { stroke: var(--tsoi-color-outline); }
+  .read-motif polyline {
+    fill: none;
+    stroke: var(--tsoi-color-primary);
+    stroke-width: 1.5;
+    stroke-linejoin: round;
+    vector-effect: non-scaling-stroke;
+  }
   .lead-body {
     display: flex; flex-direction: column; justify-content: center;
     padding: calc(var(--tsoi-spacing-unit) * 2) calc(var(--tsoi-spacing-unit) * 3.5);
@@ -294,35 +459,38 @@ const leadMeta =
     color: var(--tsoi-color-on-surface-variant);
   }
   .stack > .list-label { margin-top: calc(var(--tsoi-spacing-unit) * 5); }
-  /* Second row of the dispatch: the game beside the dashboards. The game card
-     holds a fixed 560/442 proportion (GameCard.astro — the intro screen's own
-     shape), so its column is the narrow one and its width therefore sets the
-     row's height; the dashboards take the wider remainder and stretch to meet
-     it. Geometry serves the dispatch, never the reverse: a dispatch without a
+  /* Second row of the dispatch: the narrow column stacks the game and any
+     remaining boards; the lead dashboard stands alone in the wide one.
+     Geometry serves the dispatch, never the reverse: a dispatch without a
      game falls back to a plain grid of wide cards (.no-game). */
   .item-row {
     display: grid;
-    /* 400px floor on the game column: below that the card's own content
-       (kicker, title, pitch, gauge, peek, CTA) needs more height than the
-       ratio allows at that width, and the card stops being the shape it is
-       everywhere else. The dashboard yields the width instead.
-       0.75/1.25: the game is deliberately the SMALLER, less load-bearing
-       object of the pair — size is hierarchy, and the dashboard is the data
-       centerpiece, so it gets the wider column. 0.7/1.3 was tried once
-       before and reverted as "stranded" (the dashboard's screenshot showed
-       its full control bar then, making the card read tall and heavy next
-       to a narrow game card) — but that judgment predates cropping the desk
-       bar out of the dashboard capture (build-dashboard-thumbs.mjs), which
-       shallows the card considerably. 0.75 was chosen fresh after that crop,
-       not as a half-step back toward 0.85. */
-    grid-template-columns: minmax(400px, 0.75fr) minmax(0, 1.25fr);
+    /* 0.62/1.38: the dashboard is the data centerpiece and size is
+       hierarchy, so it takes emphatically the wider column. The old
+       0.75/1.25 split — with BOTH boards stacked in the wide column — left
+       the game's column mostly empty below the game card; now that the
+       narrow column carries two cards it can be genuinely narrow. The 320px
+       floor is the boards': below it a stacked board's cover strip plus its
+       two-line blurb start crowding. The game card gives up its fixed
+       560/442 ratio here (rule below), so the old 400px ratio-driven floor
+       no longer applies. */
+    grid-template-columns: minmax(320px, 0.62fr) minmax(0, 1.38fr);
     gap: calc(var(--tsoi-spacing-unit) * 3);
-    /* start, not stretch: the game card carries a fixed 560/442 ratio, so a
-       stretched height would set its WIDTH — it grows out of its own column
-       and the row overflows. The row's depth is the game card's; the
-       dashboards keep their own. */
+    /* start, not stretch: each card keeps its own content height; the two
+       columns' depths differ and that is fine — the row's bottom edge is
+       whichever column runs deeper. */
     align-items: start;
   }
+  /* Content height, not the 560/442 ratio: in a 0.62fr column the ratio
+     yields less height than the card's own content needs, so holding it
+     would only force the column back to the width it just gave up. Same
+     relief the tablet tier below and the shared component's ≤600px rule
+     have always used. */
+  .side-col :global(.game-card) { aspect-ratio: auto; max-width: none; }
+  /* the narrow column costs the pitch its second-line fit; two clamped lines
+     here cut "…a long way down." at the payoff word, and a card that is
+     content-height anyway has the room to keep it */
+  .side-col :global(.gc-body) { -webkit-line-clamp: 3; }
   .item-col {
     display: flex; flex-direction: column;
     gap: calc(var(--tsoi-spacing-unit) * 3);
@@ -353,10 +521,49 @@ const leadMeta =
     border-bottom: var(--tsoi-rule-column) solid var(--tsoi-color-outline);
   }
   .item-col :global(.da-cover img) { height: auto; }
+  /* the two Inflation explore items' stand-in covers, before their
+     screenshots are captured — same sizing rule the real screenshots get. */
+  .item-col .board-motif,
+  .item-col .rtm-motif { display: block; width: 100%; height: auto; aspect-ratio: 300 / 141; }
+  .board-motif polyline,
+  .rtm-motif polyline {
+    fill: none;
+    stroke: var(--tsoi-color-primary);
+    stroke-width: 1.5;
+    stroke-linejoin: round;
+    vector-effect: non-scaling-stroke;
+  }
+  /* the time machine's two compared months — hollow for the earlier one,
+     solid for the one it's read against, the same pairing the game format's
+     own mark uses for guess vs actual */
+  .rtm-motif .pin-from {
+    fill: var(--tsoi-color-surface-container-low);
+    stroke: var(--tsoi-color-on-surface-variant);
+    stroke-width: 1.5;
+    vector-effect: non-scaling-stroke;
+  }
+  .rtm-motif .pin-to { fill: var(--tsoi-color-primary); }
   .item-row.no-game { grid-template-columns: 1fr; }
   .item-row.no-game .item-col { display: grid; grid-template-columns: repeat(2, 1fr); }
   /* format marks (FormatMotif) — spacing/colour is contextual */
   .lead-body :global(.motif) { margin-top: calc(var(--tsoi-spacing-unit) * 1.25); }
+
+  /* Inflation Peaks' terrain — identical rules to the Play rack's own
+     .peaks-cover (economy/play.astro), which carries the reasoning for the
+     margin; duplicated because Astro scopes styles per file and this svg is
+     written here, not there. This column is the tight one: at tablet width
+     the card has no slack left, so the cover sits flush under the pitch and
+     the headroom is the only thing keeping the auto out of the text. */
+  .peaks-cover { position: relative; display: block; margin-top: 20px; }
+  .peaks-motif { display: block; width: 100%; height: 58px; overflow: visible; }
+  .peaks-motif polyline {
+    fill: none;
+    stroke: var(--tsoi-color-primary);
+    stroke-width: 1.5;
+    stroke-linejoin: round;
+    vector-effect: non-scaling-stroke;
+  }
+  /* the auto itself carries its own styles (components/play/PeaksAuto.astro) */
 
   /* ── previous dispatches (the stack): compact cards, muted accents ────── */
   .stack-card {
@@ -440,23 +647,16 @@ const leadMeta =
 
   /* ── responsive ───────────────────────────────────────────────────────── */
   /* ipad-portrait tier (768–1023px, the site's own tablet breakpoint — see
-     global.css): the game and dashboard stay side by side, but the game
-     becomes the SMALLER of the pair (0.82/1.18) rather than the desktop
-     0.75/1.25 — and, crucially, it drops its 560/442 ratio here. At desktop
-     the ratio holds because the column is wide enough to fill; at tablet
-     widths that same ratio left the card taller than its content, pooling
-     empty space around the gauge and making the game read oversized. Letting
-     the card fall to its content height (aspect-ratio: auto, the same relief
-     the phone tier and the shared component's ≤600px rule already use) keeps
-     it compact and lets the dashboard beside it keep enough width for its
-     screenshot to read. */
+     global.css): the two columns stay side by side, but the narrow one gets
+     a little more of the row (0.82/1.18) than the desktop 0.62/1.38 — at
+     these widths 0.62fr falls under 300px and the stacked cards' text
+     starts to crowd. The game card is content-height at every width now
+     (the .side-col rule above), so no ratio relief is needed here. */
   @media (min-width: 768px) and (max-width: 1023px) {
     .item-row { grid-template-columns: minmax(0, 0.82fr) minmax(0, 1.18fr); gap: calc(var(--tsoi-spacing-unit) * 2.5); }
     .item-row.no-game { grid-template-columns: minmax(0, 1fr); }
     .item-row.no-game .item-col { grid-template-columns: minmax(0, 1fr); }
     .item-col { gap: calc(var(--tsoi-spacing-unit) * 2.5); }
-    /* fill the column and sit at its content height — no fixed ratio, no cap */
-    .item-row > :global(.game-card) { aspect-ratio: auto; max-width: none; }
   }
 
   @media (max-width: 767px) {
@@ -467,8 +667,13 @@ const leadMeta =
     .item-row,
     .item-row.no-game { grid-template-columns: minmax(0, 1fr); row-gap: calc(var(--tsoi-spacing-unit) * 2.5); }
     .item-row.no-game .item-col { grid-template-columns: minmax(0, 1fr); }
-    .item-col { gap: calc(var(--tsoi-spacing-unit) * 2.5); }
-    .item-row > :global(.game-card) { max-width: 480px; justify-self: start; }
+    /* The two columns dissolve into the row's single column, and the cards
+       re-order so the lead board keeps its second place in the reading
+       order (game, lead board, then the rest) — without this the narrow
+       column's whole stack would cut in front of the centerpiece. */
+    .item-col { display: contents; }
+    .side-col > :global(.dash-card) { order: 2; }
+    .item-row :global(.game-card) { max-width: 480px; justify-self: start; }
     .dispatch { padding: calc(var(--tsoi-spacing-unit) * 2) calc(var(--tsoi-spacing-unit) * 1.75); }
     .lead { grid-template-columns: 1fr; margin-top: calc(var(--tsoi-spacing-unit) * 2.5); }
     .lead .cover {

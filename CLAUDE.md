@@ -6,7 +6,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **Time Series of India (TSOI)** is a data-visualization site tracking Indian
 payment-system statistics (UPI, IMPS, NEFT, RTGS, cards, etc.) sourced from
-official RBI and NPCI releases.
+official RBI and NPCI releases, and India's consumer prices (the CPI back to
+1969) sourced from MoSPI and Labour Bureau releases.
 
 The **published site is 100% static** (Cloudflare Workers Static Assets). The
 database and ETL below run only at **build time** to turn source spreadsheets
@@ -52,6 +53,20 @@ SCHEMA_NAME=economy_dev python load_statewise.py
 SCHEMA_NAME=economy_dev python load_top50_vol_val.py
 ```
 
+### Run the CPI ETL pipelines
+```bash
+# MoSPI CPI (two separate series — 2012 base closed, 2024 base live);
+# see etl/mospi/README.md before touching either
+cd etl/mospi
+python fetch_cpi.py --backfill && SCHEMA_NAME=economy_dev python load_cpi.py
+python fetch_cpi2024.py --backfill && SCHEMA_NAME=economy_dev python load_cpi2024.py
+
+# Labour Bureau CPI-IW (the long series, Aug 1968 onward)
+cd ../labourbureau
+python download_cpi_iw.py && python parse_cpi_iw.py
+SCHEMA_NAME=economy_dev python load_cpi_iw.py
+```
+
 ### Build & deploy the site
 ```bash
 ./scripts/deploy.sh    # generators (read DB) → hash data → astro build → wrangler deploy
@@ -68,24 +83,30 @@ against already-generated data.
   the schema DDL in `infra/db/`. Not used by the published site at runtime.
 - **`etl/rbi/`** — Python ETL that parses RBI Excel files and loads TimescaleDB
 - **`etl/npci/`** — Python ETL that fetches and loads NPCI statistics data
+- **`etl/mospi/`** — Python ETL for the MoSPI CPI API (2012 and 2024 bases,
+  two separate pipelines that never join implicitly)
+- **`etl/labourbureau/`** — Python ETL for the Labour Bureau CPI-IW index,
+  the long half of the monthly inflation record (Aug 1968 onward)
 - **`site/`** — the Astro site, organized as three formats (Play, Read,
   Explore): native, spec-driven ECharts dashboards (`site/src/lib/dashboards/`),
-  longform reads, and the numbers game ("Off by How Much?"), plus
-  `site/scripts/build-*.mjs` generators that emit the static JSON the browser
-  fetches
+  longform reads, and two games ("Off by How Much?" and "Inflation Peaks"),
+  plus `site/scripts/build-*.mjs` generators that emit the static JSON the
+  browser fetches
 - **`infra/workers/`** — two small scheduled Cloudflare Workers outside the
   static build: `meta-live` (refreshes `/meta`'s live traffic snapshot) and
-  `play-score` (anonymous score ingest for the game's percentile line). The
+  `play-score` (anonymous score ingest for both games: the puzzle game's
+  percentile line and Inflation Peaks' run histograms and index board). The
   site never depends on either — see `infra/workers/README.md`.
 - **`scripts/`** — `deploy.sh`: build-and-push deploy to Cloudflare Workers
 
 ### Data Flow
 
 ```
-Excel (data/sources/) → etl/rbi ┐
-                                ├→ TimescaleDB → site/scripts/build-*.mjs → static JSON
-CSV/JSON (etl/npci/)  → etl/npci ┘                                            (site/public/data/)
-                                                    → astro build → Cloudflare Workers (static)
+Excel (data/sources/)  → etl/rbi          ┐
+CSV/JSON (etl/npci/)   → etl/npci         ├→ TimescaleDB → site/scripts/build-*.mjs → static JSON
+MoSPI CPI API          → etl/mospi        │                                    (site/public/data/)
+Labour Bureau page     → etl/labourbureau ┘
+                                            → astro build → Cloudflare Workers (static)
 ```
 
 1. `settlement_data_parser.py` reads Excel sheets, maps products using `product-dict.json`, and combines variants (e.g., Credit Card PoS + e-Commerce)
@@ -107,8 +128,10 @@ Table: `{SCHEMA_NAME}.payment_statistics` — default schema is `economy_dev` fo
 | `value` | numeric | Transaction value |
 | `date` | date | Transaction date |
 
-DDL for the `economy_dev` schema: `infra/db/init-economy-dev.sql` (and
-`init-economy-dev-npci.sql` for the NPCI tables).
+DDL for the `economy_dev` schema: `infra/db/init-economy-dev.sql`, plus
+`init-economy-dev-npci.sql` (NPCI tables), `init-economy-dev-mospi-cpi.sql` /
+`-mospi-cpi-2024.sql` / `-mospi-cpi-weights.sql` (CPI tables) and
+`init-economy-dev-cpi-iw.sql` (CPI-IW).
 
 ### Infrastructure
 

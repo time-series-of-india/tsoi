@@ -1,6 +1,8 @@
 // Regenerates the per-content social cards (§C1 of pre-launch):
 //   public/og/reads/<slug>.png       — one per entry in src/lib/reads-index.ts
-//   public/og/dashboards/all.png     — the unified "India Payments" dashboard page
+//   public/og/explore/<surface>.png  — the four explore surfaces (share v1 §6)
+//   public/og/dashboards/all.png     — superseded by og/explore/payments.png,
+//                                      still rendered so old links keep an image
 //   public/og/play/off-by-how-much.png — the one game
 //
 //   node scripts/build-og-cards.mjs
@@ -14,10 +16,111 @@
 // by hand below.
 
 import { resolve } from 'node:path';
+import { readFileSync } from 'node:fs';
 import { TOKENS, PUBLIC_DIR, fontCss, renderCard, esc } from './lib/og-card.mjs';
 import { READS } from '../src/lib/reads-index.ts';
+import { INFLATION_PEAKS_DECK } from '../src/lib/play/inflation-peaks.ts';
 
 const { PAPER, INK, INK_VARIANT, SAFFRON, MUTED } = TOKENS;
+
+/* Inflation Peaks' motif: the real series as a card-width polyline with the
+   game's own auto parked on it. The line alone was a shape; the auto is what
+   says the shape is a road. Both are generated, the line from the same JSON
+   the game runs on and the auto from peaks-engine's drawCar path, so the card
+   can never quietly disagree with the game it advertises.
+   The card is one static PNG served to crawlers and never themes, so the
+   colours here are the light values written out rather than tokens. */
+function peaksMotif() {
+  const { points } = JSON.parse(
+    readFileSync(resolve(PUBLIC_DIR, 'data/economy/play/inflation-peaks.json'), 'utf8'),
+  );
+  const W = 620, H = 84, STEP = Math.ceil(points.length / 150);
+  const ys = points.filter((_, i) => i % STEP === 0).map((p) => p.yoy);
+  const lo = Math.min(...ys), hi = Math.max(...ys);
+  const xAt = (i) => (i / (ys.length - 1)) * (W - 8) + 4;
+  const yAt = (y) => H - 6 - ((y - lo) / (hi - lo)) * (H - 12);
+  const path = ys.map((y, i) => `${xAt(i).toFixed(1)},${yAt(y).toFixed(1)}`).join(' ');
+
+  // The line at any x, walking the segment it falls in. The polyline is drawn
+  // straight between samples, so this is the curve rather than a fit to it.
+  const groundAt = (x) => {
+    const t = Math.min(Math.max(((x - 4) / (W - 8)) * (ys.length - 1), 0), ys.length - 1);
+    const i = Math.min(Math.floor(t), ys.length - 2);
+    return yAt(ys[i]) + (yAt(ys[i + 1]) - yAt(ys[i])) * (t - i);
+  };
+
+  /* Where the auto stands. Not chosen by hand: the first attempt parked it on
+     the 1972 approach and its footprint covered the 1974 spike, which is the
+     card's namesake and the one shape on it worth seeing. So the placement
+     hunts for the FLATTEST window instead, and only in the back half, which
+     leaves all of the early drama uncovered by construction. Level on a flat
+     stretch is also the pose the game's cover cards use. */
+  const SCALE = 1.3;
+  const HALF_W = 27 * SCALE; // native half-extent, wheels included
+  let at = 0, flattest = Infinity;
+  for (let i = Math.floor(ys.length * 0.4); i < Math.floor(ys.length * 0.92); i++) {
+    let min = Infinity, max = -Infinity;
+    for (let dx = -HALF_W; dx <= HALF_W; dx += 2) {
+      const y = groundAt(xAt(i) + dx);
+      if (y < min) min = y;
+      if (y > max) max = y;
+    }
+    if (max - min < flattest) { flattest = max - min; at = i; }
+  }
+
+  /* Rotation and ride height off both tyres, iterated: take the angle from the
+     line under each wheel, re-measure the wheels at that angle, repeat. Six
+     passes is well past convergence on any stretch this flat. The vertical
+     offset then averages the two contact points, so neither tyre floats. */
+  const WHEELS = [[-12, 13], [16, 13]]; // native centres; outer radius 8
+  const tx = xAt(at);
+  let th = 0, ty = 0;
+  for (let iter = 0; iter < 6; iter++) {
+    const bx = WHEELS.map(([wx, wy]) => tx + SCALE * (wx * Math.cos(th) - wy * Math.sin(th)));
+    th = Math.atan2(groundAt(bx[1]) - groundAt(bx[0]), bx[1] - bx[0]);
+    const tys = WHEELS.map(([wx, wy], k) =>
+      groundAt(bx[k]) - SCALE * (wx * Math.sin(th) + wy * Math.cos(th)) - 8 * SCALE);
+    ty = (tys[0] + tys[1]) / 2;
+  }
+
+  // peaks-engine.ts drawCar, path for path. The canopy is a band across the
+  // top half clipped to the silhouette, which is how the engine paints it and
+  // how a real CNG auto is actually coloured: yellow down the rear, over the
+  // roof and down the windscreen, meeting the green at the window line.
+  const BODY = 'M -20 11 L -20 -11 Q -19.5 -19.5 -11 -20 Q -2 -21 12.5 -18.5 '
+    + 'Q 15.5 -16.5 16.5 -9.5 L 17.5 -5 Q 21 -2 23.5 7 Q 24.5 11 22.5 14 Q 20 17 15 16 L 8 11 Z';
+  const spoke = (cx, cy, deg) => {
+    const r = (deg * Math.PI) / 180;
+    return `<line x1="${cx}" y1="${cy}" x2="${(cx + 5 * Math.cos(r)).toFixed(2)}" y2="${(cy + 5 * Math.sin(r)).toFixed(2)}" stroke="${INK}" stroke-width="1.5"/>`;
+  };
+  const auto = `<g transform="translate(${tx.toFixed(2)} ${ty.toFixed(2)}) rotate(${((th * 180) / Math.PI).toFixed(2)}) scale(${SCALE})">
+      <clipPath id="peaks-shell"><path d="${BODY}"/></clipPath>
+      <path d="${BODY}" fill="#2E7D3B"/>
+      <rect x="-22" y="-22" width="48" height="18" fill="#ECA400" clip-path="url(#peaks-shell)"/>
+      <rect x="-9" y="-16" width="9" height="19" rx="3" ry="3" fill="${PAPER}"/>
+      <rect x="2.5" y="-16" width="10" height="19" rx="3" ry="3" fill="${PAPER}"/>
+      <circle cx="16" cy="13" r="6.75" fill="${PAPER}" stroke="${INK}" stroke-width="2.5"/>
+      ${spoke(16, 13, 40)}
+      <circle cx="-12" cy="13" r="6.75" fill="${PAPER}" stroke="${INK}" stroke-width="2.5"/>
+      ${spoke(-12, 13, 190)}
+    </g>`;
+
+  /* The viewBox grows up and to the left instead of the polyline moving: the
+     line keeps the exact coordinates it shipped with, and the extra room is
+     simply revealed around it, so the terrain's proportions are untouched and
+     the card's margin-top still holds the footer on the card. The top edge
+     follows the solved pose rather than sitting at a fixed bound: the auto's
+     height above ground is data-dependent, and a refresh whose flattest
+     window lands on a high plateau would otherwise slice the roof off. The
+     local silhouette tops out at y = -22; rotation can only lower that
+     corner, so the bound is exact with 12px of margin on top. */
+  const autoTop = ty - 22 * SCALE * Math.cos(th) - 20 * SCALE * Math.abs(Math.sin(th));
+  const VB = { x: -22, y: Math.min(-16, Math.floor(autoTop - 12)) };
+  return `<svg width="${W - VB.x}" height="${H - VB.y}" viewBox="${VB.x} ${VB.y} ${W - VB.x} ${H - VB.y}" style="margin-top:36px">
+      <polyline points="${path}" fill="none" stroke="${SAFFRON}" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+      ${auto}
+    </svg>`;
+}
 
 // Title size shrinks as the headline lengthens so it always fits three lines.
 function titleSize(title) {
@@ -68,6 +171,35 @@ for (const r of READS) {
 }
 
 const ONE_OFFS = [
+  // Share v1 §6 — the four explore surfaces. Titles and decks are the spec's
+  // verbatim copy; the footer keeps the "A Read · …" shape with an Explore
+  // kicker. The 56 /rupee-time-machine/<year> pages share the RTM card.
+  {
+    out: resolve(PUBLIC_DIR, 'og/explore', 'index.png'),
+    title: 'Explore the data',
+    deck: 'Instruments on the Indian economy: inflation cut six ways, the payments boards, and a rupee time machine.',
+    footer: 'Explore · Data: MoSPI · RBI · NPCI',
+  },
+  {
+    out: resolve(PUBLIC_DIR, 'og/explore', 'inflation.png'),
+    title: 'India Inflation',
+    deck: 'The headline number, the long run since 1969, the divisions, all 358 items, every state, and the new basket on one board.',
+    footer: 'Explore · Data: MoSPI',
+  },
+  {
+    out: resolve(PUBLIC_DIR, 'og/explore', 'payments.png'),
+    title: 'India Payments',
+    deck: 'UPI, cards, ATMs and the bank-by-bank view of digital money, desk by desk.',
+    footer: 'Explore · Data: RBI · NPCI',
+  },
+  {
+    out: resolve(PUBLIC_DIR, 'og/explore', 'rupee-time-machine.png'),
+    title: 'The Rupee Time Machine',
+    deck: 'Any amount, any two months since 1969, one continuous price line. ₹100 of 2000 amounts to about ₹456 today.',
+    footer: 'Explore · Data: Labour Bureau · MoSPI',
+  },
+  // Superseded by og/explore/payments.png (share v1 §6). Kept rendering so
+  // links shared before the repoint still resolve to an image.
   {
     out: resolve(PUBLIC_DIR, 'og/dashboards', 'all.png'),
     title: 'India Payments',
@@ -90,6 +222,16 @@ const ONE_OFFS = [
       <circle cx="178" cy="32" r="15" fill="${PAPER}" stroke="${INK_VARIANT}" stroke-width="6"/>
       <circle cx="420" cy="32" r="16" fill="${SAFFRON}"/>
     </svg>`,
+  },
+  {
+    out: resolve(PUBLIC_DIR, 'og/play', 'inflation-peaks.png'),
+    title: 'Inflation Peaks',
+    deck: INFLATION_PEAKS_DECK,
+    footer: 'A Game · Data: Labour Bureau · MoSPI',
+    // The game's own visual: the actual terrain, the real series downsampled
+    // to a card-width polyline, with the auto parked on it. Drawn from the
+    // generated JSON so the card can never disagree with the course.
+    motif: peaksMotif(),
   },
 ];
 

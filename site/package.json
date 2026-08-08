@@ -10,7 +10,8 @@
     "prebuild": "node scripts/dev-play-stats.mjs --clean",
     "build": "astro build",
     "preview": "astro preview",
-    "astro": "astro"
+    "astro": "astro",
+    "test": "node --import tsx --test \"tests/**/*.test.ts\""
   },
   "dependencies": {
     "@astrojs/rss": "^4.0.19",
@@ -26,6 +27,7 @@
     "@types/node": "^25.9.3",
     "pg": "^8.13.1",
     "playwright": "^1.61.1",
+    "tsx": "^4.23.1",
     "typescript": "^5.9.3"
   }
 }

@@ -1,7 +1,8 @@
 # Contributing to Time Series of India
 
 TSOI is a public-good project charting India's public data — currently India's
-payment systems, from official RBI and NPCI releases. It is maintained by a
+payment systems (RBI, NPCI releases) and consumer prices (MoSPI and Labour
+Bureau releases). It is maintained by a
 single person in limited hours, so please read this before opening a PR.
 
 ## What you can contribute
@@ -42,7 +43,7 @@ words or a chart, that's a **data-error report**, which *is* welcome.
 ## Architecture in one screen
 
 ```
-Excel / CSV (RBI, NPCI)
+Excel / CSV / API (RBI, NPCI, MoSPI, Labour Bureau)
    → etl/ (Python)                    parse → tidy schema
    → PostgreSQL / TimescaleDB         build-time store (not in the serving path)
    → site/scripts/build-*.mjs         generate static JSON into site/public/data/
@@ -63,7 +64,11 @@ Data JSON under `site/public/data/` is **gitignored** and regenerated at build:
 |---|---|---|
 | `build-dashboard-data.mjs` | dashboard datasets | **TimescaleDB** (needs DB reachable) |
 | `build-reads-data.mjs` | short-read datasets | raw NPCI JSON in `etl/npci/` |
-| `build-read-upi-architecture.mjs` | flagship read dataset | raw NPCI JSON |
+| `build-read-upi-architecture.mjs` | flagship payments read dataset | raw NPCI JSON |
+| `build-read-inflation.mjs` | inflation read dataset | TimescaleDB (CPI tables) |
+| `build-inflation-board-data.mjs` | CPI explore board + item shards | TimescaleDB (CPI tables) |
+| `build-rupee-time-machine-data.mjs` | rupee time machine dataset | TimescaleDB (CPI + CPI-IW) |
+| `build-inflation-peaks.mjs` | game terrain + the worker's weight table | TimescaleDB (CPI + CPI-IW) |
 | `build-series.mjs` | time-series slices | TimescaleDB |
 | `build-india-map.mjs` | statewise map data | — |
 | `build-og-cards.mjs` / `build-og-default.mjs` | social cards | reads/dashboards registries |
@@ -83,8 +88,8 @@ shorteners.**
 
 A new dataset submission needs:
 
-1. **Source** — RBI or NPCI government open data (source *URL*, not the file).
-   Other agencies considered case-by-case in an issue first.
+1. **Source** — RBI, NPCI, MoSPI or Labour Bureau government open data (source
+   *URL*, not the file). Other agencies considered case-by-case in an issue first.
 2. **Format** — Excel `.xlsx` or CSV with a consistent, parseable structure
    across releases.
 3. **ETL loader** — a new `etl/<source>/load_<dataset>.py` following the
@@ -141,7 +146,7 @@ npm run build                                       # astro build, no errors
 <!-- One sentence describing the change -->
 
 ## Data source (if data/ETL)
-- Agency: <!-- RBI, NPCI -->
+- Agency: <!-- RBI, NPCI, MoSPI, Labour Bureau -->
 - Dataset: <!-- e.g. "IMPS Bank Performance Statistics" -->
 - Update cadence: <!-- monthly, quarterly -->
 - Source URL: <!-- the agency statistics page, not the file -->
@@ -175,8 +180,8 @@ for the maintainer to correct it.
 
 ## Attribution & licensing
 
-- **Data** belongs to the source agency (RBI, NPCI), published as government open
-  data. TSOI claims no ownership.
+- **Data** belongs to the source agency (RBI, NPCI, MoSPI, Labour Bureau),
+  published as government open data. TSOI claims no ownership.
 - **Code contributions** are Apache-2.0 (inbound=outbound), credited in git history.
   No CLA.
 - **Editorial content** (prose, chart/dashboard designs, game/puzzle text and

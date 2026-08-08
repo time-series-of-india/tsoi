@@ -3,12 +3,13 @@
 // (structure, not skin; never an icon): a read is lines of prose, a deck is a
 // row of portrait mini-cards (the object, not the swipe — decks swipe
 // vertically, so the old horizontal dashes read as the wrong gesture; cards
-// have no direction to be wrong about), a dashboard is a stack of desks —
-// three flush bands, each a full-width saffron rule over a shorter muted line
-// (the dashboard stopped being one chart when the six boards folded into one
-// page of desks, so the old single time-series polyline was describing a page
-// that no longer exists; the rule-over-content band is literally what a desk
-// looks like on /economy/explore/payments), a game is a gauge — two pins on a
+// have no direction to be wrong about), a dashboard is a desk — the desk bar
+// ruled over two landscape panes side by side, which is what one desk of
+// /economy/explore/payments actually looks like (the earlier three-band
+// stack-of-desks mark was retired: at 74px the muted content lines vanish
+// and three rules read as lines of prose, i.e. the read's mark; before that
+// a single time-series polyline described the one-chart page that stopped
+// existing when the six boards folded into desks), a game is a gauge — two pins on a
 // track, your guess and the actual,
 // slightly apart (the reveal mechanic drawn small: "off by how much").
 // Same 74×14 slot everywhere; colour follows CSS `color` in context
@@ -56,20 +57,9 @@ const cardCount = (() => {
 )}
 {format === 'dashboard' && (
   <svg class="motif" viewBox="0 0 74 14" width="74" height="14" aria-hidden="true">
-    {[1.5, 6, 10.5].map((y) => (
-      <>
-        <line x1="1" y1={y} x2="73" y2={y} stroke-width="1.5" stroke-linecap="round" />
-        <line
-          class="desk-body"
-          x1="1"
-          y1={y + 2.5}
-          x2={y === 1.5 ? 30 : y === 6 ? 46 : 38}
-          y2={y + 2.5}
-          stroke-width="1"
-          stroke-linecap="round"
-        />
-      </>
-    ))}
+    <line x1="1" y1="2" x2="73" y2="2" stroke-width="1.5" stroke-linecap="round" />
+    <rect class="pane" x="1" y="6" width="33" height="7" rx="1" />
+    <rect class="pane" x="40" y="6" width="33" height="7" rx="1" />
   </svg>
 )}
 {format === 'game' && (
@@ -89,9 +79,9 @@ const cardCount = (() => {
   .motif .mini-card { fill: none; stroke: currentColor; stroke-width: 1.2; }
   .motif .mini-card.solid { fill: currentColor; stroke: none; }
   .motif polyline, .motif line { stroke: currentColor; }
-  /* the desk's content under its bar — muted, so the saffron rules carry the
-     stack and the mark still reads at 74px wide */
-  .motif .desk-body { stroke: var(--tsoi-color-outline); }
+  /* the desk's two panes — outlined at the deck mini-cards' weight, landscape
+     where those are portrait, under the full-width desk bar */
+  .motif .pane { fill: none; stroke: currentColor; stroke-width: 1.2; }
   /* game gauge: the hollow pin is the guess (track breaks under it), the
      solid pin is the actual — same bead-weight as the deck's mini-cards */
   .motif .pin-guess { fill: none; stroke: currentColor; stroke-width: 1.5; }

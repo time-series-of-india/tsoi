@@ -8,6 +8,8 @@
 // ("From Dispatch No. N" — plain text until dispatch permalink pages exist,
 // nested anchors being invalid inside the card link).
 // /economy 301s here (public/_redirects + astro.config fallback).
+import { existsSync } from 'node:fs';
+import { resolve } from 'node:path';
 import StoryPage from '../../../layouts/StoryPage.astro';
 import SectionHeader from '../../../components/editorial/SectionHeader.astro';
 import ViewToggle from '../../../components/editorial/ViewToggle.astro';
@@ -16,6 +18,7 @@ import { DISPATCH_LIST } from '../../../lib/dispatches';
 import { THEME_LABELS } from '../../../lib/themes';
 import { readingMinutes } from '../../../lib/reading-time';
 import { dataThrough } from '../../../lib/data-through';
+import { readCoverMotif } from '../../../lib/reads/motif';
 
 const sectionDate = new Date()
   .toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })
@@ -41,6 +44,14 @@ const meta = (slug: string) =>
 
 const thumb = (slug: string) => `/thumbs/read/${slug}.png`;
 const thumbDark = (slug: string) => `/thumbs/read/${slug}-dark.png`;
+const hasThumb = (slug: string) =>
+  existsSync(resolve(process.cwd(), `public/thumbs/read/${slug}.png`));
+
+// The lead's own screenshot cover (scripts/build-read-thumbs.mjs) hasn't run
+// for a read that just shipped; a data-drawn line stands in until it does
+// (lib/reads/motif.ts), the same way the front page's lead does.
+const leadHasThumb = hasThumb(lead.slug);
+const leadMotif = leadHasThumb ? null : readCoverMotif(lead.slug);
 ---
 
 <StoryPage
@@ -53,10 +64,19 @@ const thumbDark = (slug: string) => `/thumbs/read/${slug}-dark.png`;
 
   <!-- ── the latest read: the lead object ─────────────────────────────── -->
   <a class="lead" href={`/economy/read/${lead.slug}`}>
-    <span class="cover">
-      <img class="t-light" src={thumb(lead.slug)} alt="" loading="eager" />
-      <img class="t-dark" src={thumbDark(lead.slug)} alt="" loading="eager" />
-    </span>
+    {leadHasThumb ? (
+      <span class="cover">
+        <img class="t-light" src={thumb(lead.slug)} alt="" loading="eager" />
+        <img class="t-dark" src={thumbDark(lead.slug)} alt="" loading="eager" />
+      </span>
+    ) : leadMotif ? (
+      <span class="cover">
+        <svg class="read-motif" viewBox="0 0 200 120" preserveAspectRatio="none" aria-hidden="true">
+          <line class="baseline" x1="2" y1="112" x2="198" y2="112" stroke-width="1" />
+          <polyline points={leadMotif} />
+        </svg>
+      </span>
+    ) : null}
     <span class="body">
       <span class="kick">Latest read &middot; {THEME_LABELS[lead.theme]} &middot; {lead.source}</span>
       <span class="title">{lead.title}</span>
@@ -105,6 +125,9 @@ const thumbDark = (slug: string) => `/thumbs/read/${slug}-dark.png`;
     transition: background 0.15s;
   }
   .lead:hover { background: var(--tsoi-color-surface-container-high); }
+  /* no cover at all (thumb-less, motif-less) — mirrors the front page's own
+     guard, so a bare lead never strands the text column in a narrow slot */
+  .lead:not(:has(.cover)) { grid-template-columns: 1fr; }
   .lead .cover {
     display: flex; align-items: center; justify-content: center;
     overflow: hidden;
@@ -114,6 +137,22 @@ const thumbDark = (slug: string) => `/thumbs/read/${slug}-dark.png`;
   .lead .cover img {
     width: auto; max-width: 100%; max-height: 300px;
     object-fit: contain; display: block;
+  }
+  /* the read's stand-in cover, before its thumbs are captured — same drawing
+     as the front page's lead (lib/reads/motif.ts). */
+  .read-motif {
+    display: block;
+    width: 100%;
+    max-width: 320px;
+    height: auto;
+  }
+  .read-motif .baseline { stroke: var(--tsoi-color-outline); }
+  .read-motif polyline {
+    fill: none;
+    stroke: var(--tsoi-color-primary);
+    stroke-width: 1.5;
+    stroke-linejoin: round;
+    vector-effect: non-scaling-stroke;
   }
   .lead .body {
     display: flex; flex-direction: column; justify-content: center;

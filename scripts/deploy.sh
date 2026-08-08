@@ -38,6 +38,15 @@ node scripts/build-reads-data.mjs
 echo "==> Generating flagship read dataset (UPI: Anatomy of a Tap)..."
 node scripts/build-read-upi-architecture.mjs
 
+echo "==> Generating the Inflation Peaks terrain (CPI-IW + CPI Combined spine)..."
+node scripts/build-inflation-peaks.mjs
+
+echo "==> Generating the Inflation board dataset (same spine, uncut)..."
+node scripts/build-inflation-board-data.mjs
+
+echo "==> Generating the Rupee Time Machine dataset..."
+node scripts/build-rupee-time-machine-data.mjs
+
 echo "==> Generating per-content OG cards..."
 node scripts/build-og-cards.mjs
 

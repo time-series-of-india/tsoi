@@ -126,6 +126,20 @@
   /* UPI read — payment app entity hue (deliberately app-neutral blue, not a
      brand purple) */
   --tsoi-color-app: #3366B3;
+  /* Food charts — season coding (decided on the food-read chart lab):
+     kharif = monsoon blue, used as the ONLY band tint in time charts (rabi
+     stretches stay plain surface) and as the kharif clock arc; rabi = harvest
+     gold, used for clock arcs/chips only, never as a chart band. */
+  --tsoi-color-season-kharif: #3D6EA8;
+  --tsoi-color-season-rabi: var(--tsoi-color-chart-6);
+  /* Inflation Peaks — the auto's livery. Literal colours, like the two above:
+     a CNG auto is green under a yellow canopy, and the drawing is better off
+     matching the vehicle than the palette, because a reader in India names it
+     before they read the label. Tokens rather than page-local values because
+     the auto is drawn four times (the game canvas, the front-page cover, the
+     Play rack's cover, the social card) and the four have to agree. */
+  --tsoi-color-auto-body: #2E7D3B;
+  --tsoi-color-auto-roof: #ECA400;
 
   /* Semantic */
   --tsoi-color-freshness-warn: #C04040;
@@ -192,41 +206,65 @@
 /* Dark theme (opt-in toggle, persisted in localStorage — never media-query driven).
    Values without a DESIGN.md entry are derived from the dark family; marked (derived). */
 [data-theme='dark'] {
-  /* Slate — a cool, faintly blue charcoal (trial palette, being evaluated
-     against the other dark grounds). The neutrals carry a slight blue
+  /* Slate — a cool, faintly blue charcoal. The neutrals carry a slight blue
      undertone so the UI reads a touch more "markets"; saffron stays the only
      warm hue and is lifted a shade (#FF8236) to hold up on the cooler ground.
      Chart series are deliberately left on the previous values for now — a
-     separate pass will retune them against this ground. */
-  --tsoi-color-background: #14161A;
-  --tsoi-color-surface: #1D2026;
-  --tsoi-color-surface-dim: #14161A;
-  --tsoi-color-surface-container: #1D2026;
-  --tsoi-color-surface-container-low: #14161A;
-  --tsoi-color-surface-container-high: #272B33;
+     separate pass will retune them against this ground.
+
+     The ground moved from #14161A to #242A35 because saffron on near-black was
+     harsh: #FF8236 measured 7.3:1 there, well past what an accent needs, and
+     large saffron fills glared. Lifting the ground is what softens it, so the
+     accent itself is untouched.
+
+     Every neutral below was re-derived rather than nudged. Each one keeps its
+     hue and saturation and moves in lightness only, until it measures against
+     #242A35 what it used to measure against #14161A. Card edges, rules and
+     raised surfaces therefore separate exactly as before; the ratios in the
+     comments below are unchanged numbers on a different ground. The one
+     exception is --on-surface, noted where it sits. */
+  --tsoi-color-background: #242A35;
+  --tsoi-color-surface: #2D313B;
+  --tsoi-color-surface-dim: #242A35;
+  --tsoi-color-surface-container: #2D313B;
+  --tsoi-color-surface-container-low: #242A35;
+  --tsoi-color-surface-container-high: #353B45;
+  /* Parity would want 15:1, but pure white on #242A35 only reaches 14.4:1, so
+     this is the one token that could not follow the rule. It stays put and
+     measures 12.0:1, still far above the 7:1 AAA bar. */
   --tsoi-color-on-surface: #E8EAEE;
   /* Reading text (.deck, prose, standfirst) and secondary labels both ride this
-     token. At the old #99A0AB it measured 6.9:1 on the #14161A ground versus
+     token. At the old #99A0AB it measured 6.9:1 on the old ground versus
      light's 9.4:1 — a dark-only deficit that OLED's true blacks hide but an LCD
-     (elevated black level) exposes as washed-out grey. #AEB5C0 restores ~8.8:1,
-     near parity with light, while staying in the cool blue-grey family and well
-     below --on-surface (15:1) so the hierarchy holds. */
-  --tsoi-color-on-surface-variant: #AEB5C0;
-  --tsoi-color-outline: #363B45;
-  --tsoi-color-outline-variant: #272B33;
+     (elevated black level) exposes as washed-out grey. #AEB5C0 restored ~8.8:1;
+     #C6CAD2 holds that same 8.8:1 on the lifted ground, staying in the cool
+     blue-grey family and below --on-surface so the hierarchy holds. */
+  --tsoi-color-on-surface-variant: #C6CAD2;
+  --tsoi-color-outline: #434956;
+  --tsoi-color-outline-variant: #353B45;
   --tsoi-color-primary: #FF8236;
-  /* Dark needs no darkening — saffron text already measures 7.3:1 on #14161A,
-     so this pins the same value as --primary. The token exists so components
-     can reference one "saffron as text" name across both themes. */
+  /* Saffron as text now measures 5.8:1 on the ground and 4.6:1 on the lightest
+     surface it ever sits on, down from 7.3:1. That drop is the point of the
+     ground change rather than a cost of it: light's #A84600 measures 5.2:1 on
+     its own ground, so dark has stopped overshooting light and now sits just
+     above it. Still pinned to --primary, so components have one "saffron as
+     text" name across both themes. */
   --tsoi-color-primary-text: #FF8236;
   --tsoi-color-on-primary: #141310;
   --tsoi-color-primary-container: #CC5500; /* (derived) */
   --tsoi-color-on-primary-container: #E8EAEE; /* (derived) */
   --tsoi-color-pagebar: #CC5500; /* deep saffron — matches light; not the bright --primary */
   --tsoi-color-on-pagebar: #F2ECE4;
-  --tsoi-color-secondary: #6E7480;
+  --tsoi-color-secondary: #7E8491;
   --tsoi-color-on-secondary: #E8EAEE; /* (derived) */
-  --tsoi-color-error: #E05858; /* (derived: lifted for dark contrast) */
+  /* Lifted from #E05858 with the ground, then again on its own: red was the
+     one semantic hue short of 4.5:1 as text even on the old charcoal, and the
+     slate pass initially held that debt rather than paying it. This is the
+     paler red that clears it — 4.55:1 on surface-container-high, the worst of
+     the three surfaces error text sits on, against 3.86:1 for the deeper
+     #E57676 it replaces. It reads less saturated than light theme's red, and
+     that is the price of a legible error on a lifted ground. */
+  --tsoi-color-error: #E98A8A; /* (derived: lifted for dark contrast) */
   --tsoi-color-on-error: #141310; /* (derived) */
 
   /* Chart palette — same hue family at higher saturation (all derived per DESIGN.md note) */
@@ -236,17 +274,34 @@
   --tsoi-color-chart-4: #A45CC8;
   --tsoi-color-chart-5: #E05858;
   --tsoi-color-chart-6: #E8B020;
-  /* Dark's chart hues already clear 4.5:1 as text against every dark surface
-     token (5.4-9.2:1, checked against background/surface/surface-container-high),
-     so the -text variants alias the chart tokens directly — no lightening
-     needed here, unlike light's darker casts above. */
-  --tsoi-color-chart-1-text: var(--tsoi-color-chart-1);
-  --tsoi-color-chart-2-text: var(--tsoi-color-chart-2);
+  /* These four used to alias the chart tokens directly, because on the old
+     ground every one of them cleared 4.5:1 as text against background, surface
+     and surface-container-high (5.4-9.2:1). Lifting the ground took the two
+     warmest below the bar: chart-1 to 4.4:1 and chart-2 to 4.3:1, both against
+     surface-container-high. So those two now carry their own lightened casts,
+     the way light theme's do, and the two that still clear it keep aliasing.
+     Checked against all three surfaces, not just the background, since a chart
+     label on a raised card is the worst case. */
+  --tsoi-color-chart-1-text: #FF8236; /* = --tsoi-color-primary-text */
+  --tsoi-color-chart-2-text: #3AB6AD;
   --tsoi-color-chart-3-text: var(--tsoi-color-chart-3);
   --tsoi-color-chart-6-text: var(--tsoi-color-chart-6);
-  --tsoi-color-app: #6699E6; /* (derived: lifted blue for dark contrast) */
+  --tsoi-color-app: #7AA6E9; /* (derived: lifted blue for dark contrast) */
+  /* Derived against the old charcoal ground; rides with the chart palette in
+     the retune-against-slate pass rather than the neutral re-derivation.
+     Rabi inherits chart-6's dark value via the :root var. */
+  --tsoi-color-season-kharif: #6FA0D8;
+  /* Both lifted one step, the same correction the palette makes for saffron:
+     the livery still has to read as green-and-yellow on the dark ground. */
+  --tsoi-color-auto-body: #3C9A4E;
+  --tsoi-color-auto-roof: #F2B117;
+  /* The headlamp, and the only token in the file that exists in one theme
+     only: light theme deliberately leaves it undefined, which is how the game
+     canvas knows not to draw a lit lamp on a white chart. Warmer and lighter
+     than the roof so it reads as a source rather than as more livery. */
+  --tsoi-color-auto-lamp: #FFE7A3;
 
-  --tsoi-color-freshness-warn: #E05858; /* (derived) */
+  --tsoi-color-freshness-warn: #E98A8A; /* (derived: tracks --error) */
   --tsoi-color-freshness-ok: #8CC433; /* (derived) */
 }
 

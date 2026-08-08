@@ -29,7 +29,25 @@ const CHROMIUM = process.env.CHROMIUM_PATH ?? '/usr/bin/chromium';
 
 // The flagship's thumb is the "part you never see" touchpoint strip, not a
 // chart; everything else captures its first canvas-bearing figure.
-const SELECTOR_OVERRIDES = { 'upi-architecture': '.stripfig .tstrip' };
+const SELECTOR_OVERRIDES = {
+  'upi-architecture': '.stripfig .tstrip',
+  // The inflation flagship's cover is the weighing-diagram funnel, not the
+  // headline strip it opens on: the funnel's stacked colour floors carry far
+  // more of the read's character at card scale than one more line chart.
+  // The .fn-wrap drawing alone — the figure's caption, legend line and
+  // stage buttons are furniture, not cover art.
+  'price-of-nearly-everything': '.pyfig .fn-wrap',
+};
+
+// Page state to set up before the shot, after the target has scrolled into
+// view. The funnel's cover wears its SECOND stage — the year painted onto
+// the cells — not the ₹100 shares it opens on.
+const PREPARE = {
+  'price-of-nearly-everything': async (page) => {
+    await page.locator('.pyfig .fn-btn').first().click();
+    await page.waitForTimeout(900); // fn-cell opacity transition is 0.45s
+  },
+};
 const WIDTH_OVERRIDES = { 'upi-architecture': 1000 };
 
 async function startPreview() {
@@ -79,6 +97,7 @@ async function capture(browser, base, slug, theme) {
     }, selector, { timeout: 15_000 })
     .catch(() => console.log(`  (canvas never sized) ${slug}`));
   await page.waitForTimeout(3000);
+  await PREPARE[slug]?.(page);
   await page.evaluate(() =>
     document.querySelectorAll('.chartfig figcaption, .stripfig figcaption')
       .forEach((e) => (e.style.display = 'none')));

@@ -33,14 +33,27 @@ export function GET(context: APIContext) {
     pubDate: new Date(`${puzzle.released}T00:00:00+05:30`),
   }));
 
-  const items = [...readItems, ...puzzleItems].sort(
+  // One item, once: a game is a publication event like a numbered puzzle,
+  // even though the game itself keeps no schedule. The date is the dispatch's
+  // and moves with it if the release slips (see DISPATCHES['2-inflation']).
+  const gameItems = [
+    {
+      title: 'Inflation Peaks',
+      description:
+        "Drive a wheel over India's inflation series, 1969 to 2026. The terrain is the real monthly rate; the score is how many months you survive.",
+      link: '/economy/play/inflation-peaks/',
+      pubDate: new Date('2026-08-08T00:00:00+05:30'),
+    },
+  ];
+
+  const items = [...readItems, ...puzzleItems, ...gameItems].sort(
     (a, b) => b.pubDate.getTime() - a.pubDate.getTime()
   );
 
   return rss({
     title: 'Time Series of India',
     description:
-      'Data-driven reads and numbers puzzles on India in official numbers — how the country moves money — charted from RBI and NPCI data.',
+      'Data-driven reads, games and explorable charts on India in official numbers — how the country moves money and what that money buys — from RBI, NPCI, MoSPI and Labour Bureau data.',
     site: context.site!,
     items,
     customData: '<language>en-in</language>',

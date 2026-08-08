@@ -6,48 +6,47 @@
 // Raw units: payment_statistics volume in lakh (1e5), value in crore (1e7).
 //   volume_cr = sum(volume)/100 ; value_lcr = sum(value)/1e5
 // statewise: volume_mn millions → /10 = crore ; value_cr already crore.
-import pg from 'pg';
-import { writeFileSync, mkdirSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
-import { dirname, resolve } from 'node:path';
+import { SCHEMA, connect, writeData } from './lib/db.mjs';
 
-const SITE = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const SCHEMA = process.env.SCHEMA_NAME || 'economy';
-const OUT = resolve(SITE, 'public/data/economy');
+const { q, end } = await connect();
 
-const client = new pg.Client({
-  host: process.env.DB_HOST || '127.0.0.1',
-  port: +(process.env.DB_PORT || 5432),
-  user: process.env.DB_USER || 'admin',
-  password: process.env.DB_PASSWORD,
-  database: process.env.DB_NAME || 'npci',
-});
-await client.connect();
-mkdirSync(OUT, { recursive: true });
+// The RBI daily file lags and can end mid-month long after that month has
+// passed, so "exclude the current month" is not enough of a guard: a July
+// that stops on the 13th, built in August, would ship as a half-sized month
+// and every monthly aggregate downstream would dip. The cutoff is derived
+// from the data instead — if the newest month is missing days at its end,
+// the whole month waits for the next load. (UPI settles every calendar day,
+// so a complete month always contains its last date.)
+const [{ cutoff }] = await q(`
+  SELECT to_char(CASE WHEN max(date) = (date_trunc('month', max(date)) + interval '1 month - 1 day')::date
+                      THEN (date_trunc('month', max(date)) + interval '1 month')::date
+                      ELSE date_trunc('month', max(date))::date END, 'YYYY-MM-DD') AS cutoff
+  FROM ${SCHEMA}.payment_statistics`);
+console.log(`payment_statistics cutoff: ${cutoff}`);
 
 // --- product-view: category × sub_category × product × DAY, volume + value ---
 // Daily granularity so the runtime can aggregate client-side to day / month /
 // quarter / year (the dashboards' Aggregate control). The resolver derives the
 // period bucket from `date`; distinct dates give avg-daily denominators.
-// volume_cr = crore txns; value_lcr = ₹ lakh-crore. Exclude the current
-// (incomplete) calendar month — a partial month dips the trailing point.
+// volume_cr = crore txns; value_lcr = ₹ lakh-crore. Trailing incomplete
+// month excluded via the cutoff — a partial month dips the trailing point.
 {
-  const { rows } = await client.query(`
+  const rows = await q(`
     SELECT category, sub_category, product,
            to_char(date, 'YYYY-MM-DD')         AS date,
            round(SUM(volume) / 100.0, 2)::float8 AS volume_cr,
            round(SUM(value)  / 1e5, 4)::float8   AS value_lcr
     FROM ${SCHEMA}.payment_statistics
-    WHERE date < date_trunc('month', CURRENT_DATE)
+    WHERE date < $1
     GROUP BY category, sub_category, product, date
-    ORDER BY product, date`);
-  writeFileSync(resolve(OUT, 'product-view.json'), JSON.stringify({ rows }) + '\n');
+    ORDER BY product, date`, [cutoff]);
+  writeData('economy/product-view.json', { rows });
   console.log(`product-view: ${rows.length} rows`);
 }
 
 // --- state-wise: state × month, volume_cr + value_cr ---
 {
-  const { rows } = await client.query(`
+  const rows = await q(`
     SELECT replace(state, ' AND ', ' & ') AS state,
            to_char(date_trunc('month', date), 'YYYY-MM') AS month,
            round(volume_mn / 10.0, 2)::float8 AS volume_cr,
@@ -55,7 +54,7 @@ mkdirSync(OUT, { recursive: true });
     FROM ${SCHEMA}.upi_statewise_statistics
     WHERE state <> 'UNCLASSIFIED'
     ORDER BY month, state`);
-  writeFileSync(resolve(OUT, 'state-wise.json'), JSON.stringify({ rows }) + '\n');
+  writeData('economy/state-wise.json', { rows });
   console.log(`state-wise: ${rows.length} rows`);
 }
 
@@ -65,7 +64,7 @@ mkdirSync(OUT, { recursive: true });
 // when the runtime aggregates to Q/Y). Mirrors the live "UPI & IMPS — Bank
 // Performance" Grafana dashboard but spans both UPI sides + IMPS. ---
 {
-  const { rows } = await client.query(`
+  const rows = await q(`
     SELECT CASE type_name WHEN 'remitter' THEN 'UPI Remitter'
                           WHEN 'beneficiary' THEN 'UPI Beneficiary' END AS system,
            bank_name AS bank, to_char(date, 'YYYY-MM-DD') AS date,
@@ -81,7 +80,7 @@ mkdirSync(OUT, { recursive: true });
     FROM ${SCHEMA}.imps_bank_performance
     WHERE date < date_trunc('month', CURRENT_DATE)
     ORDER BY system, bank, date`);
-  writeFileSync(resolve(OUT, 'bank-performance.json'), JSON.stringify({ rows }) + '\n');
+  writeData('economy/bank-performance.json', { rows });
   console.log(`bank-performance: ${rows.length} rows`);
 }
 
@@ -90,7 +89,7 @@ mkdirSync(OUT, { recursive: true });
 // PSPs carry volume + a payer/payee side. volume_mn/10 = crore; value already
 // crore. Monthly source → M/Q/Y aggregation. ---
 {
-  const { rows } = await client.query(`
+  const rows = await q(`
     SELECT 'app' AS kind, app_name AS name, NULL AS psp_type,
            to_char(date, 'YYYY-MM-DD') AS date,
            round(total_volume_mn / 10.0, 2)::float8  AS volume_cr,
@@ -103,7 +102,7 @@ mkdirSync(OUT, { recursive: true });
     FROM ${SCHEMA}.upi_psp_statistics
     WHERE date < date_trunc('month', CURRENT_DATE)
     ORDER BY kind, name, date`);
-  writeFileSync(resolve(OUT, 'upi-ecosystem.json'), JSON.stringify({ rows }) + '\n');
+  writeData('economy/upi-ecosystem.json', { rows });
   console.log(`upi-ecosystem: ${rows.length} rows`);
 }
 
@@ -112,21 +111,21 @@ mkdirSync(OUT, { recursive: true });
 // line (UPI / NEFT / RTGS / Credit Card, plus the Settlement Systems category
 // total). `date` is first-of-month so the runtime formats it monthly. ---
 {
-  const { rows } = await client.query(`
+  const rows = await q(`
     SELECT product AS key, to_char(date_trunc('month', date), 'YYYY-MM-01') AS date,
            round(SUM(volume) / 100.0, 2)::float8 AS volume_cr,
            round(SUM(value)  / 1e5, 4)::float8   AS value_lcr
     FROM ${SCHEMA}.payment_statistics
-    WHERE product IN ('UPI', 'NEFT', 'RTGS', 'Credit Card') AND date < date_trunc('month', CURRENT_DATE)
+    WHERE product IN ('UPI', 'NEFT', 'RTGS', 'Credit Card') AND date < $1
     GROUP BY product, date_trunc('month', date)
     UNION ALL
     SELECT 'Settlement Systems', to_char(date_trunc('month', date), 'YYYY-MM-01'),
            round(SUM(volume) / 100.0, 2)::float8, round(SUM(value) / 1e5, 4)::float8
     FROM ${SCHEMA}.payment_statistics
-    WHERE category = 'Settlement Systems' AND date < date_trunc('month', CURRENT_DATE)
+    WHERE category = 'Settlement Systems' AND date < $1
     GROUP BY date_trunc('month', date)
-    ORDER BY key, date`);
-  writeFileSync(resolve(OUT, 'reads.json'), JSON.stringify({ rows }) + '\n');
+    ORDER BY key, date`, [cutoff]);
+  writeData('economy/reads.json', { rows });
   console.log(`reads: ${rows.length} rows`);
 }
 
@@ -134,7 +133,6 @@ mkdirSync(OUT, { recursive: true });
 // Each key holds the rows for that beat's single chart. All yearly/snapshot and
 // full-year only (current partial year excluded), so the charts are clean. ---
 {
-  const q = async (sql) => (await client.query(sql)).rows;
   const beats = {};
   // 1. UPI's rise — yearly volume (crore txns)
   beats['upi-rise'] = await q(`
@@ -224,8 +222,8 @@ mkdirSync(OUT, { recursive: true });
     WHERE mcc IN ('5411','5814','5812','5912','7322','6211')
       AND extract(year FROM date) BETWEEN 2018 AND 2025
     GROUP BY 1, 2 ORDER BY 1, 2`);
-  writeFileSync(resolve(OUT, 'beats.json'), JSON.stringify(beats) + '\n');
+  writeData('economy/beats.json', beats);
   console.log(`beats: ${Object.keys(beats).length} beats`);
 }
 
-await client.end();
+await end();

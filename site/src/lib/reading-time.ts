@@ -20,6 +20,10 @@ export function readingMinutes(slug: string): number {
     src = src.replace(/^---[\s\S]*?---/, ' ');          // frontmatter fence
     src = src.replace(/<script[\s\S]*?<\/script>/gi, ' '); // client scripts
     src = src.replace(/<style[\s\S]*?<\/style>/gi, ' ');   // styles
+    // body prose only: figcaptions and the sources list are paratext the
+    // reader skims or consults, not reading the estimate should bill for
+    src = src.replace(/<figcaption[\s\S]*?<\/figcaption>/gi, ' ');
+    src = src.replace(/<ol class="refs"[\s\S]*?<\/ol>/gi, ' ');
     src = src.replace(/\{[^{}]*\}/g, ' ');                // JSX expressions
     src = src.replace(/<[^>]+>/g, ' ');                   // tags
     src = src.replace(/&[a-z]+;/gi, ' ');                 // entities

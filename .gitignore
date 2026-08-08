@@ -36,6 +36,9 @@ site/public/data/
 .env.*
 .env.local
 .env.*.local
+# wrangler's local secret file — `wrangler dev` reads it, nothing commits it.
+.dev.vars
+.dev.vars.*
 
 # --- Local-only: internal tooling, planning docs, agent config (not public deliverables) ---
 # Internal docs moved to a separate private repo (2026-07-09); the ignore
@@ -44,6 +47,7 @@ site/public/data/
 # lineage + privacy disclosure for the game beacon and /meta (README links it).
 docs/*
 !docs/pipeline.md
+!docs/mospi-cpi-api.md
 # EDITORIAL.md: maintainer-authored editorial standard, held back from the public
 # repo pending review — kept local-only so it can't be committed by accident.
 EDITORIAL.md

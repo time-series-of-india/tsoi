@@ -238,6 +238,47 @@ import SectionHeader from '../components/editorial/SectionHeader.astro';
       </div>
       </div>
     </section>
+
+    {/* The scoring worker's own working conditions, and the reason it is on
+        this page at all: the leaderboard once reported half its players for
+        weeks because the only warning was a line in a log nobody reads. Every
+        cap and backlog it can hit is a figure here instead.
+
+        Ships hidden and stays hidden unless the worker answers. It is a
+        different worker from the one behind everything above, on a different
+        bucket, and the game already degrades quietly when it is down — a page
+        about traffic should not grow a row of em dashes because a side
+        service is unreachable. Last, so a desk that may never appear cannot
+        push anything a reader came for further down. */}
+    <section class="desk" id="scoring" hidden>
+      <div class="desk-bar">
+        <button type="button" class="desk-collapse-btn" aria-expanded="true" aria-controls="scoring-body" aria-label="Collapse Scoring desk">▾</button>
+        <span class="desk-title" data-info="How the Inflation Peaks leaderboard is keeping up. Absent when the scoring worker is unreachable." tabindex="0">Scoring</span>
+        <button type="button" class="desk-max" aria-label="Maximize Scoring desk">⤢</button>
+      </div>
+
+      <div class="desk-body" id="scoring-body">
+        <div class="stat-strip">
+          <div class="stat">
+            <span class="stat-value" id="stat-peaks-plays">—</span>
+            <span class="stat-label" data-info="Filed Inflation Peaks indexes the board is counting.">Indexes filed</span>
+          </div>
+          <div class="stat">
+            <span class="stat-value" id="stat-peaks-filings">—</span>
+            <span class="stat-label" id="stat-peaks-filings-label" data-info="Stored filings, counted at the last rescore. Higher than the indexes filed means objects the board could not score.">Objects stored</span>
+          </div>
+          <div class="stat">
+            <span class="stat-value" id="stat-peaks-journal">—</span>
+            <span class="stat-label" data-info="Filing notes still waiting to be folded into the board. Anything above zero means the last pass ran out of its subrequest allowance.">Notes waiting</span>
+          </div>
+          <div class="stat">
+            <span class="stat-value" id="stat-peaks-rescore">—</span>
+            <span class="stat-label" data-info="When the board was last re-derived from the stored filings. It runs nightly at midnight IST, and it is what repairs any drift.">Last rescore</span>
+          </div>
+        </div>
+        <p class="scoring-note" id="scoring-note" hidden></p>
+      </div>
+    </section>
   </div>
 
   <article class="prose">
@@ -267,8 +308,20 @@ import SectionHeader from '../components/editorial/SectionHeader.astro';
     background: var(--tsoi-color-pagebar);
     position: sticky; top: 0; z-index: 7;
   }
-  .asof { display: inline-flex; align-items: baseline; gap: 6px; margin: 0; font: var(--tsoi-text-byline); text-transform: uppercase; letter-spacing: 0.04em; color: var(--tsoi-color-on-pagebar); }
+  /* overflow/ellipsis/nowrap/min-width unconditional, not mobile-only: the
+     freshness text ("built 8 days ago") is the one variable-length thing on
+     this bar, and letting it wrap or overflow at an in-between desktop width
+     is what let it run into the Visits toggle instead of yielding to it. The
+     clock/UTC pair stays whole (flex-shrink: 0) so only the trailing
+     freshness ever clips. */
+  .asof {
+    display: inline-flex; align-items: baseline; gap: 6px; margin: 0;
+    font: var(--tsoi-text-byline); text-transform: uppercase; letter-spacing: 0.04em;
+    color: var(--tsoi-color-on-pagebar);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0;
+  }
   .asof[hidden] { display: none; }
+  .asof #meta-now, .asof #meta-utc { flex-shrink: 0; }
   .asof strong { font-weight: 400; font-family: var(--tsoi-font-mono); letter-spacing: 0; color: var(--tsoi-color-on-pagebar); }
   .asof-sep { opacity: 0.55; }
   /* Freshness has two variants; the compact one ("6h ago") only shows on the
@@ -280,7 +333,10 @@ import SectionHeader from '../components/editorial/SectionHeader.astro';
   /* :not(button) — the segmented buttons are already self-evidently clickable,
      and a help cursor on them reads as a stray question mark on hover. */
   .page-bar [data-info]:not(button) { text-decoration-color: color-mix(in srgb, var(--tsoi-color-on-pagebar) 55%, transparent); cursor: help; }
-  .page-controls { display: flex; align-items: center; gap: calc(var(--tsoi-spacing-unit) * 2); margin-left: auto; }
+  /* flex-shrink: 0 — the Visits toggle is the one control on this bar, and it
+     must never give up width to the asof byline beside it; asof is the one
+     that yields (see its own overflow/ellipsis rule above). */
+  .page-controls { display: flex; align-items: center; gap: calc(var(--tsoi-spacing-unit) * 2); margin-left: auto; flex-shrink: 0; }
   /* Collapse-all chevron: aggregate tri-state (see syncPageCollapseBtn) — down
      while any desk is expanded (click folds all), rotated right once all are
      folded (click expands all). A shade smaller than the desk chevron, since the
@@ -299,12 +355,7 @@ import SectionHeader from '../components/editorial/SectionHeader.astro';
   .page-bar .ctl-label { color: var(--tsoi-color-on-pagebar); }
   @media (max-width: 600px) {
     .page-bar { flex-wrap: nowrap; gap: var(--tsoi-spacing-unit); }
-    .page-controls { gap: var(--tsoi-spacing-unit); min-width: 0; }
-    /* The live UTC clock is the anchor — keep it whole; let the trailing
-       freshness clip if the bar is too narrow (it reappears on wider screens
-       and via the info tooltip regardless). */
-    .asof { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex-shrink: 1; min-width: 0; }
-    .asof #meta-now, .asof #meta-utc { flex-shrink: 0; }
+    .page-controls { gap: var(--tsoi-spacing-unit); }
     /* "Traffic" label is redundant on mobile: the All/Humans buttons carry
        their own tooltips now, so drop the word to give the asof its room. */
     .page-bar .ctl-label { display: none; }
@@ -458,6 +509,13 @@ import SectionHeader from '../components/editorial/SectionHeader.astro';
   .stat-compare[hidden] { display: none; }
   .stat-label { font: var(--tsoi-text-byline); text-transform: uppercase; letter-spacing: 0.04em; color: var(--tsoi-color-on-surface-variant); }
   @media (max-width: 600px) { .stat-strip { grid-template-columns: 1fr 1fr; gap: var(--tsoi-spacing-unit); } }
+  /* The scoring desk's one sentence, under the tiles. Present only when there
+     is something to say — a backlog, a paused rescore, a stopped counter —
+     so an absent line is itself the all-clear. */
+  .scoring-note { margin: 0; font: var(--tsoi-text-byline); color: var(--tsoi-color-on-surface-variant); }
+  .scoring-note[hidden] { display: none; }
+  .scoring-note.is-warn { color: var(--tsoi-color-primary-text); }
+  .desk[hidden] { display: none; }
 
   .panels { display: grid; grid-template-columns: 1fr; gap: calc(var(--tsoi-spacing-unit) * 2); }
   @media (min-width: 880px) { .panels { grid-template-columns: 1fr 1fr; } .panel.wide { grid-column: 1 / -1; } }
@@ -502,7 +560,7 @@ import SectionHeader from '../components/editorial/SectionHeader.astro';
   }
   .seg button[aria-disabled='true'] { opacity: 0.4; cursor: not-allowed; }
   /* .panel-max glyph is styled globally by ../lib/panel-chrome.ts (shared with
-     DashboardView); the .panel-right wrapper (same idiom as DesksView) right-
+     the desks board); the .panel-right wrapper (same idiom as DesksView) right-
      aligns it and any panel control (the hero's metric seg) as one group. */
   .panel-right { margin-left: auto; display: inline-flex; align-items: center; gap: var(--tsoi-spacing-unit); }
 
@@ -864,7 +922,7 @@ import SectionHeader from '../components/editorial/SectionHeader.astro';
   // are the headline desks). Applied only when NOTHING is stored yet — the
   // moment the reader toggles anything, saveCollapsed writes the key and their
   // choice wins from then on, even if that choice is "all expanded" (stored []).
-  const DEFAULT_COLLAPSED = ['formats', 'audience'];
+  const DEFAULT_COLLAPSED = ['formats', 'audience', 'scoring'];
   const loadCollapsedIds = (): Set<string> => {
     try {
       const raw = sessionStorage.getItem(COLLAPSE_KEY);
@@ -1151,6 +1209,65 @@ import SectionHeader from '../components/editorial/SectionHeader.astro';
     };
     renderStats();
     document.querySelectorAll<HTMLElement>('.meta-stats').forEach((el) => { el.hidden = false; });
+
+    /* --- the scoring desk ------------------------------------------------
+       A second worker on a second bucket, asked once and never depended on.
+       It is not awaited: nothing else on this page needs it, and a slow or
+       missing scoring endpoint must not delay the charts by a millisecond.
+       Every failure — down, 404 before anyone has filed, a preview build with
+       no URL to ask — ends the same way, with the desk staying hidden. */
+    /* Held back at launch: the desk has not been checked against the live
+       worker's payload yet. Flip to true to publish it — everything below
+       already handles the worker being absent, so the flag is the only gate. */
+    const SCORING_DESK_LIVE = false;
+    void (async () => {
+      if (!SCORING_DESK_LIVE) return;
+      const url = import.meta.env.PUBLIC_PLAY_API
+        ? `${import.meta.env.PUBLIC_PLAY_API}/api/peaks-health.json`
+        : '/api/peaks-health.json';
+      let h: any;
+      try {
+        const r = await fetch(url, { signal: AbortSignal.timeout(4000) });
+        if (!r.ok) return;
+        h = await r.json();
+        if (!Number.isFinite(h?.plays)) return;
+      } catch { return; }
+
+      const put = (id: string, text: string) => { document.getElementById(id)!.textContent = text; };
+      put('stat-peaks-plays', fmtCount(h.plays));
+      put('stat-peaks-filings', Number.isFinite(h.filings) ? fmtCount(h.filings) : '—');
+      put('stat-peaks-journal', Number.isFinite(h.journal) ? fmtCount(h.journal) : '—');
+      put('stat-peaks-rescore', h.rescored_at ? relTimeCompact(Date.parse(h.rescored_at)) : 'never');
+      // The unscorable objects, said out loud rather than left as a gap
+      // between two tiles nobody would subtract.
+      const junk = Number.isFinite(h.filings) && Number.isFinite(h.scored) ? h.filings - h.scored : 0;
+      if (junk > 0) {
+        document.getElementById('stat-peaks-filings-label')!.textContent =
+          `Objects stored (${nf.format(junk)} unscorable)`;
+      }
+
+      /* One sentence, and only when something is not nominal. Ordered worst
+         first: a stopped counter is a wrong number, a paused rescore is a
+         board that cannot heal, a backlog is a board running behind, and a
+         weight table that does not match is a board scoring on the wrong
+         rules. Silence is the all-clear. */
+      const note = document.getElementById('scoring-note') as HTMLElement;
+      const says = h.capped
+        ? 'The play counter has reached its ceiling and has stopped counting.'
+        : h.paused
+          ? 'A rescore is part-way through its scan. The board is not folding new filings until it finishes.'
+          : h.journal > 0
+            ? `${nf.format(h.journal)} ${h.journal === 1 ? 'note is' : 'notes are'} waiting to be folded. The last pass ran out of its subrequest allowance.`
+            : '';
+      note.textContent = says;
+      note.hidden = !says;
+      note.classList.toggle('is-warn', !!says);
+
+      (document.getElementById('scoring') as HTMLElement).hidden = false;
+      // The bars stack by measured position, and a desk that was not on the
+      // page when they were measured is not in that arithmetic.
+      restackDeskBars();
+    })();
 
     // --- charts (hero + hourly only; the two comparison tables below are
     // plain HTML/SVG, not ECharts instances) ---

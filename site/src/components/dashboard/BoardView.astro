@@ -1,0 +1,1082 @@
+---
+// Renders one BOARD: a page of sticky-bar "desks" (newsroom sense — one
+// editorial unit per beat) over a single subject. Everything particular to a
+// board is in its BoardSpec (lib/dashboards/boards.ts): the bar title, the
+// controls hoisted to page level, the desk running order. Payments and
+// inflation are two specs through this one component.
+//
+// This file is the MARKUP and the styles; the wiring lives in
+// lib/dashboards/client.ts, scoped to the `.board` root rendered below, so a
+// page can carry more than one board. Panels carry `data-panel` rather than
+// page-unique ids and the client finds them within their own desk, so two
+// boards can each name a panel 'trend' without colliding.
+//
+// The shareable ?ctrl=value URL state, dropped at the desks fold because
+// several desks sharing one URL collide on control ids (every spec has a
+// 'range', most have a 'metric'), is back on a scheme that cannot collide: a
+// control the BOARD hoists writes bare, everything else writes under its desk's
+// anchor (`?long-run.metric=yoy`). See lib/dashboards/share.ts, the Share button
+// on the page bar below, and the one on every chart panel's bar.
+import type { BoardSpec, Control, PanelSpec } from '../../lib/dashboards/runtime';
+import { asOfLabel, optionGroups } from '../../lib/dashboards/runtime';
+import { enrichBoard, enrichBoardGlobals } from '../../lib/dashboards/enrich';
+import ShareMenu from './ShareMenu.astro';
+
+interface Props { board: BoardSpec }
+const { board } = Astro.props;
+
+// Build-time: resolve the desk slugs to their DashboardSpecs and fill every
+// select's options from the desk's own dataset, so no control paints empty.
+const desks = enrichBoard(board);
+
+function ctlAttrs(c: Control, scope: string) {
+  return { 'data-ctl': c.id, 'data-scope': scope };
+}
+
+// Controls the board hoists to page level: payments hoists one Grafana-style
+// time picker, inflation a month select and a sector toggle. A desk carrying a
+// control of the same id has it dropped from its own bar and driven from up
+// here instead — payments' state-wise desk has a month select rather than a
+// range, so it simply sits out. Options and resolved defaults are borrowed
+// from the desk that owns each control (see enrichBoardGlobals), so the bar
+// never offers a month its desks don't have.
+const pageGlobals = enrichBoardGlobals(board, desks);
+const hoisted = new Set(pageGlobals.map((c) => c.id));
+
+// How current the board is, read from the datasets at build time rather than
+// injected by the client once each desk has fetched. Where every desk is the
+// same vintage — one dataset behind four desks, as inflation is — that is a
+// fact about the PAGE and belongs on the page bar; repeating it on each desk
+// bar spent a control-sized slot on the same date four times. Where the desks
+// disagree (a board whose bank tables lag its headline totals), a page-level
+// date would be a claim none of them supports, so each keeps its own chip.
+// Which panels may offer their picture as well as their link. Inflation only,
+// per the share spec's §4 — and within it, only a panel ECharts actually draws:
+// a `widget` panel is hand-built HTML with no option to clone off an instance,
+// so it keeps the link entry alone rather than an image item that would fail
+// under the reader's finger. A stat panel has no bar to carry a menu at all.
+const cardable = (p: PanelSpec) => board.slug === 'inflation' && p.chart !== 'stat' && p.chart !== 'widget';
+
+const vintages = [...new Set(desks.filter((d) => d.asOf).map((d) => `${d.asOf}|${d.asOfGrain ?? ''}`))];
+const pageAsOf = vintages.length === 1 && desks.every((d) => d.asOf) ? desks[0] : null;
+const asOfChip = (d: { asOf?: string; asOfGrain?: string }) => asOfLabel(d.asOf!, d.asOfGrain);
+---
+
+<div class="board" data-board={board.slug}>
+<nav class="jump" aria-label="Desks on this board">
+  {desks.map((d) => <a href={`#${d.anchor}`}>{d.title}</a>)}
+</nav>
+
+<div class="page-bar">
+  <button type="button" class="page-collapse-btn" aria-expanded="true" aria-label="Collapse all desks">▾</button>
+  <span class="page-title">{board.title}</span>
+  <div class="page-controls">
+    {pageGlobals.map((c) => (
+      <div class="ctl">
+        <span class="ctl-label" data-info={c.info}>{c.label}</span>
+        {c.type === 'select' ? (
+          <select {...ctlAttrs(c, 'page')} aria-label={c.label}>
+            {optionGroups(c).map((g) => (g.label ? (
+              <optgroup label={g.label}>
+                {g.options.map((o) => <option value={o.value} selected={o.value === c.default}>{o.label}</option>)}
+              </optgroup>
+            ) : g.options.map((o) => (
+              <option value={o.value} selected={o.value === c.default}>{o.label}</option>
+            ))))}
+          </select>
+        ) : c.type === 'toggle' ? (
+          <div class="seg" {...ctlAttrs(c, 'page')}>
+            {(c.options ?? []).map((o) => (
+              <button type="button" data-value={o.value} class={o.value === c.default ? 'active' : ''}>{o.label}</button>
+            ))}
+          </div>
+        ) : (
+          <div class="dr" {...ctlAttrs(c, 'page')}>
+            <button type="button" class="dr-btn"><span class="dr-summary">—</span><span class="dr-caret" aria-hidden="true">▾</span></button>
+            <div class="dr-menu" hidden>
+              <div class="dr-quick">
+                {(c.quick ?? []).map((o) => (
+                  <button type="button" class="dr-q" data-value={o.value}>{o.label}</button>
+                ))}
+              </div>
+              <div class="dr-custom">
+                <label class="dr-field"><span>From</span><select class="dr-from"></select></label>
+                <label class="dr-field"><span>To</span><select class="dr-to"></select></label>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    ))}
+    {pageAsOf && (
+      <div class="ctl-asof"><span>As of</span><strong>{asOfChip(pageAsOf)}</strong></div>
+    )}
+  </div>
+  {/* The board's own link, at the right end of the bar and after the vintage:
+      the whole board as the sender left it, every desk's controls included.
+      'Share…' hands the same URL to the system sheet and is removed outright
+      where the platform has none (see client.ts) rather than sitting greyed. */}
+  <ShareMenu
+    scope="board"
+    menuId={`${board.slug}-share-menu`}
+    items={[
+      { action: 'copy', label: 'Copy link' },
+      { action: 'native', label: 'Share…', hidden: true },
+    ]}
+  />
+</div>
+
+<div class="desks">
+  {desks.map((d, i) => {
+    const spec = d.spec;
+    const statPanels = spec.panels.filter((p) => p.chart === 'stat');
+    const chartPanels = spec.panels.filter((p) => p.chart !== 'stat');
+    return (
+      <section class="desk" id={d.anchor} data-desk-index={i}>
+        <div class="desk-bar">
+          {/* The fold is a REAL button holding the chevron and the title, and
+              nothing else on the bar folds anything. It used to be the whole
+              bar: pleasant to aim at, until a desk carried controls — reaching
+              for a dropdown and landing a few pixels above or below it folded
+              the desk under the reader's hand. The rule now reads the way it
+              behaves: this button folds, everything else on the bar does its
+              own job. */}
+          <button
+            type="button"
+            class="desk-collapse-btn"
+            aria-expanded="true"
+            aria-controls={`${d.anchor}-body`}
+            aria-label={`Collapse ${d.title} desk`}
+          >
+            <span class="desk-chevron" aria-hidden="true">▾</span>
+            <span class="desk-title" data-info={d.info}>{d.title}</span>
+          </button>
+
+          <div class="desk-controls">
+            {/* Controls the board hoists are rendered once, page-level, above. */}
+            {(spec.globals ?? []).filter((c) => !hoisted.has(c.id)).map((c) => (
+              <div class="ctl">
+                <span class="ctl-label" data-info={c.info}>{c.label}</span>
+                {c.type === 'select' ? (
+                  <select {...ctlAttrs(c, 'global')} aria-label={c.label}>
+                    {optionGroups(c).map((g) => (g.label ? (
+                      <optgroup label={g.label}>
+                        {g.options.map((o) => <option value={o.value} selected={o.value === c.default}>{o.label}</option>)}
+                      </optgroup>
+                    ) : g.options.map((o) => (
+                      <option value={o.value} selected={o.value === c.default}>{o.label}</option>
+                    ))))}
+                  </select>
+                ) : c.type === 'multiselect' ? (
+                  <div class="ms" {...ctlAttrs(c, 'global')}>
+                    <button type="button" class="ms-btn"><span class="ms-summary">—</span><span class="ms-caret" aria-hidden="true">▾</span></button>
+                    <div class="ms-menu" hidden>
+                      <input type="text" class="ms-search" placeholder="Search…" autocomplete="off" />
+                      <div class="ms-actions">
+                        <button type="button" class="ms-all">Select all</button>
+                        <button type="button" class="ms-clear">Clear all</button>
+                      </div>
+                      <div class="ms-opts">
+                        {(c.options ?? []).map((o) => (
+                          <label class="ms-opt"><input type="checkbox" value={o.value} checked={Array.isArray(c.default) && c.default.includes(o.value)} />{o.label}</label>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                ) : c.type === 'daterange' ? (
+                  <div class="dr" {...ctlAttrs(c, 'global')}>
+                    <button type="button" class="dr-btn"><span class="dr-summary">—</span><span class="dr-caret" aria-hidden="true">▾</span></button>
+                    <div class="dr-menu" hidden>
+                      <div class="dr-quick">
+                        {(c.quick ?? []).map((o) => (
+                          <button type="button" class="dr-q" data-value={o.value}>{o.label}</button>
+                        ))}
+                      </div>
+                      <div class="dr-custom">
+                        <label class="dr-field"><span>From</span><select class="dr-from"></select></label>
+                        <label class="dr-field"><span>To</span><select class="dr-to"></select></label>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div class="seg" {...ctlAttrs(c, 'global')}>
+                    {(c.options ?? []).map((o) => (
+                      <button type="button" data-value={o.value} class={o.value === c.default ? 'active' : ''}>{o.label}</button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+            {/* Only where the desks on this board carry different vintages —
+                otherwise the one date is on the page bar. */}
+            {!pageAsOf && d.asOf && (
+              <div class="ctl-asof"><span>As of</span><strong>{asOfChip(d)}</strong></div>
+            )}
+          </div>
+
+          <button type="button" class="desk-filters-btn" aria-expanded="false">Filters</button>
+          <button type="button" class="desk-max" aria-label={`Maximize ${d.title} desk`}>⤢</button>
+        </div>
+
+        {/* Single collapse unit: the chevron in .desk-bar toggles display on
+            this whole wrapper rather than on .stat-strip/.panels separately,
+            so a fold can't leave one half visible and the other hidden. */}
+        <div class="desk-body" id={`${d.anchor}-body`}>
+        {statPanels.length > 0 && (
+          <div class="stat-strip">
+            {statPanels.map((p) => (
+              <div class="stat" data-panel={p.id}>
+                <span class="stat-value">—</span>
+                <span class="stat-label" data-info={p.info}>{p.title}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div class="panels">
+          {chartPanels.map((p) => (
+            <section class:list={['panel', { wide: p.wide }]}>
+              <div class="panel-bar">
+                <span class="dot" aria-hidden="true"></span>
+                <span class="panel-title" data-info={p.info}>{p.title}</span>
+                <div class="panel-right">
+                  {p.controls && p.controls.length > 0 && (
+                    <div class="panel-ctls">
+                      {p.controls.map((c) => (
+                        c.type === 'select' ? (
+                          <label class="panel-ctl-sel"><span class="ctl-label" data-info={c.info}>{c.label}</span>
+                            <select {...ctlAttrs(c, p.id)} aria-label={c.label}>
+                              {optionGroups(c).map((g) => (g.label ? (
+                                <optgroup label={g.label}>
+                                  {g.options.map((o) => <option value={o.value} selected={o.value === c.default}>{o.label}</option>)}
+                                </optgroup>
+                              ) : g.options.map((o) => (
+                                <option value={o.value} selected={o.value === c.default}>{o.label}</option>
+                              ))))}
+                            </select>
+                          </label>
+                        ) : c.type === 'multiselect' ? (
+                          <label class="panel-ctl-sel"><span class="ctl-label" data-info={c.info}>{c.label}</span>
+                            <div class="ms" {...ctlAttrs(c, p.id)}>
+                              <button type="button" class="ms-btn"><span class="ms-summary">—</span><span class="ms-caret" aria-hidden="true">▾</span></button>
+                              <div class="ms-menu" hidden>
+                                <input type="text" class="ms-search" placeholder="Search…" autocomplete="off" />
+                                <div class="ms-actions">
+                                  <button type="button" class="ms-all">Select all</button>
+                                  <button type="button" class="ms-clear">Clear all</button>
+                                </div>
+                                <div class="ms-opts">
+                                  {(c.options ?? []).map((o) => (
+                                    <label class="ms-opt"><input type="checkbox" value={o.value} checked={Array.isArray(c.default) && c.default.includes(o.value)} />{o.label}</label>
+                                  ))}
+                                </div>
+                              </div>
+                            </div>
+                          </label>
+                        ) : c.type === 'daterange' ? (
+                          <label class="panel-ctl-sel"><span class="ctl-label" data-info={c.info}>{c.label}</span>
+                            <div class="dr" {...ctlAttrs(c, p.id)}>
+                              <button type="button" class="dr-btn"><span class="dr-summary">—</span><span class="dr-caret" aria-hidden="true">▾</span></button>
+                              <div class="dr-menu" hidden>
+                                <div class="dr-quick">
+                                  {(c.quick ?? []).map((o) => (
+                                    <button type="button" class="dr-q" data-value={o.value}>{o.label}</button>
+                                  ))}
+                                </div>
+                                <div class="dr-custom">
+                                  <label class="dr-field"><span>From</span><select class="dr-from"></select></label>
+                                  <label class="dr-field"><span>To</span><select class="dr-to"></select></label>
+                                </div>
+                              </div>
+                            </div>
+                          </label>
+                        ) : (
+                          <label class="panel-ctl-sel"><span class="ctl-label" data-info={c.info}>{c.label}</span>
+                            <div class="seg" {...ctlAttrs(c, p.id)}>
+                              {(c.options ?? []).map((o) => (
+                                <button type="button" data-value={o.value} class={o.value === c.default ? 'active' : ''}>{o.label}</button>
+                              ))}
+                            </div>
+                          </label>
+                        )
+                      ))}
+                    </div>
+                  )}
+                  {/* Beside the maximize button and before it, as its sibling:
+                      the two things a reader does with one panel are open it
+                      and send it. The link carries the whole board's state and
+                      lands the recipient on this panel (#anchor.panelId).
+                      Inflation's ECharts panels also send the picture — see
+                      cardable above and lib/dashboards/panel-card.ts.
+
+                      The picture entries (Share image / Download image) are
+                      held back for this release — image/share-card work is
+                      deferred across the board, the same call as Inflation
+                      Peaks' own share, which is plain text only. Nothing
+                      below is deleted: client.ts's wiring and panel-card.ts
+                      are untouched, and forcing `cardable(p)` to false here
+                      is the only change. Drop the `false &&` to restore. */}
+                  <ShareMenu
+                    scope="panel"
+                    panel={p.id}
+                    menuId={`${board.slug}-${d.anchor}-${p.id}-share-menu`}
+                    items={[
+                      { action: 'copy', label: 'Copy link to this panel' },
+                      ...(false && cardable(p) ? [
+                        // Revealed by the CAN_SHARE_FILES probe in client.ts,
+                        // removed outright where the platform cannot take a
+                        // file — the same rule the board's own 'Share…' follows.
+                        { action: 'card-share', label: 'Share image', hidden: true },
+                        { action: 'card-download', label: 'Download image' },
+                      ] : []),
+                    ]}
+                  />
+                  <button type="button" class="panel-max" aria-label="Maximize panel">⤢</button>
+                </div>
+              </div>
+              <div class="chart" data-panel={p.id} data-chart={p.chart}></div>
+            </section>
+          ))}
+        </div>
+        {/* The small print, all of it, at the foot of the desk: the caveats
+            that belong to one figure rather than to the desk, then the
+            attribution — which is load-bearing where a licence requires the
+            credit. Each caveat names its panel, because down here it is no
+            longer under the figure it is about. Notes used to sit under their
+            own panel, which broke the row rhythm mid-desk and left a reader
+            deciding whether the paragraph they had reached was a footnote or
+            the next chart's preamble. */}
+        {(spec.note || chartPanels.some((p) => p.note) || spec.source) && (
+          <details class="desk-foot">
+            {/* Native disclosure, so it folds without JS and answers the
+                keyboard on its own. Closed by default: the small print is
+                available rather than in the way. */}
+            <summary class="desk-foot-summary">Notes and sources</summary>
+            {/* The desk's own caveat leads, because it qualifies every figure
+                on the desk rather than one of them, and so it takes no panel
+                name. */}
+            {spec.note && <p class="desk-foot-note">{spec.note}</p>}
+            {/* data-note-panel and the inner spans match what client.ts
+                builds for a note a chart computes for itself, so the two kinds
+                sit in one list in panel order and read as one voice. */}
+            {chartPanels.filter((p) => p.note).map((p) => (
+              <p class="desk-foot-note" data-note-panel={p.id}>
+                <span class="desk-foot-panel">{p.title}.</span> <span class="desk-foot-text">{p.note}</span>
+              </p>
+            ))}
+            {spec.source && <p class="desk-source">{spec.source}</p>}
+          </details>
+        )}
+        </div>
+
+        <script type="application/json" class="desk-spec" set:html={JSON.stringify(spec)} />
+      </section>
+    );
+  })}
+</div>
+</div>
+
+<style>
+  /* ── jump nav: the desks on this board, above its page bar ─────────────
+     Lives with the board rather than with the page, so a board carries its own
+     table of contents wherever it is dropped. The client script eases the
+     scroll and force-expands a folded target (see lib/dashboards/client.ts). */
+  .jump {
+    display: flex; flex-wrap: wrap; align-items: baseline;
+    gap: var(--tsoi-spacing-unit) calc(var(--tsoi-spacing-unit) * 2.5);
+    margin-top: calc(var(--tsoi-spacing-unit) * 2);
+    padding-bottom: calc(var(--tsoi-spacing-unit) * 1.5);
+    border-bottom: var(--tsoi-rule-column) solid var(--tsoi-color-outline);
+    font: var(--tsoi-text-byline); font-weight: 500; letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .jump a { color: var(--tsoi-color-primary-text); text-decoration: none; }
+  .jump a:hover { text-decoration: underline; }
+
+  /* ── desk source ────────────────────────────────────────────────────────
+     The attribution, in the same byline weight as the notes it closes:
+     present and readable, without competing with the panels. */
+  .desk-source {
+    margin: calc(var(--tsoi-spacing-unit) * 2) 0 0;
+    font: var(--tsoi-text-byline); letter-spacing: 0.04em;
+    color: var(--tsoi-color-on-surface-variant);
+  }
+
+  /* ── the foot of the desk ───────────────────────────────────────────────
+     Every caveat the desk carries and the attribution, in one folded block
+     under a hairline: the desk's own note first, then the per-panel ones in
+     panel order, then the source. It reads as a footer rather than as another
+     panel that lost its chart. Panel names in the mono face and a shade
+     darker: they are labels on the notes, not part of the sentence. */
+  /* The rule CLOSES the desk, under the small print, rather than opening a
+     block above it. Sitting on top, it put "Notes and sources" between a line
+     and the next desk bar, where the label read as a heading for the desk
+     below instead of a footer for the desk above. */
+  .desk-foot {
+    margin-top: calc(var(--tsoi-spacing-unit) * 2.5);
+    padding-bottom: calc(var(--tsoi-spacing-unit) * 1.5);
+    border-bottom: 1px solid var(--tsoi-color-outline);
+    max-width: 92ch;
+  }
+  /* The affordance is the whole line, so it is a comfortable target on a
+     phone; the triangle is drawn here rather than left to the browser, whose
+     default marker is a different shape and colour in every engine. */
+  .desk-foot-summary {
+    display: flex; align-items: center; gap: var(--tsoi-spacing-unit);
+    cursor: pointer; list-style: none; width: fit-content;
+    /* padded to a finger, not to the cap height of one line of 9px mono */
+    padding: 7px 0;
+    font: var(--tsoi-text-byline); font-weight: 500;
+    letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--tsoi-color-on-surface-variant);
+  }
+  .desk-foot-summary::-webkit-details-marker { display: none; }
+  .desk-foot-summary::before {
+    content: '▸'; font-size: 0.9em; line-height: 1;
+    color: var(--tsoi-color-primary-text);
+    transition: transform 120ms ease;
+  }
+  .desk-foot[open] .desk-foot-summary::before { transform: rotate(90deg); }
+  .desk-foot-summary:hover { color: var(--tsoi-color-on-surface); }
+  .desk-foot-summary:focus-visible {
+    outline: 2px solid var(--tsoi-color-primary); outline-offset: 2px;
+  }
+  .desk-foot-note {
+    margin: 0 0 var(--tsoi-spacing-unit);
+    font: var(--tsoi-text-byline); letter-spacing: 0.02em;
+    color: var(--tsoi-color-on-surface-variant);
+  }
+  /* the first note under the summary needs the gap the summary's own padding
+     does not give it */
+  .desk-foot-summary + .desk-foot-note,
+  .desk-foot-summary + .desk-source { margin-top: calc(var(--tsoi-spacing-unit) * 1.5); }
+  .desk-foot-panel { font-weight: 500; color: var(--tsoi-color-on-surface); }
+  .desk-foot .desk-source { margin-top: var(--tsoi-spacing-unit); }
+
+  /* ── page bar: one time picker for the whole page (Grafana model) ──────
+     A thin saffron strip, not a second surface-tint slab: it used to share
+     the .desk-bar tint and full height, so scrolling stacked two identical
+     beige bars (page bar + the desk's own sticky bar) into one heavy block.
+     Filling it with --tsoi-color-pagebar (deep saffron #CC5500 in both themes)
+     and squeezing the vertical padding to a hair around the RANGE control
+     makes it read as the page-level accent it is — distinct from, and lighter
+     than, the desk bars below (which keep their own saffron top-rule as the
+     desk-boundary mark). It's a dedicated token, not --primary, so the dark
+     strip keeps this depth instead of borrowing dark's brighter accent; text
+     uses --tsoi-color-on-pagebar to stay legible on it in both themes. */
+  .page-bar {
+    display: flex; align-items: center; gap: calc(var(--tsoi-spacing-unit) * 2); flex-wrap: wrap;
+    padding: calc(var(--tsoi-spacing-unit) * 0.375) calc(var(--tsoi-spacing-unit) * 1.5);
+    background: var(--tsoi-color-pagebar);
+    position: sticky; top: 0; z-index: 7;
+  }
+  .page-title {
+    flex-shrink: 0;
+    font: var(--tsoi-text-byline); font-weight: 600; letter-spacing: 0.06em;
+    text-transform: uppercase; font-size: 13px; color: var(--tsoi-color-on-pagebar);
+  }
+  /* Collapse-all chevron: aggregate tri-state (see the client script's
+     syncPageCollapseBtn) — pointing down while any desk is expanded (click
+     collapses everything), rotated to point right once all six are folded
+     (click expands everything). Same glyph/rotate idiom as .desk-collapse-btn
+     below, just recoloured for the saffron strip it sits on. */
+  /* A shade smaller than the desk chevron: the saffron strip is deliberately
+     short (see .page-bar's trimmed padding), and --tsoi-page-bar-h is measured
+     at runtime, so this stays proportionate without pushing the strip taller. */
+  .page-collapse-btn {
+    flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+    width: 24px; height: 24px; padding: 0; border: 0; border-radius: 2px; cursor: pointer;
+    background: transparent; color: var(--tsoi-color-on-pagebar); font-size: 16px; line-height: 1;
+  }
+  .page-collapse-btn:hover { opacity: 0.8; }
+  .page-collapse-btn.collapsed { transform: rotate(-90deg); }
+  /* Meaningless inside a maximized overlay — relocatePageBar moves the one
+     .page-bar node (chevron included) into whichever desk/panel is
+     maximized, and collapse-all has nothing to act on from in there. */
+  :global(.desk.maximized) .page-collapse-btn,
+  :global(.panel.maximized) .page-collapse-btn { display: none; }
+  .page-controls { display: flex; align-items: center; gap: calc(var(--tsoi-spacing-unit) * 2); margin-left: auto; }
+  /* RANGE label sits on the saffron strip — light it to match the title. */
+  .page-bar .ctl-label { color: var(--tsoi-color-on-pagebar); }
+  /* Trim the RANGE button's own height too so the whole strip stays short. */
+  .page-bar .dr-btn { padding-block: 2px; }
+  /* Hoisted select/toggle controls (inflation's month and sector) sit on the
+     same short saffron strip. The saffron `active` fill the desk bars use
+     would be saffron-on-saffron here, so the page bar inverts instead: the
+     selected segment takes the strip's own text colour as its fill. */
+  .page-bar select { padding-block: 2px; }
+  .page-bar .seg { border-color: color-mix(in srgb, var(--tsoi-color-on-pagebar) 45%, transparent); }
+  .page-bar .seg button { padding-block: 3px; }
+  .page-bar .seg button + button { border-left-color: color-mix(in srgb, var(--tsoi-color-on-pagebar) 45%, transparent); }
+  .page-bar .seg button.active { background: var(--tsoi-color-on-pagebar); color: var(--tsoi-color-pagebar); }
+  /* The board's vintage, where every desk shares one. Outlined in the strip's
+     own text colour rather than boxed in surface white: a second white chip up
+     here would read as a control, and this is a statement. */
+  .page-bar .ctl-asof {
+    display: inline-flex; align-items: baseline; gap: 8px;
+    padding: 2px 8px; border-radius: 2px;
+    border: 1px solid color-mix(in srgb, var(--tsoi-color-on-pagebar) 45%, transparent);
+    font: var(--tsoi-text-byline); text-transform: uppercase; letter-spacing: 0.04em;
+    color: color-mix(in srgb, var(--tsoi-color-on-pagebar) 75%, transparent);
+    user-select: none;
+  }
+  .page-bar .ctl-asof strong { font-weight: 400; letter-spacing: 0; color: var(--tsoi-color-on-pagebar); }
+  /* The share trigger's saffron-as-text would be saffron on saffron up here, so
+     the strip inverts it exactly as it inverts the segmented control above:
+     the bar's own text colour, outlined in a wash of itself. The menu that
+     drops out of it keeps the surface colours it has everywhere else — it hangs
+     BELOW the strip, over the desks. :global because the popover is a component
+     of its own (ShareMenu.astro) and carries its own scope. */
+  .page-bar :global(.share > button) {
+    color: var(--tsoi-color-on-pagebar);
+    border-color: color-mix(in srgb, var(--tsoi-color-on-pagebar) 45%, transparent);
+    padding-block: 3px;
+  }
+  .page-bar :global(.share > button:hover),
+  .page-bar :global(.share > button[aria-expanded='true']) {
+    border-color: var(--tsoi-color-on-pagebar);
+    background: color-mix(in srgb, var(--tsoi-color-on-pagebar) 16%, transparent);
+  }
+  @media (max-width: 600px) {
+    /* Keep it a single compact row rather than stacking title over control:
+       the whole point is a thin bar, so title left / RANGE right, no wrap. */
+    .page-bar { flex-wrap: nowrap; gap: var(--tsoi-spacing-unit); }
+    .page-controls { gap: var(--tsoi-spacing-unit); min-width: 0; }
+  }
+
+  /* Desks are flush — no margin between .desk elements — so the JS-driven
+     stacking below (see the <script>) can compute a clean handoff: bar N-1
+     holds at the page-bar offset until desk N's true top arrives to touch
+     it, then they move together. The resting gap before the next bar is a
+     trailing `::after` spacer, deliberately NOT padding-bottom: a sticky
+     element's NATIVE release (independent of whatever `top` script.ts
+     computes) is bounded by its container's CONTENT edge, not its padding
+     edge, so padding here would make native sticky release the bar early —
+     fighting the JS instead of matching it — while generated content is
+     real content as far as that boundary is concerned, so native release
+     and the script's own computed trigger land on the same scroll position.
+     Mirrors meta.astro. */
+  .desks { display: flex; flex-direction: column; padding-block: calc(var(--tsoi-spacing-unit) * 3); }
+  .desk {
+    /* Jump-nav anchor lands just clear of the page bar; the desk's own sticky
+       bar tucks under it. --tsoi-page-bar-h is measured/kept current by the
+       client script (its height shifts if the bar ever wraps to two lines). */
+    scroll-margin-top: var(--tsoi-page-bar-h, 45px);
+  }
+  .desk:not(:last-child)::after { content: ''; display: block; height: calc(var(--tsoi-spacing-unit) * 2); }
+
+  /* ── desk bar: title, controls, filters toggle, desk maximize ────────── */
+  .desk-bar {
+    display: flex; align-items: center; gap: calc(var(--tsoi-spacing-unit) * 2); flex-wrap: wrap;
+    padding: var(--tsoi-spacing-unit) calc(var(--tsoi-spacing-unit) * 1.5);
+    border: var(--tsoi-rule-column) solid var(--tsoi-color-outline);
+    /* Desk header identity: the darker bar tint plus a thin saffron top rule
+       (the site's section-rule motif) marks where one desk ends and the next
+       begins — the saffron values inside bars are chipped, so the tint is safe. */
+    border-top: 2px solid var(--tsoi-color-primary);
+    background: var(--tsoi-color-surface-container-high);
+    /* Sticks BELOW the page bar (its RANGE control lives above every desk
+       now), not at the very top — see --tsoi-page-bar-h above. */
+    position: sticky; top: var(--tsoi-page-bar-h, 45px); z-index: 6;
+    /* The bar folds the desk everywhere except within a moat around its
+       controls (see the client script), so the surface reads as clickable and
+       the controls inside keep their own cursor. */
+    cursor: pointer;
+  }
+  /* The gap below the bar lives on the NEXT element, never as the bar's own
+     margin-bottom: a sticky element is bounded by its MARGIN box, so a bottom
+     margin makes the bar release that many px early and leaves a permanent gap
+     between it and the incoming desk's bar during the push. */
+  .desk-bar + * { margin-top: calc(var(--tsoi-spacing-unit) * 2); }
+  /* Zed-style disclosure chevron, hard left of the title — deliberately not
+     next to .desk-filters-btn/.desk-max on the right: that side already uses
+     aria-expanded for the mobile filters block, and two different
+     expand/collapse affordances sharing one corner reads as one confused
+     control. Rotate-in-place (no glyph swap) keeps the DOM/aria simpler. */
+  /* The chevron is sized to match .desk-max at the other end of the bar: the
+     fold and the maximize are the desk's two view controls, so they get equal
+     weight rather than a hairline chevron beside a full-size button. The title
+     rides inside the same button — one target, the width of the words, with
+     the bar's full height behind it so there is no sliver above or below it
+     that misses. */
+  .desk-collapse-btn {
+    flex-shrink: 0; display: flex; align-items: center; gap: calc(var(--tsoi-spacing-unit) / 2);
+    align-self: stretch; margin: calc(var(--tsoi-spacing-unit) * -1) 0;
+    padding: var(--tsoi-spacing-unit) calc(var(--tsoi-spacing-unit) * 0.75);
+    border: 0; border-radius: 2px; cursor: pointer; background: transparent; text-align: left;
+  }
+  .desk-collapse-btn:hover { background: var(--tsoi-color-surface); }
+  .desk-collapse-btn:hover .desk-chevron, .desk-collapse-btn:hover .desk-title { color: var(--tsoi-color-on-surface); }
+  .desk-chevron {
+    display: flex; align-items: center; justify-content: center; width: 28px; height: 28px;
+    color: var(--tsoi-color-on-surface-variant); font-size: 19px; line-height: 1;
+  }
+  .desk-collapse-btn.collapsed .desk-chevron { transform: rotate(-90deg); }
+  .desk-title {
+    flex-shrink: 0;
+    font: var(--tsoi-text-byline); font-weight: 600; letter-spacing: 0.06em;
+    text-transform: uppercase; font-size: 13px; color: var(--tsoi-color-on-surface);
+  }
+  .desk-controls {
+    display: flex; align-items: center; gap: calc(var(--tsoi-spacing-unit) * 2); flex-wrap: wrap;
+    flex: 1;
+  }
+  /* When panel maximize moves the desk controls into the panel's column-flex
+     overlay, the bar-filling flex:1 would grow them into the chart's space —
+     pin them to content height and give them the bar chrome they left behind. */
+  :global(.panel.maximized) .desk-controls {
+    flex: 0 0 auto;
+    padding: var(--tsoi-spacing-unit) calc(var(--tsoi-spacing-unit) * 1.5);
+    border-bottom: var(--tsoi-rule-column) solid var(--tsoi-color-outline);
+    background: var(--tsoi-color-surface-container-high);
+  }
+  :global(.desk-controls .ctl-asof) {
+    margin-left: auto; display: inline-flex; align-items: baseline; gap: 8px;
+    padding: 4px 10px; border: 1px solid var(--tsoi-color-outline); border-radius: 2px;
+    background: var(--tsoi-color-background); user-select: none;
+    font: var(--tsoi-text-byline); text-transform: uppercase; letter-spacing: 0.04em;
+    color: var(--tsoi-color-on-surface-variant);
+  }
+  :global(.desk-controls .ctl-asof strong) { font-weight: 400; color: var(--tsoi-color-primary-text); letter-spacing: 0; }
+  .ctl { display: flex; align-items: center; gap: calc(var(--tsoi-spacing-unit) / 2); }
+  .ctl-label { font: var(--tsoi-text-byline); text-transform: uppercase; color: var(--tsoi-color-on-surface-variant); }
+
+  .desk-filters-btn {
+    display: none; flex-shrink: 0;
+    font: var(--tsoi-text-byline); text-transform: uppercase; letter-spacing: 0.04em;
+    padding: 5px 10px; border: 1px solid var(--tsoi-color-outline); border-radius: 2px; cursor: pointer;
+    background: var(--tsoi-color-background); color: var(--tsoi-color-on-surface-variant);
+  }
+  .desk-filters-btn:hover { background: var(--tsoi-color-surface-container-high); color: var(--tsoi-color-on-surface); }
+
+  .desk-max {
+    flex-shrink: 0; margin-left: auto;
+    display: flex; align-items: center; justify-content: center;
+    width: 28px; height: 28px; padding: 0; border: 0; border-radius: 2px; cursor: pointer;
+    background: transparent; color: var(--tsoi-color-on-surface-variant); font-size: 19px; line-height: 1;
+  }
+  .desk-max:hover { background: var(--tsoi-color-surface-container-high); color: var(--tsoi-color-on-surface); }
+
+  /* Collapsed desk: instant display swap, no transition — a container full
+     of ECharts canvases mid-height-transition produces visible jank and
+     forces mid-transition resizes, so there's nothing to animate here.
+     Filters/controls fold away too (filtering an invisible desk means
+     nothing); .desk-max is deliberately NOT in this list — maximize must
+     keep working on a collapsed desk (see the client script's openDesk). */
+  .desk.collapsed .desk-body,
+  .desk.collapsed .desk-controls,
+  .desk.collapsed .desk-filters-btn { display: none; }
+
+  @media (max-width: 600px) {
+    .desk-bar { position: sticky; }
+    /* .desk-title is flex-shrink:0 above (desktop has room to spare), but on a
+       narrow bar that refuses to shrink — combined with "Filters" growing to
+       "Hide filters" while open (see the client script) — a longer desk title
+       (e.g. "MERCHANT CATEGORIES") can push .desk-max clean off line 1 and
+       onto its own orphan line, floating over the control rows below instead
+       of sitting beside Filters. flex-shrink alone doesn't fix this: wrapping
+       decisions are made on items' HYPOTHETICAL (unshrunk) size, so a long
+       title still counts as its full content width when the browser decides
+       whether .desk-max fits — flex-shrink only resolves overflow within a
+       line already assigned. Giving the title flex-basis:0 (flex:1 1 0) makes
+       its hypothetical size 0, so Filters + Maximize always have room on line
+       1 regardless of title length; flex-grow:1 then lets it fill whatever
+       space is actually left, with the overflow ellipsizing if it doesn't fit. */
+    .desk-collapse-btn { flex: 1 1 0; min-width: 0; }
+    .desk-title { flex: 1 1 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .desk-controls { display: none; width: 100%; flex-direction: column; align-items: stretch; gap: var(--tsoi-spacing-unit); order: 4; }
+    .desk-controls.mobile-open { display: flex; }
+    .desk-controls .ctl { width: 100%; justify-content: space-between; }
+    :global(.desk-controls .ctl-asof) { margin-left: 0; width: 100%; justify-content: space-between; }
+    /* Filters first, then maximize — the desktop bar reads Filters → ⤢ left
+       to right, and the mobile bar must not invert that. The auto margin has
+       to move with the order: it's what pins the pair to the right edge, so
+       it belongs on whichever button now leads the pair. Left on .desk-max it
+       would push maximize right and strand Filters beside the title. */
+    .desk-filters-btn {
+      display: inline-flex; align-items: center; justify-content: center;
+      order: 2; margin-left: auto;
+    }
+    .desk-max { order: 3; margin-left: 0; }
+  }
+
+  /* ── desk maximize overlay ────────────────────────────────────────────── */
+  /* z-index above panel-chrome.ts's own overlay (backdrop 39 / .panel.maximized
+     40): a maximized panel's position:fixed opens a stacking context nested
+     inside .desk.maximized (also position:fixed), so the panel's z-index:40
+     only outranks siblings WITHIN that nested context — compared against the
+     panel-chrome backdrop (appended straight to <body>, z-index 39), it's the
+     desk's OWN z-index that decides, not the panel's. Keeping the desk above
+     39/40 means the whole desk (panel included) always wins that comparison,
+     instead of the panel-level backdrop painting a translucent wash over the
+     entire maximized desk. */
+  :global(.tsoi-desk-backdrop) { position: fixed; inset: 0; z-index: 44; background: rgba(0, 0, 0, 0.55); }
+  :global(.desk.maximized) {
+    position: fixed; inset: 0; z-index: 45; overflow-y: auto;
+    background: var(--tsoi-color-background);
+    /* No top padding: the page bar is moved in as the first child while
+       maximized (see initDesk's relocatePageBar) and provides the top edge,
+       exactly as it does in normal flow — so the desk's own sticky bar tucks
+       right under it with no gap and nothing gets clipped. */
+    padding: 0 calc(var(--tsoi-spacing-unit) * 2) calc(var(--tsoi-spacing-unit) * 4);
+    border: 0;
+  }
+
+  /* ── stat strip ───────────────────────────────────────────────────────── */
+  .stat-strip { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: calc(var(--tsoi-spacing-unit) * 2); margin-bottom: calc(var(--tsoi-spacing-unit) * 2); }
+  @media (max-width: 600px) { .stat-strip { grid-template-columns: 1fr; gap: var(--tsoi-spacing-unit); } }
+  /* Light's --surface (#EDE7D8) reads as a yellowish slab beside the read's
+     widget panels, which sit on --surface-container-low (#F0EAE0, a paler
+     step off --background). Dark's two tokens are further apart (#2D313B
+     against a #242A35 ground) and already read as a correct lift, so only
+     light's cast moves here — see the dark override just below. */
+  .stat { border: var(--tsoi-rule-column) solid var(--tsoi-color-outline); background: var(--tsoi-color-surface-container-low); padding: calc(var(--tsoi-spacing-unit) * 1.5); display: flex; flex-direction: column; gap: calc(var(--tsoi-spacing-unit) / 2); }
+  :global(html[data-theme='dark']) .stat { background: var(--tsoi-color-surface); }
+  .stat-value { font: var(--tsoi-text-metric-xl); color: var(--tsoi-color-on-surface); }
+  .stat-value :global(.stat-delta) {
+    font-size: 0.5em; font-weight: 400; margin-left: 0.9em;
+    color: var(--tsoi-color-on-surface-variant); letter-spacing: 0.02em;
+  }
+  .stat-label { font: var(--tsoi-text-byline); text-transform: uppercase; letter-spacing: 0.04em; color: var(--tsoi-color-on-surface-variant); }
+
+  /* ── panels grid ──────────────────────────────────────────────────────── */
+  /* minmax(0, …), not a bare 1fr: a grid track's automatic minimum is the
+     min-content of what sits in it, so ONE panel with an unbreakable bar —
+     a long title beside a select and a segmented control — widened the track
+     past the viewport and pushed the whole page into a sideways scroll, on
+     every desk at once. The track is the column now, and the panel fits it. */
+  .panels { display: grid; grid-template-columns: minmax(0, 1fr); gap: calc(var(--tsoi-spacing-unit) * 2); }
+  @media (min-width: 880px) { .panels { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } .panel.wide { grid-column: 1 / -1; } }
+
+  /* Column flex so a panel's chart fills whatever height its grid row ends up
+     with: a map beside a line chart used to leave the line at its own 360px
+     with dead space under it, because the PANEL stretched and the chart inside
+     it did not. Grid rows are as tall as their tallest panel, so this is what
+     makes a two-up row read as one row. */
+  /* Same correction as .stat above: light matches the read's widget-panel
+     background (--surface-container-low), dark keeps its existing --surface
+     lift unchanged. */
+  .panel { border: var(--tsoi-rule-column) solid var(--tsoi-color-outline); background: var(--tsoi-color-surface-container-low); display: flex; flex-direction: column; min-width: 0; }
+  :global(html[data-theme='dark']) .panel { background: var(--tsoi-color-surface); }
+  .panel > .chart { flex: 1 1 auto; }
+  .panel-bar {
+    display: flex; align-items: center; gap: var(--tsoi-spacing-unit); flex-wrap: wrap;
+    padding: var(--tsoi-spacing-unit);
+    border-bottom: var(--tsoi-rule-column) solid var(--tsoi-color-outline);
+  }
+  .panel-title { font: var(--tsoi-text-label-caps); letter-spacing: 0.04em; text-transform: uppercase; color: var(--tsoi-color-on-surface); }
+  .dot { width: 6px; height: 6px; border-radius: var(--tsoi-radius-full); background: var(--tsoi-color-chart-1); flex-shrink: 0; }
+  /* The controls half of the bar wraps for the same reason the bar does. A
+     panel carrying a picker AND a segmented control needs more than a phone's
+     width for both, and the alternative to a second line is a clipped one. */
+  /* The controls wrap; the maximize button does not leave their side. Letting
+     .panel-right wrap instead put the ⤢ alone on a fourth line of chrome above
+     a panel that had only two controls. */
+  .panel-right { margin-left: auto; display: flex; align-items: center; justify-content: flex-end; gap: var(--tsoi-spacing-unit); min-width: 0; }
+  .panel-ctls { display: flex; align-items: center; flex-wrap: wrap; justify-content: flex-end; gap: calc(var(--tsoi-spacing-unit) * 1.5); min-width: 0; }
+  .panel-ctl-sel { display: inline-flex; align-items: center; gap: 6px; }
+  .panel-ctl-sel .ctl-label { font: var(--tsoi-text-byline); text-transform: uppercase; letter-spacing: 0.04em; color: var(--tsoi-color-on-surface-variant); }
+  /* On a panel bar the controls are pushed to the right edge, so every menu
+     hung off one opens to the LEFT of its control instead. */
+  .panel-ctls .ms-menu,
+  .panel-ctls .cb-list { left: auto; right: 0; }
+  .panel-ctl-sel { min-width: 0; }
+  .panel-ctl-sel select {
+    font: var(--tsoi-text-metric-sm); color: var(--tsoi-color-on-surface);
+    background: var(--tsoi-color-background); border: 1px solid var(--tsoi-color-outline);
+    padding: 3px 6px; border-radius: 2px; max-width: 180px; min-width: 0;
+  }
+  /* A picker whose options run to "Fruit-bearing vegetables, fresh or chilled"
+     asks for more room than a phone has; the closed control shows the head of
+     the chosen name and the native menu shows the rest. */
+  @media (max-width: 600px) { .panel-ctl-sel select { max-width: 42vw; } }
+  /* .panel-max button + .panel.maximized overlay rules are injected globally
+     by ../../lib/panel-chrome.ts (shared with meta.astro). */
+
+  select {
+    font: var(--tsoi-text-metric-sm); color: var(--tsoi-color-on-surface);
+    background: var(--tsoi-color-background); border: 1px solid var(--tsoi-color-outline);
+    padding: 4px 8px; border-radius: 2px; max-width: 200px;
+  }
+  /* ── type-ahead combobox (Control.search) ──────────────────────────────
+     Built by client.ts beside the native select it drives, and styled to read
+     as the same control: the same border, the same type, the same height. The
+     dropdown borrows the multiselect menu's geometry so a board carrying both
+     does not look like it carries two different kinds of list. */
+  .cb { position: relative; display: inline-flex; min-width: 0; }
+  .cb-input {
+    font: var(--tsoi-text-metric-sm); color: var(--tsoi-color-on-surface);
+    background: var(--tsoi-color-background); border: 1px solid var(--tsoi-color-outline);
+    padding: 3px 6px; border-radius: 2px; max-width: 180px; min-width: 0; width: 180px;
+  }
+  .cb-input::placeholder { color: var(--tsoi-color-on-surface-variant); }
+  .cb-input:focus-visible { outline: 2px solid var(--tsoi-color-primary); outline-offset: 1px; }
+  @media (max-width: 600px) { .cb-input { max-width: 42vw; width: 42vw; } }
+  /* Hung from the control's LEFT edge, like .ms-menu and for the same reason:
+     a desk bar builds left to right, so that is the side with room behind it.
+     Right-anchored, the items list — 770px of item names on a control 475px in
+     from the edge — drew all 358 rows off the left of the screen, which reads
+     as a blank menu rather than as a menu in the wrong place. On a panel bar,
+     where the controls hug the right edge, the anchor flips (below), and
+     lib/popover-fit.ts nudges whatever still spills at either end. */
+  .cb-list {
+    position: absolute; z-index: 20; top: calc(100% + 4px); left: 0;
+    margin: 0; padding: 4px; list-style: none;
+    min-width: 240px; max-width: calc(100vw - 28px); max-height: 260px; overflow-y: auto;
+    background: var(--tsoi-color-surface); border: 1px solid var(--tsoi-color-outline);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
+  }
+  .cb-list :global(.cb-opt) {
+    padding: 5px 7px; cursor: pointer; white-space: nowrap;
+    font: var(--tsoi-text-metric-sm); color: var(--tsoi-color-on-surface);
+  }
+  .cb-list :global(.cb-opt:hover),
+  .cb-list :global(.cb-opt.on) { background: var(--tsoi-color-surface-container-high); }
+
+  .ms { position: relative; }
+  .ms-btn {
+    display: inline-flex; align-items: center; gap: 6px; cursor: pointer;
+    font: var(--tsoi-text-metric-sm); color: var(--tsoi-color-on-surface);
+    background: var(--tsoi-color-background); border: 1px solid var(--tsoi-color-outline);
+    padding: 4px 8px; border-radius: 2px; max-width: 220px;
+  }
+  .ms-summary { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ms-caret { color: var(--tsoi-color-on-surface-variant); }
+  .ms-menu {
+    position: absolute; z-index: 20; top: calc(100% + 4px); left: 0;
+    min-width: 240px; max-width: calc(100vw - 28px);
+    background: var(--tsoi-color-surface); border: 1px solid var(--tsoi-color-outline);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
+  }
+  .ms-search {
+    display: block; width: 100%; box-sizing: border-box;
+    padding: 6px 8px; border: 0; border-bottom: 1px solid var(--tsoi-color-outline);
+    font: var(--tsoi-text-metric-sm); color: var(--tsoi-color-on-surface);
+    background: var(--tsoi-color-background); outline: none;
+  }
+  .ms-search::placeholder { color: var(--tsoi-color-on-surface-variant); }
+  .ms-actions { display: flex; border-bottom: 1px solid var(--tsoi-color-outline); }
+  .ms-all, .ms-clear {
+    flex: 1; text-align: center; padding: 5px 8px;
+    border: 0; cursor: pointer;
+    font: var(--tsoi-text-byline); text-transform: uppercase; letter-spacing: 0.04em;
+    color: var(--tsoi-color-primary-text); background: transparent;
+  }
+  .ms-clear { border-left: 1px solid var(--tsoi-color-outline); }
+  .ms-all:hover, .ms-clear:hover { background: var(--tsoi-color-surface-container-high); }
+  .ms-opts { max-height: 240px; overflow-y: auto; overflow-x: auto; padding: 4px; }
+  .ms-menu :global(.ms-opt[hidden]) { display: none; }
+  .ms-menu :global(.ms-opt) {
+    display: flex; align-items: center; gap: 8px; padding: 5px 7px; cursor: pointer;
+    font: var(--tsoi-text-metric-sm); color: var(--tsoi-color-on-surface); white-space: nowrap;
+  }
+  .ms-menu :global(.ms-opt:hover) { background: var(--tsoi-color-surface-container-high); }
+  .ms-menu :global(.ms-opt input) { accent-color: var(--tsoi-color-primary); flex-shrink: 0; }
+
+  .dr { position: relative; }
+  .dr-btn {
+    display: inline-flex; align-items: center; gap: 6px; cursor: pointer;
+    font: var(--tsoi-text-metric-sm); color: var(--tsoi-color-on-surface);
+    background: var(--tsoi-color-background); border: 1px solid var(--tsoi-color-outline);
+    padding: 4px 8px; border-radius: 2px; max-width: 220px;
+  }
+  .dr-summary { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .dr-caret { color: var(--tsoi-color-on-surface-variant); }
+  .dr-menu {
+    position: absolute; z-index: 20; top: calc(100% + 4px); right: 0;
+    min-width: 240px; max-width: calc(100vw - 28px);
+    background: var(--tsoi-color-surface); border: 1px solid var(--tsoi-color-outline);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
+  }
+  .dr-quick { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px; border-bottom: 1px solid var(--tsoi-color-outline); }
+  .dr-q {
+    font: var(--tsoi-text-byline); text-transform: uppercase; letter-spacing: 0.04em;
+    padding: 4px 9px; border: 1px solid var(--tsoi-color-outline); border-radius: 2px; cursor: pointer;
+    background: var(--tsoi-color-background); color: var(--tsoi-color-on-surface-variant);
+  }
+  .dr-q:hover { background: var(--tsoi-color-surface-container-high); color: var(--tsoi-color-on-surface); }
+  /* Accepted AA deviation (2026-07-19): white on light's #CC5500 fill is
+     4.31:1 against the 4.5:1 floor; the passing darker saffron read too red,
+     so the brand fill stays. */
+  .dr-q.active { background: var(--tsoi-color-primary); color: #fff; border-color: var(--tsoi-color-primary); }
+  .dr-custom { display: flex; flex-direction: column; gap: 8px; padding: 8px; }
+  .dr-field { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .dr-field span { font: var(--tsoi-text-byline); text-transform: uppercase; letter-spacing: 0.04em; color: var(--tsoi-color-on-surface-variant); }
+  .dr-field select { flex: 1; max-width: 160px; }
+
+  .seg { display: inline-flex; border: 1px solid var(--tsoi-color-outline); border-radius: 2px; overflow: hidden; }
+  .seg button {
+    font: var(--tsoi-text-byline); text-transform: uppercase; letter-spacing: 0.04em;
+    padding: 5px 10px; border: 0; cursor: pointer;
+    background: var(--tsoi-color-background); color: var(--tsoi-color-on-surface-variant);
+  }
+  .seg button + button { border-left: 1px solid var(--tsoi-color-outline); }
+  /* A control the data cannot currently answer (Control.liveOptions): the
+     option that has nothing behind it goes dead, and a control down to one
+     live option goes quiet whole — visibly still there, so a reader can see
+     what the desk is no longer offering rather than watching a control
+     disappear. Why is in the desk foot. */
+  .seg button:disabled { opacity: 0.35; cursor: not-allowed; }
+  .ctl-dead { opacity: 0.5; }
+  /* Accepted AA deviation (2026-07-19): white on light's #CC5500 fill is
+     4.31:1 against the 4.5:1 floor; the passing darker saffron read too red,
+     so the brand fill stays. */
+  .seg button.active { background: var(--tsoi-color-primary); color: #fff; }
+
+  .chart { width: 100%; height: 360px; }
+  .chart[data-chart='choropleth'] { height: 520px; }
+  .panel.wide .chart { height: 420px; }
+  /* India is a tall shape: across a full-width row it would otherwise sit as a
+     small figure adrift in the middle of the panel. */
+  .panel.wide .chart[data-chart='choropleth'] { height: 640px; }
+  /* A swarm needs a LANE per row, not a line: thirteen series in 420px leaves
+     32px each, which the jitter alone can cross. Height scales with the number
+     of rows the desk actually asks for, so the lanes stay separated. */
+  .chart[data-chart='strips'],
+  .panel.wide .chart[data-chart='strips'] { height: 720px; }
+  /* A ranked bar list needs a row per bar, and its rows are named: twenty
+     items in the default 360px leaves 18px each, at which ECharts starts
+     dropping labels and a bar becomes a length with no subject. */
+  .chart[data-chart='divbars'],
+  .panel.wide .chart[data-chart='divbars'] { height: 480px; }
+  @media (max-width: 600px) {
+    .chart { height: 320px; }
+    .chart[data-chart='choropleth'] { height: 440px; }
+    .chart[data-chart='divbars'] { height: 440px; }
+  }
+
+  /* ── widget panels ────────────────────────────────────────────────────────
+     A `widget` panel hosts a figure a read built by hand rather than an
+     ECharts option (see client.ts). It sizes itself from its own content —
+     the funnel's height is a function of how many floors the tree has — so it
+     opts out of the fixed chart heights above. Placed after them, and
+     repeated for the wide/narrow cases, because those selectors match at the
+     same specificity. */
+  .chart[data-chart='widget'],
+  .panel.wide .chart[data-chart='widget'] {
+    height: auto;
+    padding: calc(var(--tsoi-spacing-unit) * 1.5) calc(var(--tsoi-spacing-unit) * 2) calc(var(--tsoi-spacing-unit) * 2);
+    box-sizing: border-box;
+    /* One hue per floor of the tree, the same five the read's prose spans
+       wear, with saffron kept for the headline row at the top. Declared here
+       rather than inherited, so the widget looks the same in a desk as it
+       does in the read. */
+    --lvl-item: var(--tsoi-color-chart-3);      --lvl-item-text: var(--tsoi-color-chart-3-text, var(--tsoi-color-chart-3));
+    --lvl-sub: var(--tsoi-color-chart-4);       --lvl-sub-text: color-mix(in srgb, var(--tsoi-color-chart-4) 84%, #000);
+    --lvl-class: var(--tsoi-color-chart-6);     --lvl-class-text: var(--tsoi-color-chart-6-text, var(--tsoi-color-chart-6));
+    --lvl-group: var(--tsoi-color-chart-5);     --lvl-group-text: color-mix(in srgb, var(--tsoi-color-chart-5) 86%, #000);
+    --lvl-div: var(--tsoi-color-chart-2);       --lvl-div-text: var(--tsoi-color-chart-2-text, var(--tsoi-color-chart-2));
+  }
+  /* dark lifts the chart hues instead of deepening them, so the two darkened
+     text mixes above have to be undone rather than re-tuned */
+  :global(html[data-theme='dark']) .chart[data-chart='widget'] {
+    --lvl-sub-text: var(--tsoi-color-chart-4);
+    --lvl-group-text: var(--tsoi-color-chart-5);
+  }
+
+  /* the funnel (lib/reads/inflation-widgets.ts initPyramid) */
+  .chart :global(.fn-wrap) { position: relative; }
+  .chart :global(.fn-svg) {
+    width: 100%; display: block; cursor: pointer; touch-action: pan-y;
+    -webkit-tap-highlight-color: transparent; -webkit-user-select: none; user-select: none;
+  }
+  .chart :global(.fn-cell) { transition: opacity 0.45s ease; }
+  .chart :global(.fn-row-general .fn-cell) { fill: var(--tsoi-color-chart-1); }
+  .chart :global(.fn-row-division .fn-cell) { fill: var(--lvl-div); }
+  .chart :global(.fn-row-group .fn-cell) { fill: var(--lvl-group); }
+  .chart :global(.fn-row-class .fn-cell) { fill: var(--lvl-class); }
+  .chart :global(.fn-row-subclass .fn-cell) { fill: var(--lvl-sub); }
+  .chart :global(.fn-row-item .fn-cell) { fill: var(--lvl-item); }
+  .chart :global(.fn-cell.on) { stroke: var(--tsoi-color-on-surface); stroke-width: 1.4; paint-order: stroke; }
+  .chart :global(.fn-thread) { fill: none; stroke-width: 2; opacity: 0.9; }
+  .chart :global(.fn-thread-division) { stroke: var(--lvl-div); }
+  .chart :global(.fn-thread-group) { stroke: var(--lvl-group); }
+  .chart :global(.fn-thread-class) { stroke: var(--lvl-class); }
+  .chart :global(.fn-thread-subclass) { stroke: var(--lvl-sub); }
+  .chart :global(.fn-thread-item) { stroke: var(--lvl-item); }
+  .chart :global(.fn-count) { font-family: var(--tsoi-font-mono); font-size: 10px; letter-spacing: 0.05em; text-transform: uppercase; fill: var(--tsoi-color-on-surface-variant); }
+  .chart :global(.fn-num) { font-family: var(--tsoi-font-mono); font-size: 11.5px; font-weight: 700; font-variant-numeric: tabular-nums; fill: var(--tsoi-color-on-surface); }
+  .chart :global(.fn-name) { font-family: var(--tsoi-font-mono); font-size: 10.5px; fill: var(--tsoi-color-on-surface-variant); }
+  /* A halo in the page colour: the thread joining two floors runs through
+     the gap these labels are printed in, and under a caption it is a rule
+     drawn across the reading. paint-order puts the stroke behind the fill
+     so the letters keep their own shape. */
+  .chart :global(.fn-num), .chart :global(.fn-name) { paint-order: stroke; stroke: var(--tsoi-color-surface); stroke-width: 3px; stroke-linejoin: round; }
+  .chart :global(.fn-row-general .fn-num) { fill: var(--tsoi-color-chart-1-text, var(--tsoi-color-chart-1)); }
+  .chart :global(.fn-row-division .fn-num) { fill: var(--lvl-div-text); }
+  .chart :global(.fn-row-group .fn-num) { fill: var(--lvl-group-text); }
+  .chart :global(.fn-row-class .fn-num) { fill: var(--lvl-class-text); }
+  .chart :global(.fn-row-subclass .fn-num) { fill: var(--lvl-sub-text); }
+  .chart :global(.fn-row-item .fn-num) { fill: var(--lvl-item-text); }
+  .chart :global(.fn-cap) {
+    margin: 10px 0; font: var(--tsoi-text-metric-sm); line-height: 1.55;
+    color: var(--tsoi-color-on-surface-variant); text-align: center; min-height: 1.6em;
+  }
+  .chart :global(.fn-cap strong) { color: var(--tsoi-color-on-surface); font-weight: 700; }
+  .chart :global(.fn-btns) { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+  .chart :global(.fn-btn) {
+    font: var(--tsoi-text-byline); text-transform: uppercase; letter-spacing: 0.04em; cursor: pointer;
+    padding: 5px 10px; border: 1px solid var(--tsoi-color-outline); border-radius: 2px;
+    background: var(--tsoi-color-background); color: var(--tsoi-color-on-surface-variant);
+  }
+  .chart :global(.fn-btn:hover) { border-color: var(--tsoi-color-primary); color: var(--tsoi-color-on-surface); }
+  .chart :global(.fn-btn:disabled) { opacity: 0.4; cursor: default; }
+  .chart :global(.fn-tip) {
+    position: absolute; z-index: 2; pointer-events: none; opacity: 0; transition: opacity 0.15s ease;
+    display: flex; flex-direction: column; gap: 1px; padding: 7px 10px; max-width: 260px;
+    background: var(--tsoi-color-surface-container-high); border: 1px solid var(--tsoi-color-outline-variant); border-radius: 3px;
+    font-family: var(--tsoi-font-mono); font-size: 11px; line-height: 1.45; color: var(--tsoi-color-on-surface-variant);
+  }
+  .chart :global(.fn-tip.show) { opacity: 1; }
+  .chart :global(.fn-tip-name) { color: var(--tsoi-color-on-surface); font-weight: 700; }
+  .chart :global(.fn-tip-lvl) { font-size: 9.5px; letter-spacing: 0.07em; text-transform: uppercase; }
+  .chart :global(.fn-tip-row) { font-variant-numeric: tabular-nums; }
+  .chart :global(.fn-svg.narrow .fn-num) { font-size: 10.5px; }
+  .chart :global(.fn-svg.narrow .fn-name) { font-size: 9px; }
+  .chart :global(.fn-svg.narrow .fn-count) { font-size: 8.5px; }
+
+  /* what entered the basket (initBasketAdditions) — text chips in the house
+     style: no icons, a hairline rule and the mono face the rest of the board
+     reads in. The official item name is the chip's title, so the friendly
+     label never has to be taken on trust. */
+  .chart :global(.ba-count) {
+    margin: 0 0 calc(var(--tsoi-spacing-unit) * 2);
+    font: var(--tsoi-text-metric-sm); line-height: 1.55;
+    color: var(--tsoi-color-on-surface-variant);
+  }
+  .chart :global(.ba-count strong) {
+    font: var(--tsoi-text-metric-lg); color: var(--tsoi-color-primary-text);
+  }
+  .chart :global(.ba-chips) {
+    display: flex; flex-wrap: wrap; gap: var(--tsoi-spacing-unit);
+    margin: 0; padding: 0; list-style: none;
+  }
+  .chart :global(.ba-chip) {
+    padding: 4px 10px; border: 1px solid var(--tsoi-color-outline); border-radius: 2px;
+    background: var(--tsoi-color-background); cursor: help;
+    font: var(--tsoi-text-metric-sm); color: var(--tsoi-color-on-surface);
+  }
+  .chart :global(.ba-foot) {
+    margin: calc(var(--tsoi-spacing-unit) * 2) 0 0;
+    font: var(--tsoi-text-byline); letter-spacing: 0.04em;
+    color: var(--tsoi-color-on-surface-variant);
+  }
+  /* Wide tier (see .tsoi-container-wide in global.css): the 2-up grid goes from
+     ~615px to ~850px per panel, which at a fixed 360px turns every line chart
+     into a letterbox. Grow the height with the width instead of splitting to a
+     3-up grid — a third column would claw back the room the ranked bar lists
+     need for their bank names, which already truncate at 2-up. */
+  @media (min-width: 1600px) {
+    .chart { height: 440px; }
+    .panel.wide .chart { height: 500px; }
+  }
+</style>
+
+<script>
+  // One instance-scoped wiring pass per board root on the page (see
+  // lib/dashboards/client.ts). Astro dedupes identical script tags, so this
+  // runs once however many DesksView instances the page renders — which is
+  // exactly why the wiring had to stop reaching for the document.
+  import { initBoards } from '../../lib/dashboards/client';
+  initBoards();
+</script>

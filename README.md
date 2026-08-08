@@ -3,7 +3,9 @@
 An open-source project charting India's public data — explained, and citable.
 
 The first section, **Economy**, tracks India's payment systems (UPI, IMPS, NEFT,
-RTGS, cards and more) from official RBI and NPCI releases. Three ways in:
+RTGS, cards and more) from official RBI and NPCI releases, and India's prices —
+the Consumer Price Index back to 1969 — from MoSPI and Labour Bureau releases.
+Three ways in:
 
 - **Play** — data games and card decks: guess a number, then meet the real chart.
 - **Read** — short pieces and longreads, each anchored to live charts.
@@ -14,10 +16,10 @@ Live at **[timeseriesofindia.com](https://timeseriesofindia.com)**.
 ## How it works
 
 ```
-Excel / CSV (RBI, NPCI)  →  ETL (Python)  →  PostgreSQL / TimescaleDB  →  Astro + Apache ECharts
+Excel / CSV (RBI, NPCI, MoSPI, Labour Bureau)  →  ETL (Python)  →  PostgreSQL / TimescaleDB  →  Astro + Apache ECharts
 ```
 
-- **`etl/`** — Python pipelines that parse official RBI/NPCI releases into a tidy schema.
+- **`etl/`** — Python pipelines that parse the official releases into a tidy schema.
 - **`site/`** — a static [Astro](https://astro.build) site; charts are spec-driven
   and rendered natively with [Apache ECharts](https://echarts.apache.org) (no iframes).
 - **`infra/`** — Docker Compose: TimescaleDB (build-time data store).
@@ -40,7 +42,9 @@ Single maintainer, no SLA — issues are triaged and PRs reviewed when time allo
 ## Data & attribution
 
 The underlying data is sourced from public releases by the **Reserve Bank of
-India (RBI)** and the **National Payments Corporation of India (NPCI)**.
+India (RBI)**, the **National Payments Corporation of India (NPCI)**, the
+**Ministry of Statistics and Programme Implementation (MoSPI)** and the
+**Labour Bureau**.
 
 - That data remains the property of the respective publishing agencies. It is
   **not** covered by this repository's code license, and it is governed by the
@@ -48,10 +52,10 @@ India (RBI)** and the **National Payments Corporation of India (NPCI)**.
 - Raw source files are **not redistributed** in this repository; the code
   transforms publicly available releases.
 - Charts and figures cite their source. If you reuse them, please preserve the
-  attribution to RBI / NPCI and to Time Series of India.
+  attribution to the source agency and to Time Series of India.
 
 This project is **independent** and is **not affiliated with, endorsed by, or
-sponsored by RBI or NPCI**. Figures are derived from official data but may differ
+sponsored by RBI, NPCI, MoSPI, the Labour Bureau or any government body**. Figures are derived from official data but may differ
 from headline figures depending on the tables and definitions used; see the
 site's *About* page for methodology and caveats.
 
@@ -69,7 +73,7 @@ for the full statement:
   with the copyright holder. Game *mechanics* aren't covered — ideas and rules
   aren't copyrightable — only the authored questions, prose and presentation
   built on top of them.)
-- **Underlying data → RBI / NPCI government open data.** Facts aren't copyrightable;
+- **Underlying data → official government releases.** Facts aren't copyrightable;
   TSOI claims no ownership (see *Data & attribution* above).
 
 Note for contributors and AI agents: the content license is **BY-NC-ND**, not
@@ -93,3 +97,6 @@ Copyright 2026 Time Series of India.
   against the latest Survey of India publications before any official use.
 - **Payments data**: Reserve Bank of India and NPCI, processed by Time Series of
   India. Source links appear on each read and dashboard.
+- **Price data**: MoSPI (CPI) and the Labour Bureau (CPI-IW), processed by Time
+  Series of India. The splice, linking factors and the two computed months are
+  disclosed on every surface that draws the series.

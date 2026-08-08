@@ -14,6 +14,12 @@ public/data/economy/
 # shadow the real histogram with invented numbers.
 public/api/play-stats/
 
+# local verification scratch — Playwright drivers kept here rather than in a
+# temp dir so they resolve site/node_modules. Not part of the build or `npm test`.
+.shot.mjs
+.check-board.mjs
+.check-food.mjs
+
 # dependencies
 node_modules/
 
