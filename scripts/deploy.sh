@@ -38,6 +38,9 @@ node scripts/build-reads-data.mjs
 echo "==> Generating flagship read dataset (UPI: Anatomy of a Tap)..."
 node scripts/build-read-upi-architecture.mjs
 
+echo "==> Generating flagship read dataset (The Price of Nearly Everything)..."
+node scripts/build-read-inflation.mjs
+
 echo "==> Generating the Inflation Peaks terrain (CPI-IW + CPI Combined spine)..."
 node scripts/build-inflation-peaks.mjs
 
