@@ -150,6 +150,21 @@ test('the share is clamped off both ends', () => {
   assert.equal(rankLine(bottom.hist, bin(1.0), bottom.plays), 'Higher than 1% of filed indexes.');
 });
 
+/* The first filer saw "You are 1st of 1": a rank against a crowd of
+   themselves. Being the whole board is a fact about the board, and the line
+   now says it that way, in both voices. */
+test('the only index on the board is not ranked against itself', () => {
+  const b = hist({ 92.4: 1 });
+  assert.equal(rankLine(b.hist, bin(92.4), b.plays), 'Yours is the first index on the board.');
+  assert.equal(rankLine(b.hist, bin(92.4), b.plays, 'share'), 'The first index on the board.');
+});
+
+test('below one entry and not folded in yet, the crowd widens to hold you', () => {
+  // The same clamp the clock line makes: "2nd of 1" is not a thing.
+  const b = hist({ 92.4: 1 });
+  assert.equal(rankLine(b.hist, bin(60.0), b.plays), 'You are 2nd of 2.');
+});
+
 test('an empty or impossible board says nothing at all', () => {
   assert.equal(rankLine(Array(BINS).fill(0), bin(50), 0), '');
   assert.equal(rankLine(Array(BINS).fill(0), -1, 10), '');

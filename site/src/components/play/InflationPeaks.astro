@@ -2560,6 +2560,19 @@ const COLUMN_NOTES = [
     let above = 0;
     for (let i = bin + 1; i < hist.length; i++) above += Number(hist[i]) || 0;
     const rank = above + 1;
+    /* The crowd must be able to hold the position — the same clamp the clock
+       line makes, for the same pre-fold reason: a board that does not contain
+       you yet can put your rank past its own count, and "2nd of 1" is not a
+       thing. And a crowd of one is not a ranking at all. The first filer saw
+       "You are 1st of 1", which ranks a person against a crowd of themselves;
+       being the whole board is a fact about the board, so it is said that
+       way. */
+    const crowd = Math.max(plays, rank);
+    if (crowd === 1) {
+      return voice === 'share'
+        ? 'The first index on the board.'
+        : 'Yours is the first index on the board.';
+    }
     if (rank <= RANK_NAMED) {
       /* Ties counted rather than labelled. "Joint 1st of 5,206" put the tie
          word in front of the whole phrase, where it could be read as a claim
@@ -2574,13 +2587,13 @@ const COLUMN_NOTES = [
       const level = Math.max(0, (Number(hist[bin]) || 0) - 1);
       const tie = level > 0 ? `, tied with ${grp(level)} ${level === 1 ? 'other' : 'others'}` : '';
       return voice === 'share'
-        ? `${ordinal(rank)} of ${grp(plays)} drivers${tie}.`
-        : `You are ${ordinal(rank)} of ${grp(plays)}${tie}.`;
+        ? `${ordinal(rank)} of ${grp(crowd)} drivers${tie}.`
+        : `You are ${ordinal(rank)} of ${grp(crowd)}${tie}.`;
     }
     if (plays < PCT_FLOOR) {
       return voice === 'share'
-        ? `${ordinal(rank)} of ${grp(plays)} drivers.`
-        : `You are ${ordinal(rank)} of ${grp(plays)}.`;
+        ? `${ordinal(rank)} of ${grp(crowd)} drivers.`
+        : `You are ${ordinal(rank)} of ${grp(crowd)}.`;
     }
     const pct = midpointPct(hist, bin, plays);
     return pct == null ? '' : `Higher than ${pct}% of filed indexes.`;
