@@ -1534,11 +1534,15 @@ import SectionHeader from '../components/editorial/SectionHeader.astro';
     };
     // A dashed vertical marker at the bucket currently filling — this replaces
     // the halo ring the hero uses. Everything to its right is "not yet".
+    // The label sits INSIDE the grid (below the line's top end), not at
+    // position 'end' above it — 'end' shares the band the formats panel's
+    // legend lives in, and late in the UTC day the line reaches the right
+    // edge and "now" lands on the last legend entry.
     const nowMarkLine = (t: Tokens, label: string) => ({
       silent: true, symbol: 'none',
       lineStyle: { color: t.primary, width: 1, type: 'dashed' as const, opacity: 0.9 },
-      label: { show: true, formatter: 'now', position: 'end' as const,
-        color: t.primary, fontFamily: t.mono, fontSize: 10 },
+      label: { show: true, formatter: 'now', position: 'insideEndTop' as const,
+        distance: 4, color: t.primary, fontFamily: t.mono, fontSize: 10 },
       data: [{ xAxis: label }],
     });
     // The "live feed offline" placeholder both current-day panels fall back to
