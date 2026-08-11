@@ -37,6 +37,10 @@ export function getStaticPaths() {
 }
 
 const { label, blurb } = Astro.props;
+// The Independence Day flagship puts the first real number into each of these
+// four sections, so the stub's way out now leads with that panel rather than
+// sending everyone to Economy.
+const { section } = Astro.params;
 ---
 
 {/* noindex: these are wordless stubs — keep thin placeholder pages out of
@@ -60,6 +64,7 @@ const { label, blurb } = Astro.props;
       />
     </svg>
     <p class="cap">In the works</p>
+    <p class="back"><a href={`/independence#${section}`}>See this section&rsquo;s first series &rarr;</a></p>
     <p class="back"><a href="/economy/read">Read the Economy section &rarr;</a></p>
   </div>
 </StoryPage>

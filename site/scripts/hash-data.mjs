@@ -31,6 +31,7 @@ const MANIFEST = path.join(SITE, 'src/lib/data-manifest.json');
 //   - src/pages/economy/read/upi-architecture.astro  (flagship read fetch())
 //   - src/components/play/InflationPeaks.astro       (game terrain fetch())
 //   - src/pages/economy/explore/rupee-time-machine.astro  (calculator fetch())
+//   - src/lib/independence/charts.ts                 (the /independence panels)
 //
 // DELIBERATELY NOT LISTED: /data/economy/inflation-items/*. Those shards are
 // hashed by their own generator and written under the hash they earned, so they
@@ -51,6 +52,13 @@ const RUNTIME_FILES = [
   '/data/economy/reads/shops-vs-people.json',
   '/data/economy/play/inflation-peaks.json',
   '/data/meta/traffic.json',
+  // Independence Day flagship: five panels, one JSON each, all fetched by
+  // src/lib/independence/charts.ts at runtime.
+  '/data/independence/economy.json',
+  '/data/independence/demographics.json',
+  '/data/independence/environment.json',
+  '/data/independence/infrastructure.json',
+  '/data/independence/governance.json',
 ];
 
 const manifest = {};

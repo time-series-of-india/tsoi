@@ -1,0 +1,848 @@
+---
+// "The line at 1947": the Independence Day 2026 flagship.
+//
+// Five long records, one per section of the paper, drawn on one shared axis
+// running 1858 to 2026. The page is a sectioned explorer rather than a read:
+// a persistent rail, five deep-linkable panels, one chart each (three stacked
+// strands for environment), and an explainer column that keeps the prose
+// short. Implementation contract:
+//   tsoi-internal/docs/editorial/independence-flagship-page-design.md
+//
+// Chrome is composed here rather than via StoryPage because main needs its own
+// two-column structure. No new global CSS; tokens only.
+//
+// The charts are the argument: identical grid, identical 1858-2026 range, the
+// same rule at 1947 on every one of them. That invariant lives in exactly one
+// place, src/lib/independence/charts.ts, and nothing on this page overrides it.
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Masthead from '../components/layout/Masthead.astro';
+import SectionNav from '../components/layout/SectionNav.astro';
+import Footer from '../components/layout/Footer.astro';
+import SectionHeader from '../components/editorial/SectionHeader.astro';
+import ShareButtons from '../components/editorial/ShareButtons.astro';
+import { dataUrl } from '../lib/data-url';
+
+const TITLE = 'The line at 1947';
+
+// The temperature strand is meaningless without its reference period, so the
+// baseline is read out of the generated JSON at build time and printed both on
+// the strand label and in the footnote. Never hardcoded.
+const envJson = JSON.parse(
+  readFileSync(fileURLToPath(new URL('../../public/data/independence/environment.json', import.meta.url)), 'utf8'),
+) as { series: Array<{ id: string; baseline?: string }> };
+const tempBaseline = envJson.series.find((s) => s.id === 'temp_anomaly')?.baseline ?? '';
+
+const RAIL = [
+  { id: 'economy', section: 'Economy', series: 'GDP per person' },
+  { id: 'demographics', section: 'Demographics', series: 'Child mortality' },
+  { id: 'environment', section: 'Environment', series: 'Carbon · heat · drought' },
+  { id: 'infrastructure', section: 'Infrastructure', series: 'Energy per person' },
+  { id: 'governance', section: 'Governance', series: 'Women in Parliament' },
+];
+
+// Ending navigation. Economy is the built-out section; the other four begin
+// today with the series above them.
+const DOORWAYS = [
+  { label: 'Economy', href: '/economy/read', line: 'Reads, two games and the payments dashboards.' },
+  { label: 'Environment', href: '/environment', line: 'Begins today with the carbon, heat and drought records above.' },
+  { label: 'Infrastructure', href: '/infrastructure', line: 'Begins today with the energy record above.' },
+  { label: 'Demographics', href: '/demographics', line: 'Begins today with the child mortality record above.' },
+  { label: 'Governance', href: '/governance', line: 'Begins today with the representation record above.' },
+];
+
+const JSON_URL = {
+  economy: dataUrl('/data/independence/economy.json'),
+  demographics: dataUrl('/data/independence/demographics.json'),
+  environment: dataUrl('/data/independence/environment.json'),
+  infrastructure: dataUrl('/data/independence/infrastructure.json'),
+  governance: dataUrl('/data/independence/governance.json'),
+};
+---
+
+<BaseLayout
+  title={`${TITLE} — Time Series of India`}
+  description="Five long records, one per section of the paper: economy, demographics, environment, infrastructure, governance. 89 years of Crown rule and 79 of the republic, on one shared axis."
+  og_type="article"
+>
+  <Masthead />
+  <SectionNav />
+
+  <main class="tsoi-container indy">
+    <header class="title-block">
+      <p class="kicker">INDEPENDENCE DAY 2026</p>
+      <h1>{TITLE}</h1>
+      <p class="standfirst">
+        Five long records, one for each section of this paper, drawn on a single timeline: 89 years
+        of Crown rule on the left, 79 years of the republic on the right, and a line where they meet.
+      </p>
+      <div class="byline-row">
+        <span class="byline">15 AUGUST 2026 · AN ALMANAC IN FIVE SERIES</span>
+        <ShareButtons title={TITLE} variant="icon" divider={false} align="end" />
+      </div>
+      <p class="intro">
+        Anniversaries invite scorekeeping, and scorekeeping invites flattery. This page tries to do
+        the first without the second. We chose one long series for each of the five sections this
+        paper is built around: what the country earns, who survives, what the monsoon and the climate
+        did, what powers it all, and who sits in Parliament. Each is the longest record we could find
+        that we are licensed to reprint. All five are drawn on one axis, opening in 1858, when the
+        Crown took India from the East India Company, and closing this year. Every chart carries the
+        same vertical line at 1947. Four of the five series change shape somewhere along the way. One
+        of them refuses to change at all, and it is the one everything else in the country once
+        depended on.
+      </p>
+    </header>
+
+    <div class="explorer">
+      <nav class="rail" aria-label="Panels">
+        <ul class="rail-list">
+          {RAIL.map((r) => (
+            <li>
+              <a href={`#${r.id}`} data-rail={r.id}>
+                <span class="rail-sec">{r.section}</span>
+                <span class="rail-ser">{r.series}</span>
+              </a>
+            </li>
+          ))}
+        </ul>
+        <p class="rail-foot"><a href="#onward">Data &amp; sources &darr;</a></p>
+      </nav>
+
+      <div class="panels">
+        {/* ------------------------------------------------------ economy --- */}
+        <section class="panel" id="economy" aria-labelledby="h-economy">
+          <div class="panel-head">
+            <h2 class="panel-label" id="h-economy">Economy</h2>
+            <span class="hairline" aria-hidden="true"></span>
+            <span class="span-note">1600&ndash;2022</span>
+          </div>
+          <div class="panel-body">
+            <aside class="explainer">
+              <p class="numeral">8&times;</p>
+              <p class="numeral-cap">growth in GDP per person since 1947, after three and a half centuries of none.</p>
+              <p class="prose">
+                The Maddison Project's long reconstruction says India produced about $1,264 per
+                person in 1600, in 2011 international dollars. In 1947 the figure was $985. Three and
+                a half centuries, most of them under Company or Crown, ended below where they began.
+                The early estimates are rough, but the direction is not subtle: $955 in 1900, $985 at
+                independence, a country that for practical purposes did not grow. After 1947 the line
+                acquires a slope. It climbs slowly for four decades, at what its own economists
+                called the Hindu rate of growth, bends upward after 1991, and reaches $7,766 by 2022,
+                eight times the level at independence. The axis here starts at 1858 for alignment
+                with the other panels; the clipped stretch back to 1600 looks the same, only longer.
+              </p>
+            </aside>
+            <figure class="chart">
+              <div
+                class="chart-box"
+                data-chart="economy"
+                data-panel="economy"
+                role="img"
+                aria-label="GDP per person in India, 1858 to 2022, flat until 1947 and rising eightfold after it."
+              ></div>
+              <figcaption class="footnote">
+                Source: Maddison Project Database, via Our World in Data. GDP per person in 2011
+                international dollars, adjusted for inflation and for cost of living between
+                countries. Estimates before the 1880s are sparse and uncertain. Series ends 2022.
+                <a href={JSON_URL.economy} download>Data: JSON</a>
+              </figcaption>
+            </figure>
+          </div>
+        </section>
+
+        {/* ------------------------------------------------- demographics --- */}
+        <section class="panel" id="demographics" aria-labelledby="h-demographics">
+          <div class="panel-head">
+            <h2 class="panel-label" id="h-demographics">Demographics</h2>
+            <span class="hairline" aria-hidden="true"></span>
+            <span class="span-note">1911&ndash;2024</span>
+          </div>
+          <div class="panel-body">
+            <aside class="explainer">
+              <p class="numeral">1 in 3</p>
+              <p class="numeral-cap">children born in 1911 died before turning five. For children born in 2024 it is 1 in 38.</p>
+              <p class="prose">
+                One child in three born in 1911 died before its fifth birthday, close enough in time
+                that people alive today had parents born into those odds. By 2024 the figure was 2.7
+                per cent, one in thirty-eight. What sets this series apart from everything else on
+                the page is its consistency: it fell in every decade on record, through Partition,
+                three wars, the Emergency, and the 1991 crisis. Whatever else Indian governments
+                abandoned, this they did not. The grind was still slower than it had to be. China's
+                rate in 1950 was worse than India's, 31.7 per cent against 26.7; China now stands at
+                0.6, a fifth of India's 2.7. The line falls without pause, and it also never fell
+                fast enough.
+              </p>
+            </aside>
+            <figure class="chart">
+              <div
+                class="chart-box"
+                data-chart="demographics"
+                data-panel="demographics"
+                role="img"
+                aria-label="Share of Indian children dying before age five, 1911 to 2024, falling in every decade."
+              ></div>
+              <figcaption class="footnote">
+                Source: UN IGME and Gapminder, via Our World in Data. Share of live births dying
+                before age five, in per cent, not per 1,000.
+                <a href={JSON_URL.demographics} download>Data: JSON</a>
+              </figcaption>
+            </figure>
+          </div>
+        </section>
+
+        {/* -------------------------------------------------- environment --- */}
+        <section class="panel" id="environment" aria-labelledby="h-environment">
+          <div class="panel-head">
+            <h2 class="panel-label" id="h-environment">Environment</h2>
+            <span class="hairline" aria-hidden="true"></span>
+            <span class="span-note">1858&ndash;2025</span>
+          </div>
+          <div class="panel-body">
+            <aside class="explainer">
+              <p class="numeral">no trend</p>
+              <p class="numeral-cap">in 125 years of the monsoon drought record. Everything else on this page moved.</p>
+              <p class="prose">
+                Three records share this panel. Carbon: in 1951, India and China emitted the same,
+                0.18 tonnes of CO&#8322; per person each. India's figure is now 2.2 tonnes, still
+                less than half the world average of 4.7 and a seventh of the American 14.2, but
+                rising fast, and the national total is the third largest on earth. Temperature: the
+                ERA5 record shows India roughly one degree warmer than in 1940; the chart states its
+                baseline, because an anomaly figure means nothing without one. Drought: the SPEI
+                measure of each monsoon season, across 125 years, shows no trend whatsoever. Its
+                five deepest failures came in 1918, 1965, 1972, 1987 and 2002. Four of the five fell
+                after independence, and the famines that had followed such failures for a century
+                did not return. The famines ended in the country, not in the sky. The warming,
+                however, arrives regardless of who caused it.
+              </p>
+            </aside>
+            <figure class="chart">
+              <div class="strand">
+                <p class="strand-label">CO&#8322; PER PERSON</p>
+                <div
+                  class="chart-box strand-box tall"
+                  data-chart="environment-co2"
+                  data-panel="environment"
+                  role="img"
+                  aria-label="Carbon dioxide emissions per person for India, the World, the United States and China."
+                ></div>
+              </div>
+              <div class="strand">
+                <p class="strand-label">
+                  TEMPERATURE ANOMALY VS <span data-baseline-slot>{tempBaseline}</span>
+                </p>
+                <div
+                  class="chart-box strand-box short"
+                  data-chart="environment-temp"
+                  data-panel="environment"
+                  role="img"
+                  aria-label="India's annual temperature anomaly, 1940 to 2025."
+                ></div>
+              </div>
+              <div class="strand">
+                <p class="strand-label">MONSOON DROUGHT (SPEI)</p>
+                <div
+                  class="chart-box strand-box tall"
+                  data-chart="environment-drought"
+                  data-panel="environment"
+                  role="img"
+                  aria-label="September SPEI-4 for each Indian monsoon season, 1901 to 2025, with no trend."
+                ></div>
+              </div>
+              <figcaption class="footnote">
+                Sources: Global Carbon Budget, via Our World in Data (CO&#8322; per person).
+                Copernicus ERA5, via Our World in Data; contains modified Copernicus Climate Change
+                Service information; anomalies relative to {tempBaseline} (temperature). Chuphal,
+                Kushwaha, Aadhar and Mishra, Drought Atlas of India, Scientific Data 11:7, 2024,
+                CC BY 4.0; September value of the 4-month SPEI, the June to September monsoon
+                window (drought). SPEI is a z-score of water balance; it says nothing about
+                rainfall intensity or rainy days.
+                <a href={JSON_URL.environment} download>Data: JSON</a>
+              </figcaption>
+            </figure>
+          </div>
+        </section>
+
+        {/* ----------------------------------------------- infrastructure --- */}
+        <section class="panel" id="infrastructure" aria-labelledby="h-infrastructure">
+          <div class="panel-head">
+            <h2 class="panel-label" id="h-infrastructure">Infrastructure</h2>
+            <span class="hairline" aria-hidden="true"></span>
+            <span class="span-note">1800&ndash;2025</span>
+          </div>
+          <div class="panel-body">
+            <aside class="explainer">
+              <p class="numeral">37%</p>
+              <p class="numeral-cap">India's energy use per person as a share of the world average, 2025. It sits below the world's level of 1950.</p>
+              <p class="prose">
+                Nothing in the first two panels happens without this one. Energy use per person is
+                the substrate of income and survival alike, and it is where India remains furthest
+                behind: 7,419 kilowatt-hours a year in 2025, against a world average of 20,258 and an
+                American 75,051. The world line on this chart passed India's current level before
+                1950. The republic did finish one enormous job: household electricity access rose
+                from half the population in 1993 to effectively all of it by 2024. But a connection
+                is not consumption, and the renewable share of generation is lower today than in
+                1985, 24 per cent against 28, because the early grid was small and partly hydro and
+                the growth since ran on coal. Closing the energy gap without repeating the carbon
+                panel is the whole problem of the next thirty years.
+              </p>
+            </aside>
+            <figure class="chart">
+              <div
+                class="chart-box"
+                data-chart="infrastructure"
+                data-panel="infrastructure"
+                role="img"
+                aria-label="Primary energy use per person for India, the World and the United States, with the world's 1950 level marked."
+              ></div>
+              <figcaption class="footnote">
+                Source: Energy Institute Statistical Review and Vaclav Smil, via Our World in Data.
+                Primary energy per person, in kilowatt-hours. Electricity access: World Bank, via
+                Our World in Data.
+                <a href={JSON_URL.infrastructure} download>Data: JSON</a>
+              </figcaption>
+            </figure>
+          </div>
+        </section>
+
+        {/* --------------------------------------------------- governance --- */}
+        <section class="panel" id="governance" aria-labelledby="h-governance">
+          <div class="panel-head">
+            <h2 class="panel-label" id="h-governance">Governance</h2>
+            <span class="hairline" aria-hidden="true"></span>
+            <span class="span-note">1900&ndash;2025</span>
+          </div>
+          <div class="panel-body">
+            <aside class="explainer">
+              <p class="numeral">13.7%</p>
+              <p class="numeral-cap">of Lok Sabha seats held by women after the 2024 election. Lower than after 2019.</p>
+              <p class="prose">
+                The republic's founding bet was universal suffrage from the first ballot, tried in
+                1952 at a scale no country had attempted. This series measures how far the chamber
+                has come to resemble the electorate, and the answer is: slowly, and lately in
+                reverse. Women held 4 per cent of Lok Sabha seats after the 1952 election, 14.4 per
+                cent after 2019, and 13.7 per cent after 2024. A constitutional amendment passed in
+                2023 reserves a third of seats for women, but only after a future delimitation
+                exercise, so for now the reservation exists on paper and in no seat. Of the five
+                headline series on this page, this is the shortest distance travelled since 1947, and
+                the only one now moving the wrong way.
+              </p>
+            </aside>
+            <figure class="chart">
+              <div
+                class="chart-box"
+                data-chart="governance"
+                data-panel="governance"
+                role="img"
+                aria-label="Share of lower-house seats held by women in India, 1900 to 2025, against the 33 per cent reserved by law."
+              ></div>
+              <figcaption class="footnote">
+                Source: V-Dem, via Our World in Data. Share of lower-house seats held by women.
+                <a href={JSON_URL.governance} download>Data: JSON</a>
+              </figcaption>
+            </figure>
+          </div>
+        </section>
+      </div>
+    </div>
+
+    <section class="ending" id="onward" aria-labelledby="h-onward">
+      <SectionHeader label="Onward" />
+      <p class="ending-copy">
+        Each chart above is the first number in its section. Economy is already built out, with
+        reads, games and dashboards linked below. The other four sections begin today with one series
+        each and will fill in behind it. Every series on this page can be downloaded as JSON from the
+        panel footnotes, sources and licences included. Same page, same five lines, one year longer,
+        next August.
+      </p>
+      <ul class="doorways">
+        {DOORWAYS.map((d) => (
+          <li>
+            <a class="door-name" href={d.href}>{d.label}</a>
+            <span class="door-line">{d.line}</span>
+          </li>
+        ))}
+      </ul>
+      {/* No EmailSignup here: the Footer's newsletter row sits directly below,
+          and the page ends in navigation, not a second ask. */}
+    </section>
+  </main>
+
+  <Footer />
+</BaseLayout>
+
+<style>
+  .indy {
+    padding-top: calc(var(--tsoi-spacing-unit) * 3);
+    padding-bottom: calc(var(--tsoi-spacing-unit) * 6);
+  }
+
+  /* ------------------------------------------------------------- title --- */
+
+  .title-block {
+    max-width: 900px;
+    margin-bottom: calc(var(--tsoi-spacing-unit) * 5);
+  }
+
+  .kicker {
+    margin: 0 0 calc(var(--tsoi-spacing-unit) * 1.5);
+    font: var(--tsoi-text-label-caps);
+    letter-spacing: var(--tsoi-text-label-caps-tracking);
+    text-transform: uppercase;
+    color: var(--tsoi-color-primary-text);
+  }
+
+  .title-block h1 {
+    margin: 0;
+    font: var(--tsoi-text-headline-xl);
+    letter-spacing: var(--tsoi-text-headline-xl-tracking);
+  }
+
+  .standfirst {
+    margin: calc(var(--tsoi-spacing-unit) * 1.5) 0 0;
+    max-width: 620px;
+    font: var(--tsoi-text-deck);
+    color: var(--tsoi-color-on-surface-variant);
+  }
+
+  .byline-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--tsoi-column-gutter);
+    max-width: 620px;
+    margin-top: calc(var(--tsoi-spacing-unit) * 2);
+    padding-top: calc(var(--tsoi-spacing-unit) * 1.5);
+    border-top: var(--tsoi-rule-column) solid var(--tsoi-color-outline);
+  }
+
+  .byline {
+    font: var(--tsoi-text-byline);
+    letter-spacing: var(--tsoi-text-byline-tracking);
+    color: var(--tsoi-color-on-surface-variant);
+  }
+
+  .intro {
+    margin: calc(var(--tsoi-spacing-unit) * 2.5) 0 0;
+    max-width: 620px;
+    font: var(--tsoi-text-body);
+  }
+
+  /* ---------------------------------------------------------- explorer --- */
+  /* Broadsheet: the rail is divided from the panels by a rule, not a gutter. */
+
+  .explorer {
+    display: grid;
+    grid-template-columns: 176px 1fr;
+  }
+
+  .rail {
+    position: sticky;
+    top: calc(var(--tsoi-spacing-unit) * 3);
+    align-self: start;
+    padding-inline-end: var(--tsoi-column-gutter);
+  }
+
+  .rail-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .rail-list a {
+    display: block;
+    padding: calc(var(--tsoi-spacing-unit) * 0.75) 0 calc(var(--tsoi-spacing-unit) * 0.75) 8px;
+    /* Always present, transparent at rest: the active rule can then appear
+       without moving the text by a pixel. */
+    border-inline-start: 2px solid transparent;
+    margin-inline-start: -10px;
+    text-decoration: none;
+  }
+
+  .rail-sec {
+    display: block;
+    font: var(--tsoi-text-label-caps);
+    letter-spacing: var(--tsoi-text-label-caps-tracking);
+    text-transform: uppercase;
+    color: var(--tsoi-color-on-surface);
+  }
+
+  .rail-ser {
+    display: block;
+    margin-top: 2px;
+    font: var(--tsoi-text-metric-sm);
+    letter-spacing: var(--tsoi-text-metric-sm-tracking);
+    color: var(--tsoi-color-on-surface-variant);
+  }
+
+  .rail-list a.is-active {
+    border-inline-start-color: var(--tsoi-color-primary);
+  }
+
+  .rail-list a.is-active .rail-sec {
+    color: var(--tsoi-color-primary-text);
+  }
+
+  .rail-foot {
+    margin: calc(var(--tsoi-spacing-unit) * 2) 0 0;
+    padding-top: calc(var(--tsoi-spacing-unit) * 1.5);
+    border-top: var(--tsoi-rule-column) solid var(--tsoi-color-outline);
+    font: var(--tsoi-text-byline);
+    letter-spacing: var(--tsoi-text-byline-tracking);
+    text-transform: uppercase;
+  }
+
+  .rail-foot a {
+    color: var(--tsoi-color-on-surface-variant);
+    text-decoration: none;
+  }
+
+  .rail-foot a:hover {
+    color: var(--tsoi-color-primary-text);
+  }
+
+  .panels {
+    min-width: 0;
+    padding-inline-start: var(--tsoi-column-gutter);
+    border-inline-start: var(--tsoi-rule-column) solid var(--tsoi-color-outline);
+  }
+
+  /* ------------------------------------------------------------ panels --- */
+
+  .panel {
+    scroll-margin-top: calc(var(--tsoi-spacing-unit) * 3);
+  }
+
+  .panel + .panel {
+    margin-top: calc(var(--tsoi-spacing-unit) * 6);
+  }
+
+  /* SectionHeader anatomy, inline: caps label, hairline, span note right. */
+  .panel-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: var(--tsoi-column-gutter);
+    padding-bottom: calc(var(--tsoi-spacing-unit) / 2);
+    border-bottom: var(--tsoi-rule-section) solid var(--tsoi-color-on-surface);
+  }
+
+  .panel-label {
+    margin: 0;
+    font: var(--tsoi-text-headline-sm);
+    letter-spacing: var(--tsoi-text-headline-sm-tracking);
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  .panel-head .hairline {
+    flex: 1;
+    align-self: center;
+    border-top: var(--tsoi-rule-column) solid var(--tsoi-color-outline);
+  }
+
+  .span-note {
+    font: var(--tsoi-text-byline);
+    letter-spacing: var(--tsoi-text-byline-tracking);
+    text-transform: uppercase;
+    color: var(--tsoi-color-on-surface-variant);
+    white-space: nowrap;
+  }
+
+  .panel-body {
+    display: grid;
+    grid-template-columns: 260px 1fr;
+    gap: var(--tsoi-column-gutter);
+    margin-top: calc(var(--tsoi-spacing-unit) * 2.5);
+  }
+
+  /* --------------------------------------------------------- explainer --- */
+  /* No rules, no box: the size contrast carries it (sibling-card language). */
+
+  .explainer {
+    min-width: 0;
+  }
+
+  .numeral {
+    margin: 0;
+    font: var(--tsoi-text-masthead);
+    letter-spacing: var(--tsoi-text-masthead-tracking);
+    color: var(--tsoi-color-on-surface);
+  }
+
+  .numeral-cap {
+    margin: calc(var(--tsoi-spacing-unit) * 1.25) 0 0;
+    max-width: 30ch;
+    font: var(--tsoi-text-byline);
+    letter-spacing: var(--tsoi-text-byline-tracking);
+    line-height: 1.6;
+    color: var(--tsoi-color-on-surface-variant);
+  }
+
+  .prose {
+    margin: calc(var(--tsoi-spacing-unit) * 2) 0 0;
+    font: var(--tsoi-text-body);
+  }
+
+  /* ------------------------------------------------------------ charts --- */
+
+  .chart {
+    min-width: 0;
+    margin: 0;
+  }
+
+  .chart-box {
+    width: 100%;
+    height: 340px;
+  }
+
+  .strand + .strand {
+    margin-top: calc(var(--tsoi-spacing-unit) * 1.5);
+  }
+
+  .strand-label {
+    margin: 0 0 calc(var(--tsoi-spacing-unit) * 0.5);
+    font: var(--tsoi-text-label-caps);
+    letter-spacing: var(--tsoi-text-label-caps-tracking);
+    text-transform: uppercase;
+    color: var(--tsoi-color-on-surface-variant);
+  }
+
+  .strand-box.tall {
+    height: 150px;
+  }
+
+  .strand-box.short {
+    height: 130px;
+  }
+
+  .footnote {
+    margin-top: calc(var(--tsoi-spacing-unit) * 1.5);
+    padding-top: calc(var(--tsoi-spacing-unit));
+    border-top: var(--tsoi-rule-column) solid var(--tsoi-color-outline);
+    font: var(--tsoi-text-byline);
+    letter-spacing: var(--tsoi-text-byline-tracking);
+    line-height: 1.7;
+    color: var(--tsoi-color-on-surface-variant);
+  }
+
+  .footnote a {
+    color: var(--tsoi-color-primary-text);
+    text-decoration: none;
+    white-space: nowrap;
+  }
+
+  .footnote a:hover {
+    text-decoration: underline;
+  }
+
+  /* ------------------------------------------------------------ ending --- */
+
+  .ending {
+    margin-top: calc(var(--tsoi-spacing-unit) * 8);
+    scroll-margin-top: calc(var(--tsoi-spacing-unit) * 3);
+  }
+
+  .ending-copy {
+    margin: calc(var(--tsoi-spacing-unit) * 2.5) 0 0;
+    max-width: 620px;
+    font: var(--tsoi-text-body);
+  }
+
+  .doorways {
+    margin: calc(var(--tsoi-spacing-unit) * 3) 0 calc(var(--tsoi-spacing-unit) * 5);
+    padding: 0;
+    list-style: none;
+    border-top: var(--tsoi-rule-column) solid var(--tsoi-color-outline);
+  }
+
+  .doorways li {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: var(--tsoi-column-gutter);
+    padding: calc(var(--tsoi-spacing-unit) * 1.5) 0;
+    border-bottom: var(--tsoi-rule-column) solid var(--tsoi-color-outline);
+  }
+
+  /* At rest the section names are on-surface: the page should end quietly. */
+  .door-name {
+    flex: 0 0 auto;
+    min-width: 160px;
+    font: var(--tsoi-text-headline-sm);
+    letter-spacing: var(--tsoi-text-headline-sm-tracking);
+    text-transform: uppercase;
+    color: var(--tsoi-color-on-surface);
+    text-decoration: none;
+  }
+
+  .door-name:hover {
+    color: var(--tsoi-color-primary-text);
+  }
+
+  .door-line {
+    font: var(--tsoi-text-byline);
+    letter-spacing: var(--tsoi-text-byline-tracking);
+    color: var(--tsoi-color-on-surface-variant);
+  }
+
+  /* ------------------------------------------------- tablet and mobile --- */
+  /* Designed rather than inherited: Independence Day traffic arrives on
+     phones. The rail becomes a pinned horizontal strip, the explainer moves
+     above its chart, and the charts get shorter. */
+
+  @media (max-width: 1023px) {
+    .explorer {
+      display: block;
+    }
+
+    .rail {
+      position: sticky;
+      top: 0;
+      z-index: 5;
+      padding-inline-end: 0;
+      margin-bottom: calc(var(--tsoi-spacing-unit) * 3);
+      background: var(--tsoi-color-background);
+      border-bottom: var(--tsoi-rule-column) solid var(--tsoi-color-outline);
+    }
+
+    .rail-list {
+      display: flex;
+      gap: calc(var(--tsoi-spacing-unit) * 2.5);
+      overflow-x: auto;
+      scrollbar-width: none;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .rail-list::-webkit-scrollbar {
+      display: none;
+    }
+
+    .rail-list a {
+      padding: calc(var(--tsoi-spacing-unit) * 1.25) 0;
+      margin-inline-start: 0;
+      border-inline-start: 0;
+      border-bottom: 2px solid transparent;
+      white-space: nowrap;
+    }
+
+    .rail-list a.is-active {
+      border-bottom-color: var(--tsoi-color-primary);
+    }
+
+    /* Series names are the desktop affordance; the strip carries section
+       names only. */
+    .rail-ser {
+      display: none;
+    }
+
+    .rail-foot {
+      display: none;
+    }
+
+    .panels {
+      padding-inline-start: 0;
+      border-inline-start: 0;
+    }
+
+    .panel {
+      scroll-margin-top: 48px;
+    }
+
+    .panel-body {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  @media (max-width: 767px) {
+    .numeral {
+      font: var(--tsoi-text-masthead-mobile);
+      letter-spacing: var(--tsoi-text-masthead-mobile-tracking);
+    }
+
+    .chart-box {
+      height: 240px;
+    }
+
+    .strand-box.tall {
+      height: 120px;
+    }
+
+    .strand:nth-of-type(2) .strand-box.short {
+      height: 110px;
+    }
+
+    .strand:nth-of-type(3) .strand-box.tall {
+      height: 130px;
+    }
+
+    .door-name {
+      min-width: 0;
+      flex-basis: 100%;
+    }
+  }
+</style>
+
+<script>
+  import { initIndependenceCharts } from '../lib/independence/charts';
+
+  initIndependenceCharts();
+
+  // Scrollspy for the rail. The active panel drives both the rail state and the
+  // address bar, so a reader can copy the URL at any point and land back on the
+  // panel they were reading.
+  const items = new Map<string, HTMLAnchorElement>();
+  document.querySelectorAll<HTMLAnchorElement>('[data-rail]').forEach((a) => {
+    const key = a.dataset.rail;
+    if (key) items.set(key, a);
+  });
+  const panels = Array.from(document.querySelectorAll<HTMLElement>('.panel'));
+
+  if (items.size && panels.length && 'IntersectionObserver' in window) {
+    let active = '';
+
+    const setActive = (id: string) => {
+      if (id === active) return;
+      active = id;
+      for (const [key, a] of items) a.classList.toggle('is-active', key === id);
+
+      // Mobile strip: bring the active item into view HORIZONTALLY only.
+      // scrollIntoView would also scroll the page vertically and fight the
+      // reader, so the strip is scrolled directly instead.
+      const a = items.get(id);
+      const strip = a?.parentElement?.parentElement;
+      if (a && strip && strip.scrollWidth > strip.clientWidth + 1) {
+        strip.scrollTo({
+          left: Math.max(0, a.offsetLeft - (strip.clientWidth - a.offsetWidth) / 2),
+          behavior: 'smooth',
+        });
+      }
+
+      history.replaceState(null, '', `#${id}`);
+    };
+
+    const visible = new Set<string>();
+    const spy = new IntersectionObserver(
+      (entries) => {
+        for (const e of entries) {
+          const id = (e.target as HTMLElement).id;
+          if (e.isIntersecting) visible.add(id);
+          else visible.delete(id);
+        }
+        const first = panels.find((p) => visible.has(p.id));
+        if (first) setActive(first.id);
+      },
+      { rootMargin: '-30% 0px -55% 0px' },
+    );
+    for (const p of panels) spy.observe(p);
+
+    // Landing on a deep link: the browser jumps for us, but the rail has to be
+    // told before the first intersection callback arrives.
+    const hash = location.hash.slice(1);
+    if (hash && items.has(hash)) {
+      setActive(hash);
+      document.getElementById(hash)?.scrollIntoView();
+    }
+  }
+</script>

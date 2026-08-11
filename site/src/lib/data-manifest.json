@@ -10,5 +10,10 @@
   "/data/economy/rupee-time-machine.json": "/data/economy/rupee-time-machine.9de65969.json",
   "/data/economy/state-wise.json": "/data/economy/state-wise.f845cd60.json",
   "/data/economy/upi-ecosystem.json": "/data/economy/upi-ecosystem.94434cd0.json",
+  "/data/independence/demographics.json": "/data/independence/demographics.364b6c70.json",
+  "/data/independence/economy.json": "/data/independence/economy.c5d36bc6.json",
+  "/data/independence/environment.json": "/data/independence/environment.0467e6df.json",
+  "/data/independence/governance.json": "/data/independence/governance.a58866f5.json",
+  "/data/independence/infrastructure.json": "/data/independence/infrastructure.8671784d.json",
   "/data/meta/traffic.json": "/data/meta/traffic.28696846.json"
 }

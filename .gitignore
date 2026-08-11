@@ -21,7 +21,9 @@ infra/db/data/
 
 # --- Source data & ETL intermediates (not committed — see CONTRIBUTING) ---
 # Raw RBI/NPCI downloads and every generated/fetched ETL artifact stay local.
-/data/
+/data/*
+# Independence flagship source CSVs are committed deliberately — see data/independence/SOURCES.md.
+!/data/independence/
 etl/**/*.json
 etl/**/*.csv
 # product-dict.json is committed config, not a generated artifact — keep it tracked.

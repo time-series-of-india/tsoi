@@ -366,7 +366,7 @@ import SectionHeader from '../components/editorial/SectionHeader.astro';
   }
 
   /* Desks are flush — no margin between .desk elements — so the JS-driven
-     stacking below (see the <script>) can compute a clean handoff: bar N-1
+     stacking below (see the script block) can compute a clean handoff: bar N-1
      holds at the page-bar offset until desk N's true top arrives to touch
      it, then they move together. The resting gap before the next bar is a
      trailing `::after` spacer, deliberately NOT padding-bottom: a sticky
