@@ -2046,6 +2046,11 @@ const OG_IMAGE_ALT =
     bottom: calc(env(safe-area-inset-bottom, 0px) + 30px);
   }
 
+  /* The word takes the DIM land ink at rest, deliberately below the zone
+     hints: on the opening frame "hold to walk" is the instruction and this
+     is the counter-offer, and an offer must not outrank the default it is
+     an alternative to (device-reported: it did, in the full ink). Hover and
+     the beckon bring it up to full. */
   .walk-play-word {
     font-family: var(--walk-serif);
     font-size: 10px;
@@ -2054,6 +2059,12 @@ const OG_IMAGE_ALT =
     text-indent: 0.26em;
     text-transform: uppercase;
     white-space: nowrap;
+    color: var(--walk-land-text-dim);
+    transition: color 300ms linear;
+  }
+
+  .walk-play:hover .walk-play-word,
+  .walk-play.is-beckoning .walk-play-word {
     color: var(--walk-land-text);
   }
 
