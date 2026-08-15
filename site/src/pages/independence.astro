@@ -981,11 +981,15 @@ const OG_IMAGE_ALT =
 
         <!-- The second instruction, and only a reader who has been standing at
              the flagpole for three seconds with nothing happening ever sees it.
-             It retires permanently the moment the flag moves. Since R2c took the
-             halyard's cue chevron off the rope this is the only affordance the
-             gate has, so it is also the only thing that tells a reader who has
-             not found the rope that there is one. -->
-        <p class="walk-whisper walk-whisper-rope" aria-hidden="true" hidden>pull the rope down</p>
+             Release weekend rewrote what it asks for: TAPS, which every reader
+             has (each ratchets the flag a quarter of the pole), where "pull
+             the rope down" sent a phone reader hunting for a halyard. The
+             rope still hangs there and still works, an unadvertised better
+             answer for whoever finds it. The whisper stands until the
+             masthead retires it, because a flag raised in instalments still
+             has taps to ask for; the rope and the key, being found things,
+             retire it on first progress as they always did. -->
+        <p class="walk-whisper walk-whisper-rope" aria-hidden="true" hidden>tap to raise the flag</p>
 
         <!-- The third whisper, release morning's. The whole film is held, and
              then the ending is tapped — and a reader whose thumb has been down
@@ -2055,6 +2059,30 @@ const OG_IMAGE_ALT =
 
   .walk-play.is-playing .walk-play-word {
     display: none;
+  }
+
+  /* The held walk does not need a label. While the reader's own hold is down
+     the control fades to a ghost, and every release fades it back — so the
+     offer surfaces exactly in the pauses where a resting thumb might take
+     it, and is nearly not there while the ground is moving. The transition
+     override is what gives both directions their ease; the shared corner
+     rule only transitions color. */
+  .walk-play {
+    transition:
+      color 300ms linear,
+      opacity 700ms ease;
+  }
+
+  .walk-stage.is-holding .walk-play {
+    opacity: 0.12;
+  }
+
+  /* …and at the flagpole it leaves the stage entirely: the gate's whisper is
+     asking for taps, and a control that also answers taps cannot stand on
+     the same ground while it does (see is-gated in walk.ts). */
+  .walk-stage.is-gated .walk-play {
+    opacity: 0;
+    pointer-events: none;
   }
 
   /* The tired thumb's beckon (see BECKON_MS in walk.ts): three slow breaths

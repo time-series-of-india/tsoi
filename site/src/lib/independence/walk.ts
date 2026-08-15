@@ -5876,11 +5876,11 @@ export function initWalk(stage: HTMLElement): void {
    *  gate's hoist never counts it (see manualDir), so the carry stands at the
    *  pole until the reader answers. See startPlay / stopPlay. */
   let playing = false;
-  /** The carried reader's answer at the gate: where the taps have ratcheted
-   *  the hoist to so far (see HOIST_TAP_STEP). The flag rises toward it at
-   *  the ceremony's rate and stops there. Cleared at the masthead, and
-   *  whenever the carry itself ends. */
-  let carryTapTarget = 0;
+  /** The gate's tapped answer, and it is EVERY reader's now: where the taps
+   *  have ratcheted the hoist to so far (see HOIST_TAP_STEP). The flag rises
+   *  toward it at the ceremony's rate and stops there. Cleared at the
+   *  masthead, on an abandoned gate, and when a carry ends. */
+  let tapHoistTo = 0;
   /** The credits' half of the carry. `endAuto` is armed at the arrival if
    *  the carry brought the reader there; `endAutoLive` is lit by the
    *  reader's own first "go on" press; `endAutoMs` is the current page's
@@ -6122,10 +6122,22 @@ export function initWalk(stage: HTMLElement): void {
     const i = inputs.findIndex((x) => x.id === id);
     if (i >= 0) inputs.splice(i, 1);
     inputs.push({ id, dir });
+    syncHolding();
+  }
+  /** Release weekend: whether the READER's own hold is down — the carry and
+   *  the engine's tap-steps excluded. The stylesheet fades the ▷'s word to a
+   *  ghost while it is (see .is-holding): four centuries of held thumb are
+   *  not spent looking at a label, and every release brings the offer back. */
+  function syncHolding(): void {
+    stage.classList.toggle(
+      'is-holding',
+      inputs.some((x) => x.id !== 'play' && !x.id.startsWith('step:')),
+    );
   }
   function dropInput(id: string): void {
     const i = inputs.findIndex((x) => x.id === id);
     if (i >= 0) inputs.splice(i, 1);
+    syncHolding();
   }
 
   // The reveal and the two camera levels are the only wall-clock motion in the
@@ -7595,7 +7607,7 @@ export function initWalk(stage: HTMLElement): void {
   function stopPlay(): void {
     if (!playing) return;
     playing = false;
-    carryTapTarget = 0;
+    tapHoistTo = 0;
     dropInput('play');
     syncPlay();
     syncWakeLock();
@@ -7913,12 +7925,6 @@ export function initWalk(stage: HTMLElement): void {
   function showRopeHint(): void {
     if (ropeHinted || ropeRetired || !ropeHintEl) return;
     ropeHinted = true;
-    // A carried reader is not sent hunting for a halyard: the carry stood
-    // down at the pole waiting on them, and the gesture the whisper asks for
-    // is the one they have been watching with (see carryHoisting). The rope
-    // is still there, still works, and still reads as the better answer for
-    // anyone who finds it.
-    if (playing) ropeHintEl.textContent = 'tap to raise the flag';
     ropeHintEl.hidden = false;
     // One frame in the tree before the class, or the fade has nothing to run
     // from and the line simply appears.
@@ -7992,7 +7998,7 @@ export function initWalk(stage: HTMLElement): void {
     if (on === announcing) return;
     announcing = on;
     if (!liveEl) return;
-    liveEl.textContent = on ? 'At the flagpole. Hold, or pull the rope, to raise the flag.' : '';
+    liveEl.textContent = on ? 'At the flagpole. Tap, hold, or pull the rope, to raise the flag.' : '';
   }
 
   /**
@@ -8509,21 +8515,21 @@ export function initWalk(stage: HTMLElement): void {
     }
     // …and a press made DURING the arrival is not a press at all. See inputLive.
     if (!inputLive()) return;
-    // What a press means OVER the carry. The reader's thumb outranks the
-    // engine, so any manual press takes the walk back — with one exception.
-    // At the gate the carry is already standing, the whisper has asked for a
-    // tap, and a forward press there IS the answer: it runs the hoist rather
-    // than ending the carry, and the carry walks on when the flag is up. (The
-    // rope lands here too, under its own id, and reads the same way: the flag
-    // goes up, the carry keeps the walk.)
-    if (playing && id !== 'play') {
-      if (dir > 0 && gated()) {
-        carryTapTarget = Math.min(1, Math.max(carryTapTarget, hoist) + HOIST_TAP_STEP);
-        wake();
-        return;
-      }
-      stopPlay();
+    // A forward press while the walk stands at the pole is a HOIST-TAP, for
+    // everyone: each one ratchets the flag a quarter of the pole (see
+    // HOIST_TAP_STEP), which is what the gate's whisper asks for. A carried
+    // reader's press is only that — the carry keeps the walk, and walks on
+    // when the flag is up. A manual reader's press is also the hold they are
+    // making, so it falls through to the drive. (The rope lands here too,
+    // under its own id, and reads the same way.)
+    if (dir > 0 && gated() && !reduceMotion.matches) {
+      tapHoistTo = Math.min(1, Math.max(tapHoistTo, hoist) + HOIST_TAP_STEP);
+      wake();
+      if (playing && id !== 'play') return;
     }
+    // Any other manual press over the carry takes the walk back: the thumb
+    // outranks the engine, and the ▷ is there to ask again.
+    if (playing && id !== 'play') stopPlay();
     // The two mid-screen hints, retired on the first press of any kind after
     // they were offered. Here rather than beside the drive because a press that
     // does nothing else — a tap at the 1600 wall, a press during a camera ride —
@@ -9208,8 +9214,8 @@ export function initWalk(stage: HTMLElement): void {
         // raise the flag. A carried walk stands here — the whisper asking for
         // a tap — until the reader answers.
         if (manualDir() > 0) dh = dt / HOIST_HOLD_MS;
-        if (playing && carryTapTarget > hoist) {
-          dh += Math.min(dt / HOIST_TAP_MS, carryTapTarget - hoist);
+        if (tapHoistTo > hoist) {
+          dh += Math.min(dt / HOIST_TAP_MS, tapHoistTo - hoist);
           // NOT deliberate: a flag raised in instalments must not retire the
           // whisper at the first quarter — the reader still has taps to make,
           // and the instruction stands until the masthead retires it below.
@@ -9231,10 +9237,10 @@ export function initWalk(stage: HTMLElement): void {
         if (hoist >= 1) {
           hoistDoneAt = now;
           reducedHoisting = false;
-          // The carried reader's answer is complete; the carry itself is still
-          // in `inputs`, which is the whole of how it resumes on the far side
-          // of the gate's opening beat.
-          carryTapTarget = 0;
+          // The tapped answer is complete. A carry, if one is running, is
+          // still in `inputs`, which is the whole of how it resumes on the
+          // far side of the gate's opening beat.
+          tapHoistTo = 0;
           retireRopeHint();
           // The flag is at the masthead and Nehru can speak (paintCards, below,
           // is what lets him).
@@ -9246,6 +9252,9 @@ export function initWalk(stage: HTMLElement): void {
     } else {
       dragPx = 0;
       gateIdleMs = 0;
+      // An answer half-made does not survive leaving the pole, exactly as
+      // the half-raised flag it bought does not (the lowering below).
+      tapHoistTo = 0;
       // R2g: NO RESTING HALF-MAST. A reader who starts the hoist, changes their
       // mind and walks back out of the gate used to leave the flag hanging
       // wherever their hands left it — and a tricolour parked half way up a pole
@@ -9268,7 +9277,13 @@ export function initWalk(stage: HTMLElement): void {
         lowering = hoist > 0;
       } else lowerT0 = 0;
     }
-    announceGate(gated());
+    // The stage knows when the walk stands at the pole, and the stylesheet
+    // takes the ▷ off the ground for it: the whisper there is asking for
+    // taps, and a control that also answers taps cannot share the stage with
+    // it (see .is-gated).
+    const gatedNow = gated();
+    stage.classList.toggle('is-gated', gatedNow);
+    announceGate(gatedNow);
     // The sky's twelve beats, every frame, off the year he has just moved to.
     paintCards();
 
@@ -10468,9 +10483,20 @@ export function initWalk(stage: HTMLElement): void {
     const el = e.target as HTMLElement | null;
     // A press on a real control inside the stage is that control's.
     if (el && el !== stage && el.closest('button, a')) return;
-    if (started) return;
-    e.preventDefault();
-    begin();
+    if (!started) {
+      e.preventDefault();
+      begin();
+      return;
+    }
+    // Space, inside the film, is the carry's key — pause and resume, the way
+    // a reader expects of anything that can play itself. Enter stays the
+    // poster's alone, and the key does nothing where the ▷ itself is not
+    // offered (the ending, reduced motion).
+    if (e.key === ' ' && phase === 'walk' && !reduceMotion.matches) {
+      e.preventDefault();
+      if (playing) stopPlay();
+      else startPlay();
+    }
   });
 
   window.addEventListener('keydown', (e) => {
@@ -10597,6 +10623,7 @@ export function initWalk(stage: HTMLElement): void {
     hoistKey = false;
     dragId = -1;
     posterDown = null;
+    syncHolding();
   }
   window.addEventListener('blur', releaseAll);
 
