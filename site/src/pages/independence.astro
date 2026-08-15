@@ -1726,6 +1726,11 @@ const OG_IMAGE_ALT =
     transform: translateX(-50%);
     white-space: nowrap;
     font-family: var(--walk-serif);
+    /* Release weekend: bolder. The instruction has to outrank the carry's
+       word at the foot of the frame, and weight is the one axis left — the
+       ink is already the full one and the size is authored. 700 rather than
+       a middle weight because the face is Georgia, which has exactly two. */
+    font-weight: 700;
     font-size: 10px;
     line-height: 1;
     letter-spacing: 0.26em;
@@ -2073,19 +2078,26 @@ const OG_IMAGE_ALT =
   }
 
   /* The held walk does not need a label. While the reader's own hold is down
-     the control fades to a ghost, and every release fades it back — so the
-     offer surfaces exactly in the pauses where a resting thumb might take
-     it, and is nearly not there while the ground is moving. The transition
-     override is what gives both directions their ease; the shared corner
-     rule only transitions color. */
+     the control fades to a ghost — immediately, the press is the reader
+     telling it to get out of the way — and a release brings it back ONLY
+     after the pause has lasted: the return waits four seconds and then
+     eases in slow. Device-reported reason for the delay: the thumb-first
+     reader releases exactly to READ, and a control fading in at that moment
+     takes the eye that the caption was owed. Inside the ordinary
+     read-and-repress rhythm the control never moves at all; it surfaces in
+     the stands that have genuinely become pauses, which are the ones that
+     might want it. */
   .walk-play {
     transition:
       color 300ms linear,
-      opacity 700ms ease;
+      opacity 1200ms ease 4000ms;
   }
 
   .walk-stage.is-holding .walk-play {
     opacity: 0.12;
+    transition:
+      color 300ms linear,
+      opacity 500ms ease;
   }
 
   /* …and at the flagpole it leaves the stage entirely: the gate's whisper is
@@ -2094,6 +2106,9 @@ const OG_IMAGE_ALT =
   .walk-stage.is-gated .walk-play {
     opacity: 0;
     pointer-events: none;
+    transition:
+      color 300ms linear,
+      opacity 500ms ease;
   }
 
   /* The tired thumb's beckon (see BECKON_MS in walk.ts): three slow breaths
