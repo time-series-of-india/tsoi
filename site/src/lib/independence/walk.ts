@@ -46,9 +46,9 @@
 // ENGINE'S TO RAISE: the carry stands down at the gate (its hold is excluded
 // from the eight-second creep, see manualDir), the whisper asks for a tap,
 // and the taps that answer ratchet the hoist up and hand the walk back to
-// the carry on the other side. And the arrival hands the film back — once. A
-// reader the carry brought to the end gives one tap to go on, and the
-// CREDITS then turn themselves at reading pace; the film still stops where
+// the carry on the other side. And the arrival hands the film back — once,
+// and to EVERY reader alike: one tap says go on, and the CREDITS then turn
+// themselves at reading pace; the film still stops where
 // stopping is the point — before the pull-back, which the reader starts, and
 // at the end-card, which is theirs to hold, and a backward press anywhere in
 // it hands the whole ending back. See startPlay and the endAuto engine in
@@ -1073,8 +1073,8 @@ const END_HINT_MS = 4000;
  *  remembers: the first offer keeps END_HINT_MS's patience, and once the
  *  gesture has been taught the reminder comes at reading pace. */
 const END_REHINT_MS = 2000;
-/** Release weekend: the pace the CREDITS turn themselves at, for a reader the
- *  carry brought to the end. Counted only while an ending frame is standing
+/** Release weekend: the pace the CREDITS turn themselves at, for every
+ *  reader the arrival delivers. Counted only while an ending frame is standing
  *  settled — a page's own dissolve runs first — so each sentence gets its
  *  fade plus its dwell to be read. The dwell READS THE SENTENCE it stands
  *  on: a base beat plus a per-word allowance (see autoPageMs), because a
@@ -8146,11 +8146,14 @@ export function initWalk(stage: HTMLElement): void {
   function arriveEnd(): void {
     year = endYear;
     // The carry ends where the walk does — a held forward input in the
-    // ending would tear through nine frames of reveal — but a reader it
-    // carried is not dropped: the credits engine arms here, waits for their
-    // one "go on" press, and turns the pages for them after it (see the
-    // frame loop). The ▷ itself goes down with the walk (syncControls).
-    endAuto = playing;
+    // ending would tear through nine frames of reveal — and the credits
+    // engine arms here FOR EVERYONE, carried or thumb-walked: it waits for
+    // the reader's one "go on" press and turns the pages for them after it
+    // (see the frame loop). A backward press anywhere in the ending hands
+    // the pages back for good. Reduced motion stays press-driven — its
+    // ending is cuts, and cuts on a timer are a slideshow nobody asked for.
+    // The ▷ itself goes down with the walk (syncControls).
+    endAuto = !reduceMotion.matches;
     endAutoLive = false;
     endAutoMs = 0;
     retireSecondRound();
@@ -10085,10 +10088,10 @@ export function initWalk(stage: HTMLElement): void {
       playBtn.classList.add('is-beckoning');
     }
 
-    // THE CREDITS, CARRIED. Armed by the arrival if the carry brought the
-    // reader there, lit by their own first "go on" press, and then the pages
-    // turn themselves: each one gets its dissolve plus AUTO_PAGE_MS of
-    // standing time. Two stops are deliberate and they are the ending's two
+    // THE CREDITS, CARRIED — for every reader, since the field pass (see
+    // arriveEnd). Armed by the arrival, lit by the reader's own first "go
+    // on" press, and then the pages turn themselves: each one gets its
+    // dissolve plus its sentence-read dwell of standing time. Two stops are deliberate and they are the ending's two
     // real beats — `endGate` (read above the whisper's clock) holds the frame
     // before the pull-back until the reader starts it, with the whisper making
     // the offer there, and the end-card ends the engine, because it is a card
@@ -10295,15 +10298,16 @@ export function initWalk(stage: HTMLElement): void {
     const rect = stage.getBoundingClientRect();
     const id = `p${e.pointerId}`;
     const dir = e.clientX - rect.left >= rect.width * ZONE_SPLIT ? 1 : -1;
-    // At the pole, a press on the BACK zone is not allowed to become a
-    // back-step yet: the whisper says "tap to raise the flag", and a tap has
-    // to mean that WHEREVER it lands (device-reported: a left-zone tap at
-    // the gate walked the reader away from the flag they were answering).
-    // So the press is BANKED for TAP_MS — released inside the window it is
-    // a hoist-tap (see zoneRelease), still down when the window closes it
-    // becomes the ordinary back-hold it always was, so walking back out of
-    // the gate stays exactly one held press away.
-    if (dir < 0 && gated() && !reduceMotion.matches) {
+    // At the pole AND in the ending, a press on the BACK zone is not
+    // allowed to become a step back yet: the whispers say "tap to raise the
+    // flag" and "tap to go on", and a tap has to mean that WHEREVER it
+    // lands (device-reported twice, once per whisper: a left-zone tap did
+    // the opposite of what the sentence on the sky promised). So the press
+    // is BANKED for TAP_MS — released inside the window it is the tap the
+    // whisper meant (see zoneRelease), still down when the window closes it
+    // becomes the back-hold it always was, so the way back stays exactly
+    // one held press away in both places.
+    if (dir < 0 && (gated() || phase !== 'walk') && !reduceMotion.matches) {
       const pid = e.pointerId;
       const timer = window.setTimeout(() => {
         if (gateBack && gateBack.id === pid) {
@@ -10321,16 +10325,21 @@ export function initWalk(stage: HTMLElement): void {
     pressInput(id, dir);
   });
   const zoneRelease = (e: PointerEvent) => {
-    // A banked back-zone press at the pole, resolved: released inside its
-    // window it is the tap the whisper asked for, and the flag takes its
-    // quarter. (One that outlived the window was already converted to a
-    // back-hold by its own timer and is not here.)
+    // A banked back-zone press, resolved: released inside its window it is
+    // the tap the whisper asked for — the flag's quarter at the pole, a
+    // page forward in the ending. (One that outlived the window was already
+    // converted to a back-hold by its own timer and is not here.)
     if (gateBack && e.pointerId === gateBack.id) {
       window.clearTimeout(gateBack.timer);
       gateBack = null;
-      if (e.type === 'pointerup' && gated()) {
-        tapHoistTo = Math.min(1, Math.max(tapHoistTo, hoist) + HOIST_TAP_STEP);
-        wake();
+      if (e.type === 'pointerup') {
+        if (gated()) {
+          tapHoistTo = Math.min(1, Math.max(tapHoistTo, hoist) + HOIST_TAP_STEP);
+          wake();
+        } else if (phase !== 'walk') {
+          endingPress(1, performance.now());
+          wake();
+        }
       }
       return;
     }
