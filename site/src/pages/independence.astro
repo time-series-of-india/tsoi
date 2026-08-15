@@ -1184,8 +1184,15 @@ const OG_IMAGE_ALT =
     padding-inline: 5px;
   }
 
+  /* Full container measure, like the peaks masthead. The block carried a
+     max-width: 900px, which — co-classed with .tsoi-container's auto margins —
+     made the masthead a CENTRED 900px box: invisible while nothing above it
+     had an edge, and a visible misalignment the moment the folio arrived (the
+     kicker started ~190px right of ECONOMY · PLAY on a 1280 desktop, and the
+     share control floated mid-page instead of on the right margin). The line
+     lengths were never the cap's job: the h1 is four words and the standfirst
+     carries its own 62ch measure. */
   .title-block {
-    max-width: 900px;
     margin-bottom: calc(var(--tsoi-spacing-unit) * 2);
   }
 
