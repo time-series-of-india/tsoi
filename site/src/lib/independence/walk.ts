@@ -699,6 +699,37 @@ const READ_WINDOW = 8;
 const READ_CAP = 0.6;
 const READ_EASE = 1;
 
+/* -------------------------------------------- the brake, earned (release) --- */
+/**
+ * Release weekend, from the thread under the post: the reading brakes exist
+ * FOR THE CONTINUOUS HOLDER — the resting tablet thumb, the phone reader who
+ * never lifts — because for them the caps are the only thing paying the
+ * reading debt. A reader who lifts and presses around the captions is paying
+ * it themselves, standing still with the words up, and for them the same
+ * caps are a walker who stops them when they have already read.
+ *
+ * So the two READING brakes — readingCap and the dwell — earn their depth
+ * from the thumb they serve, and the default is the AUTHORED one: a reader
+ * who has never released gets full depth from their first press, so the
+ * film's first read is exactly the film. It is the first real release that
+ * marks a self-pacer, and from then on a fresh press gets BRAKE_SHALLOW of
+ * the depth, easing back to full over BRAKE_RAMP_MS of continuous holding —
+ * so the resting thumb re-earns the full brake and there is never a mode's
+ * edge to feel. A release shorter than BRAKE_GRACE_MS is a thumb
+ * repositioning, not a reader reading, and does not mark anything.
+ *
+ * What is deliberately NOT scaled: the checkpoint bell (arrival
+ * choreography, brief and shallow), the famine trudge (an authored beat —
+ * the part that has to feel long stays long for everyone), and the carry
+ * (a carried reader is being read to, and gets the full depth always). A
+ * consequence worth naming: a burst-walking reader can sprint ground a
+ * card is still speaking over — that is their choice, the tenures are long,
+ * and walking back re-lights any card for re-reading.
+ */
+const BRAKE_RAMP_MS = 20000;
+const BRAKE_SHALLOW = 0.35;
+const BRAKE_GRACE_MS = 1500;
+
 /** The reading cap at a point on the walk: 1 everywhere, READ_CAP across the
  *  READ_WINDOW years after any beat, with a year of ease on each side. The
  *  lowest cap wins, which is the same MIN the caller combines with — so two
@@ -6127,11 +6158,40 @@ export function initWalk(stage: HTMLElement): void {
   /** Release weekend: whether the READER's own hold is down — the carry and
    *  the engine's tap-steps excluded. The stylesheet fades the ▷'s word to a
    *  ghost while it is (see .is-holding): four centuries of held thumb are
-   *  not spent looking at a label, and every release brings the offer back. */
+   *  not spent looking at a label, and every release brings the offer back.
+   *  It is also the earned brake's clock (see BRAKE_RAMP_MS): `holdSince` is
+   *  when the current continuous hold began, and a release shorter than
+   *  BRAKE_GRACE_MS keeps the old clock rather than starting a new one. */
+  let manualHeld = false;
+  let holdSince = 0;
+  let holdDropAt = 0;
   function syncHolding(): void {
-    stage.classList.toggle(
-      'is-holding',
-      inputs.some((x) => x.id !== 'play' && !x.id.startsWith('step:')),
+    const held = inputs.some((x) => x.id !== 'play' && !x.id.startsWith('step:'));
+    if (held !== manualHeld) {
+      const t = performance.now();
+      if (held) {
+        if (holdDropAt === 0 || t - holdDropAt >= BRAKE_GRACE_MS) holdSince = t;
+      } else holdDropAt = t;
+      manualHeld = held;
+      stage.classList.toggle('is-holding', held);
+    }
+  }
+
+  /** How much of the reading brakes' authored depth this reader gets: full
+   *  for the carry and for anyone who has never really released (the
+   *  authored film is the default), BRAKE_SHALLOW for a self-pacer's fresh
+   *  press, eased back to full along the hold. A cap k becomes
+   *  1 - (1 - k) * depth. */
+  function brakeDepth(t: number): number {
+    if (playing) return 1;
+    // No release yet marks no self-pacing yet: the first hold is the film
+    // as authored, however young the hold is.
+    if (holdDropAt === 0) return 1;
+    if (!manualHeld) return BRAKE_SHALLOW;
+    return lerp(
+      BRAKE_SHALLOW,
+      1,
+      smoothstep(clamp((t - holdSince) / BRAKE_RAMP_MS, 0, 1)),
     );
   }
   function dropInput(id: string): void {
@@ -9126,12 +9186,21 @@ export function initWalk(stage: HTMLElement): void {
     // the walker being shoved rather than slowing down.
     moodAt(year, mood);
     const pxPerYearDrive = size.w > 0 ? size.w / Math.max(cam.xWidth, 1e-6) : 0;
-    readK = reduceMotion.matches ? 1 : readingCap(year);
+    // The two READING brakes take only as much of their authored depth as
+    // this reader's hold has earned (see brakeDepth). The scaling is on the
+    // TARGETS, so the dwell's own asymmetric ease still owns how the cap
+    // moves.
+    const braked = reduceMotion.matches ? 1 : brakeDepth(now);
+    readK = reduceMotion.matches ? 1 : 1 - (1 - readingCap(year)) * braked;
     // Years per second at full stride, here rather than in the dwell because the
     // drive already owns both halves of it.
     const fullPerS =
       pxPerYearDrive > 0 ? (WALK_SPEED_PX_S * widthScale(size.w)) / pxPerYearDrive : 0;
-    const dwellTo = dwelling ? dwellCap(speaker, fullPerS) : wordsUp ? READ_CAP : 1;
+    const dwellTo = dwelling
+      ? 1 - (1 - dwellCap(speaker, fullPerS)) * braked
+      : wordsUp
+        ? 1 - (1 - READ_CAP) * braked
+        : 1;
     if (reduceMotion.matches) dwellK = 1;
     else {
       dwellK = ease(dwellK, dwellTo, dt, dwellTo < dwellK ? TAU_DWELL_IN : TAU_DWELL_OUT);
