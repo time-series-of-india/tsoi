@@ -30,11 +30,29 @@
 // that reaching the first year is something he does. See the opening section
 // below, and `coarse` for where the film plays on which device.
 //
-// There is no third way and there is deliberately no PLAY. R2b had an autopilot
-// — a held forward input the engine owned rather than the reader — and the
-// feel-check retired it: a piece whose whole argument is that the reader should
-// FEEL four centuries pass under their thumb should not offer to do the walking
-// for them. Every trace of it is gone rather than disabled.
+// …and there is a third way, and it is an OFFER rather than a default. R2b had
+// an autopilot — a held forward input the engine owned rather than the reader —
+// and the feel-check retired it: a piece whose whole argument is that the
+// reader should FEEL four centuries pass under their thumb should not do the
+// walking for them. Release weekend brings it back as a small ▷ at the foot of
+// the frame, because the first day's readers answered the feel-check with a
+// feel-report: one tapped their way across four centuries a step at a time and
+// called it exhausting, which it is. The default is untouched — the film still
+// opens asking for the reader's thumb, and the third opening hint names the
+// offer — but a reader who ASKS to be carried is carried: the button plants
+// the same held forward input R2b owned. Three things bound the carry. ANY
+// press the reader makes on the film takes the walk back — the thumb outranks
+// the engine, always, and the ▷ is there to ask again. THE FLAG IS NEVER THE
+// ENGINE'S TO RAISE: the carry stands down at the gate (its hold is excluded
+// from the eight-second creep, see manualDir), the whisper asks for a tap,
+// and the taps that answer ratchet the hoist up and hand the walk back to
+// the carry on the other side. And the arrival hands the film back — once,
+// and to EVERY reader alike: one tap says go on, and the CREDITS then turn
+// themselves at reading pace; the film still stops where
+// stopping is the point — before the pull-back, which the reader starts, and
+// at the end-card, which is theirs to hold, and a backward press anywhere in
+// it hands the whole ending back. See startPlay and the endAuto engine in
+// the frame loop.
 //
 // R2 gave the thresholds weight without giving them a stop, and R2b retuned it
 // after a feel-check that said he nearly halts. Every caption year is a
@@ -681,6 +699,47 @@ const READ_WINDOW = 8;
 const READ_CAP = 0.6;
 const READ_EASE = 1;
 
+/* -------------------------------------------- the brake, earned (release) --- */
+/**
+ * Release weekend, from the thread under the post: the reading brakes exist
+ * FOR THE CONTINUOUS HOLDER — the resting tablet thumb, the phone reader who
+ * never lifts — because for them the caps are the only thing paying the
+ * reading debt. A reader who lifts and presses around the captions is paying
+ * it themselves, standing still with the words up, and for them the same
+ * caps are a walker who stops them when they have already read.
+ *
+ * So the READING brake — readingCap — earns its depth from the thumb it
+ * serves, and the default is the AUTHORED one: a reader who has never
+ * released gets full depth from their first press, so the film's first read
+ * is exactly the film. It is the first real release that marks a
+ * self-pacer, and from then on a fresh press gets BRAKE_SHALLOW of the
+ * depth, easing back to full over BRAKE_RAMP_MS of continuous holding — so
+ * the resting thumb re-earns the full brake and there is never a mode's
+ * edge to feel. A release shorter than BRAKE_GRACE_MS is a thumb
+ * repositioning, not a reader reading, and does not mark anything.
+ *
+ * THE DWELL IS DELIBERATELY NOT SCALED, and the field is why. It looks like
+ * a reading brake and it is actually the SYNC between narrative time and
+ * ground — a card's wall-clock life mapped onto the years it is about (see
+ * the dwell) — and the first cut of this scaled it: a reader who released
+ * on the 1600 card and re-pressed sprinted the ground the queue was still
+ * speaking over, and Jahangir's court landed in the 1650s. The self-pacer
+ * already pays the dwell's debt only when they re-press INSIDE a card's
+ * life; a reader who stood until the sentence finished owes nothing and is
+ * charged nothing.
+ *
+ * What is deliberately NOT scaled: the checkpoint bell (arrival
+ * choreography, brief and shallow), the famine trudge (an authored beat —
+ * the part that has to feel long stays long for everyone), and the carry
+ * (a carried reader is being read to, and gets the full depth always). A
+ * consequence worth naming: a burst-walking reader can sprint ground a
+ * card is still speaking over — that is their choice, the tenures are long,
+ * and walking back re-lights any card for re-reading.
+ */
+const BRAKE_RAMP_MS = 20000;
+const BRAKE_SHALLOW = 0.35;
+const BRAKE_GRACE_MS = 1500;
+
 /** The reading cap at a point on the walk: 1 everywhere, READ_CAP across the
  *  READ_WINDOW years after any beat, with a year of ease on each side. The
  *  lowest cap wins, which is the same MIN the caller combines with — so two
@@ -981,10 +1040,30 @@ const HOIST_ARROWUP_RATE = 2;
 /** Downward drag that makes a full hoist, in stage heights. */
 const HOIST_DRAG_HEIGHTS = 0.5;
 const HOIST_REDUCED_MS = 600;
+/** Release weekend: the hoist TAPS run, for a reader being carried. The
+ *  carry stands down at the gate — the flag is never the engine's to raise —
+ *  and the whisper asks for taps instead of the rope, because a reader who
+ *  chose to watch is not going to be sent hunting for a halyard. One tap is
+ *  not a flag raised, though (the feel-check's call): each tap ratchets the
+ *  hoist a quarter of the pole, so the masthead costs a few of them, or the
+ *  rope's drag for anyone who finds it. The rise between taps is still a
+ *  ceremony rather than a cut (the dawn is multiplied out of the hoist):
+ *  HOIST_TAP_MS is the full pole's worth of rise time, so a quarter takes
+ *  most of a second — quicker than the patient thumb's eight, slower than a
+ *  switch. */
+const HOIST_TAP_MS = 2600;
+const HOIST_TAP_STEP = 0.25;
 /** The beat between the flag reaching the masthead and the walk going on again.
  *  Long enough for the Nehru card to have started arriving, short enough that a
  *  reader still holding forward does not think it has jammed. */
 const HOIST_OPEN_MS = 400;
+/** …and the CARRY's own longer version of that beat (release weekend): the
+ *  engine stands at the masthead until the midnight quotation has fully
+ *  faded in, plus a breath, before it walks on — an engine that strides off
+ *  while the words are still arriving is an engine reading over the film's
+ *  one quotation. A thumb keeps the short beat: walking off early is the
+ *  reader's own to do. */
+const HOIST_OPEN_CARRY_MS = NEHRU_RISE_MS + 900;
 /** How long a reader may stand at the pole making no progress before the second
  *  whisper offers the rope. */
 const HOIST_HINT_MS = 3000;
@@ -1001,6 +1080,30 @@ const END_HINT_MS = 4000;
  *  remembers: the first offer keeps END_HINT_MS's patience, and once the
  *  gesture has been taught the reminder comes at reading pace. */
 const END_REHINT_MS = 2000;
+/** Release weekend: the pace the CREDITS turn themselves at, for every
+ *  reader the arrival delivers. Counted only while an ending frame is standing
+ *  settled — a page's own dissolve runs first — so each sentence gets its
+ *  fade plus its dwell to be read. The dwell READS THE SENTENCE it stands
+ *  on: a base beat plus a per-word allowance (see autoPageMs), because a
+ *  flat number was right for the short lines and visibly rushed the long
+ *  ones ("the climb since has been almost vertical…", fourteen words,
+ *  field-reported). Stages with no line up — the rides, the page turns —
+ *  keep the flat beat. */
+const AUTO_PAGE_MS = 2000;
+const AUTO_PAGE_BASE_MS = 1000;
+const AUTO_PAGE_WORD_MS = 150;
+/** …and the two thresholds behind the opening hints' second offer. A run of
+ *  TAPSTORM_N taps inside TAPSTORM_WINDOW_MS, from a reader who has never
+ *  held for HOLD_LEARNED_MS, is the exhausted tapper from the field reports:
+ *  their first tap retired the one sentence that would have taught them, so
+ *  the hints come back — and that second offer retires on a real hold rather
+ *  than on the next tap, or it would die exactly the way the first one did. */
+const TAPSTORM_N = 3;
+const TAPSTORM_WINDOW_MS = 12000;
+const HOLD_LEARNED_MS = 700;
+/** A thumb that has been down this long, cumulatively, has earned being told
+ *  it can rest: the ▷ breathes a few times (see .is-beckoning). Once. */
+const BECKON_MS = 60000;
 /** How near the mast line a pointer-down counts as taking hold of the rope. */
 const ROPE_HIT_PX = 44;
 
@@ -2356,7 +2459,11 @@ const REVEAL_EXIT_MS = 300;
  * levels has got further (see the render's `settle`), because the mark stops
  * needing to be parked the moment a frame reaches it.
  */
-const LIFT_MS = 1600;
+// Release weekend slows the ride from 1600: the crane is the world mark's
+// whole arrival — the one glimpse of the world, riding up — and at 1.6s it
+// read as a camera move rather than a look. The mark's fade is a pure
+// function of the ride, so it slows with it for free.
+const LIFT_MS = 2600;
 /** How long a ride has left once a press has asked it to hurry up. Short enough
  *  to read as "answered at once" and long enough not to be a jump cut. */
 const RIDE_SNAP_MS = 260;
@@ -5648,6 +5755,7 @@ export function initWalk(stage: HTMLElement): void {
   /** R2g: the way IN to the theatre, offered only where the theatre is not the
    *  default — see `coarse`. */
   const fullBtn = stage.querySelector<HTMLButtonElement>('.walk-full');
+  const playBtn = stage.querySelector<HTMLButtonElement>('.walk-play');
   const stampEl = stage.querySelector<HTMLElement>('.walk-foot');
 
   let india: Terrain | null = null;
@@ -5816,6 +5924,43 @@ export function initWalk(stage: HTMLElement): void {
   let tapHinted = false;
   let tapTaught = false;
   let tapHideT = 0;
+
+  /* -- the carry (release weekend) -- */
+  /** Whether the engine is holding the walk forward on the reader's behalf —
+   *  the ▷ at the foot of the frame, R2b's autopilot returned as an offer.
+   *  The whole mode is one entry in `inputs` under the id 'play': the ramps,
+   *  the checkpoints and the famine trudge treat it as the thumb it stands in
+   *  for. What does NOT: any manual press ends it (see pressInput), and the
+   *  gate's hoist never counts it (see manualDir), so the carry stands at the
+   *  pole until the reader answers. See startPlay / stopPlay. */
+  let playing = false;
+  /** The gate's tapped answer, and it is EVERY reader's now: where the taps
+   *  have ratcheted the hoist to so far (see HOIST_TAP_STEP). The flag rises
+   *  toward it at the ceremony's rate and stops there. Cleared at the
+   *  masthead, on an abandoned gate, and when a carry ends. */
+  let tapHoistTo = 0;
+  /** The credits' half of the carry. `endAuto` is armed at the arrival if
+   *  the carry brought the reader there; `endAutoLive` is lit by the
+   *  reader's own first "go on" press; `endAutoMs` is the current page's
+   *  dwell; `endAutoSynth` marks the engine's own synthesized presses so
+   *  endingPress can tell them from the reader's. */
+  let endAuto = false;
+  let endAutoLive = false;
+  let endAutoMs = 0;
+  let endAutoSynth = false;
+  /** The opening hints' second offer (see the constants above): the tap
+   *  count and its window, whether a real hold has ever been made, whether
+   *  the second offer has been spent, and whether the hints currently up are
+   *  that second offer (which retires on a hold, not on a press). */
+  let tapStorm = 0;
+  let tapStormT0 = 0;
+  let holdLearned = false;
+  let hintsReoffered = false;
+  let hintsSecondRound = false;
+  /** The tired thumb's clock: cumulative manual hold time, and whether the
+   *  ▷ has already breathed its once. */
+  let holdMs = 0;
+  let beckoned = false;
 
   /* -- the way in, and the way out (R2d) -- */
   /** Whether the reader has entered the film. Before this the stage is a POSTER:
@@ -6020,14 +6165,66 @@ export function initWalk(stage: HTMLElement): void {
   }
   const inputs: Input[] = [];
   const heldDir = () => (inputs.length ? inputs[inputs.length - 1].dir : 0);
+  /** …and the newest input the READER is holding, the carry's engine-owned
+   *  hold excluded. The gate reads this one: the eight-second creep answers a
+   *  patient thumb, and the carry has no patience to offer — a carried walk
+   *  stands at the pole until the reader raises the flag themselves (a tap,
+   *  the rope, or the key). */
+  const manualDir = () => {
+    for (let i = inputs.length - 1; i >= 0; i--) {
+      if (inputs[i].id !== 'play') return inputs[i].dir;
+    }
+    return 0;
+  };
   function addInput(id: string, dir: number): void {
     const i = inputs.findIndex((x) => x.id === id);
     if (i >= 0) inputs.splice(i, 1);
     inputs.push({ id, dir });
+    syncHolding();
+  }
+  /** Release weekend: whether the READER's own hold is down — the carry and
+   *  the engine's tap-steps excluded. The stylesheet fades the ▷'s word to a
+   *  ghost while it is (see .is-holding): four centuries of held thumb are
+   *  not spent looking at a label, and every release brings the offer back.
+   *  It is also the earned brake's clock (see BRAKE_RAMP_MS): `holdSince` is
+   *  when the current continuous hold began, and a release shorter than
+   *  BRAKE_GRACE_MS keeps the old clock rather than starting a new one. */
+  let manualHeld = false;
+  let holdSince = 0;
+  let holdDropAt = 0;
+  function syncHolding(): void {
+    const held = inputs.some((x) => x.id !== 'play' && !x.id.startsWith('step:'));
+    if (held !== manualHeld) {
+      const t = performance.now();
+      if (held) {
+        if (holdDropAt === 0 || t - holdDropAt >= BRAKE_GRACE_MS) holdSince = t;
+      } else holdDropAt = t;
+      manualHeld = held;
+      stage.classList.toggle('is-holding', held);
+    }
+  }
+
+  /** How much of the reading brakes' authored depth this reader gets: full
+   *  for the carry and for anyone who has never really released (the
+   *  authored film is the default), BRAKE_SHALLOW for a self-pacer's fresh
+   *  press, eased back to full along the hold. A cap k becomes
+   *  1 - (1 - k) * depth. */
+  function brakeDepth(t: number): number {
+    if (playing) return 1;
+    // No release yet marks no self-pacing yet: the first hold is the film
+    // as authored, however young the hold is.
+    if (holdDropAt === 0) return 1;
+    if (!manualHeld) return BRAKE_SHALLOW;
+    return lerp(
+      BRAKE_SHALLOW,
+      1,
+      smoothstep(clamp((t - holdSince) / BRAKE_RAMP_MS, 0, 1)),
+    );
   }
   function dropInput(id: string): void {
     const i = inputs.findIndex((x) => x.id === id);
     if (i >= 0) inputs.splice(i, 1);
+    syncHolding();
   }
 
   // The reveal and the two camera levels are the only wall-clock motion in the
@@ -6635,6 +6832,17 @@ export function initWalk(stage: HTMLElement): void {
    *  have had the slot, and while the stage it is in is still arriving — the
    *  press gate's whole question, and the reason a press at the last line's own
    *  fade cuts it rather than turning the page. */
+  /** The credits engine's dwell for the page it is standing on: sentence-
+   *  aware where a sentence is up (a nested coda counts its parent's words
+   *  too, which only ever errs long, and long is kind on the line that says
+   *  midnight), the flat beat where none is. */
+  function autoPageMs(): number {
+    if (!liveLines.length || linesUp <= 0) return AUTO_PAGE_MS;
+    const el = liveLines[linesUp - 1];
+    const words = (el?.textContent ?? '').trim().split(/\s+/).length;
+    return AUTO_PAGE_BASE_MS + words * AUTO_PAGE_WORD_MS;
+  }
+
   function linesPending(): boolean {
     // The press window, not the loop's: a press in the settled-looking tail of
     // the LAST line's fade turns the page rather than dying on an invisible
@@ -7166,6 +7374,16 @@ export function initWalk(stage: HTMLElement): void {
     // needs the same way back into it — and it is still never up at the same time
     // as the ✕ it shares a corner with, because `theatre` is the other term.
     if (fullBtn) fullBtn.hidden = !started || theatre;
+    // Release weekend's ▷, and its gate is the drive's own: it is an offer to
+    // hold the walk, so it exists exactly where a hold would do something —
+    // in the film, with the drive live, in the walk phase. The ending hides it
+    // (the pages there are the reader's to turn), the poster never shows it,
+    // and reduced motion never offers it at all: a carry under reduce-motion
+    // would be the engine jump-cutting on the reader's behalf, which is a
+    // slideshow nobody asked for.
+    if (playBtn) {
+      playBtn.hidden = !started || !inputLive() || phase !== 'walk' || reduceMotion.matches;
+    }
   }
 
   /* -- the end-card -- */
@@ -7345,7 +7563,7 @@ export function initWalk(stage: HTMLElement): void {
     resize();
     measureCaption();
     syncControls();
-    // The theatre is the state the screen is kept lit for.
+    // The theatre is one of the two states the screen is kept lit for.
     syncWakeLock();
     wake();
   }
@@ -7440,23 +7658,76 @@ export function initWalk(stage: HTMLElement): void {
     resize();
     measureCaption();
     syncControls();
-    // …and the glass is handed back: with the theatre gone there is nothing
-    // left to keep lit.
+    // …and the glass is handed back: releaseAll() above already ended any
+    // carry, and with the theatre gone too there is nothing left to keep lit.
     syncWakeLock();
     wake();
   }
 
-  /* -- the screen, kept lit (release weekend) -- */
+  /* -- the carry, and the screen it keeps lit (release weekend) -- */
+  /**
+   * R2b's autopilot, returned as an offer. See the file's header for why it
+   * was retired and why it is back: the short of it is that the default is
+   * still the reader's thumb, and the ▷ is for the reader who has asked to be
+   * carried.
+   *
+   * The whole mode is ONE HELD INPUT under the id 'play', planted through
+   * pressInput like every other press in the piece. That is the entire trick,
+   * and it is what keeps the carry honest: the ramps, the checkpoints, the
+   * famine trudge and the 1947 clamp all shape it because none of them can
+   * tell it from a thumb. Two things CAN tell, and both are deliberate: any
+   * manual press ends the carry (pressInput — the thumb outranks the engine),
+   * and the gate's hoist never counts it (manualDir — the flag is the
+   * reader's, and at the pole the carry stands and asks for a tap). Beyond
+   * those, the carry ends at the arrival (see arriveEnd), on a toggle of its
+   * own button, and wherever the piece already lets go of everything
+   * (releaseAll — the blur, the hidden tab, the theatre's exit).
+   *
+   * The BUTTON'S FACE is two glyphs in one svg, gated by .is-playing on the
+   * button (see the stylesheet): the offer is a hairline ▷, the standing carry
+   * a pause pair, and syncPlay is the only writer of both the class and the
+   * label. `hidden` stays syncControls' job so the two cannot disagree about
+   * when the corner is occupied.
+   */
+  function startPlay(): void {
+    if (playing || !started || phase !== 'walk' || reduceMotion.matches || !inputLive()) return;
+    playing = true;
+    // The offer has been taken: the breath is spent, and a second-offer hint
+    // still on the sky has done its work.
+    beckoned = true;
+    playBtn?.classList.remove('is-beckoning');
+    retireSecondRound();
+    syncPlay();
+    pressInput('play', 1);
+    syncWakeLock();
+  }
+
+  function stopPlay(): void {
+    if (!playing) return;
+    playing = false;
+    tapHoistTo = 0;
+    dropInput('play');
+    syncPlay();
+    syncWakeLock();
+    wake();
+  }
+
+  function syncPlay(): void {
+    if (!playBtn) return;
+    playBtn.classList.toggle('is-playing', playing);
+    playBtn.setAttribute('aria-label', playing ? 'pause the walk' : 'watch him walk');
+  }
+
   /**
    * THE SCREEN STAYS LIT WHILE THE FILM HAS THE READER, and this is the field
    * report that built it: a phone dimming mid-walk. A held thumb keeps most
-   * screens awake by itself; what does not is the reader WATCHING — the
-   * arrival they let run, the flag creeping up the eight-second way, a
-   * caption being read with nothing pressed — so the sentinel is asked for
-   * while the theatre is open and let go when it is not (the poster, the
-   * in-flow frame after the ✕, a hidden tab — where the browser revokes it
-   * anyway, which is why the sentinel's own `release` event is listened to
-   * rather than trusted to our bookkeeping).
+   * screens awake by itself; what does not is the reader WATCHING — the carry,
+   * the arrival they let run, the flag creeping up the eight-second way — so
+   * the sentinel is asked for whenever the film plausibly owns the glass (the
+   * theatre, or a carry running in the article's frame) and let go when it
+   * does not (the poster, the in-flow film left idle, a hidden tab — where the
+   * browser revokes it anyway, which is why the sentinel's own `release` event
+   * is listened to rather than trusted to our bookkeeping).
    *
    * Everything here is best-effort and silent: a browser without the API, a
    * denied request, a revoked sentinel — the film's behaviour is identical in
@@ -7467,7 +7738,7 @@ export function initWalk(stage: HTMLElement): void {
    */
   let wakeSentinel: WakeLockSentinel | null = null;
   let wakeAsking = false;
-  const wakeWanted = (): boolean => started && !document.hidden && theatre;
+  const wakeWanted = (): boolean => started && !document.hidden && (theatre || playing);
 
   function syncWakeLock(): void {
     const want = wakeWanted();
@@ -7677,14 +7948,19 @@ export function initWalk(stage: HTMLElement): void {
   }
 
   /**
-   * The two mid-screen hints, offered and retired. They arrive when the bloom
-   * ends — the words start when the picture does — and they go on the first press
-   * of any kind after that, for the life of the page.
+   * The two mid-screen zone hints, offered and retired. They arrive when the
+   * bloom ends — the words start when the picture does — and they go on the
+   * first press of any kind after that. (The carry needs no hint of its own
+   * since the ▷ carries its name as a word; see the button in the markup.)
    */
   function showHints(): void {
     if (hintsUp || hintsRetired) return;
     hintsUp = true;
     for (const el of hintEls) el.classList.add('is-shown');
+    // The drive just went live, and the ▷'s gate reads inputLive() — this is
+    // the one moment that flips it with no other syncControls() in sight, so
+    // the offer to be carried arrives with the words that explain walking.
+    syncControls();
   }
 
   function retireHints(): void {
@@ -7692,6 +7968,50 @@ export function initWalk(stage: HTMLElement): void {
     hintsRetired = true;
     hintsUp = false;
     for (const el of hintEls) el.classList.remove('is-shown');
+  }
+
+  /**
+   * The hints' SECOND offer, for the reader the field reports were about: one
+   * who taps, whose first tap retired "hold to walk" unread, and who then
+   * taps their way across four centuries. A storm of taps with no real hold
+   * behind it brings the two labels back — once — and this time they retire
+   * on a hold actually made (or on the carry starting), because retiring on
+   * the next press is exactly how the first offer died on them.
+   */
+  function reofferHints(): void {
+    if (hintsReoffered || holdLearned || playing || !hintsRetired) return;
+    hintsReoffered = true;
+    hintsSecondRound = true;
+    hintsRetired = false;
+    hintsUp = true;
+    for (const el of hintEls) el.classList.add('is-shown');
+    wake();
+  }
+
+  function retireSecondRound(): void {
+    if (!hintsSecondRound) return;
+    hintsSecondRound = false;
+    retireHints();
+  }
+
+  /** Every zone release passes through here with how long it was held: a real
+   *  hold is the lesson learned (and retires a standing second offer), a tap
+   *  counts toward the storm that earns one. */
+  function noteGesture(heldFor: number, at: number): void {
+    if (!started || phase !== 'walk' || playing) return;
+    if (heldFor >= HOLD_LEARNED_MS) {
+      holdLearned = true;
+      retireSecondRound();
+      return;
+    }
+    if (heldFor >= TAP_MS) return;
+    if (holdLearned || hintsReoffered || !hintsRetired) return;
+    if (at - tapStormT0 > TAPSTORM_WINDOW_MS) {
+      tapStorm = 0;
+      tapStormT0 = at;
+    }
+    tapStorm++;
+    if (tapStorm >= TAPSTORM_N) reofferHints();
   }
 
   /**
@@ -7778,7 +8098,7 @@ export function initWalk(stage: HTMLElement): void {
     if (on === announcing) return;
     announcing = on;
     if (!liveEl) return;
-    liveEl.textContent = on ? 'At the flagpole. Hold, or pull the rope, to raise the flag.' : '';
+    liveEl.textContent = on ? 'At the flagpole. Tap, hold, or pull the rope, to raise the flag.' : '';
   }
 
   /**
@@ -7834,6 +8154,19 @@ export function initWalk(stage: HTMLElement): void {
    */
   function arriveEnd(): void {
     year = endYear;
+    // The carry ends where the walk does — a held forward input in the
+    // ending would tear through nine frames of reveal — and the credits
+    // engine arms here FOR EVERYONE, carried or thumb-walked: it waits for
+    // the reader's one "go on" press and turns the pages for them after it
+    // (see the frame loop). A backward press anywhere in the ending hands
+    // the pages back for good. Reduced motion stays press-driven — its
+    // ending is cuts, and cuts on a timer are a slideshow nobody asked for.
+    // The ▷ itself goes down with the walk (syncControls).
+    endAuto = !reduceMotion.matches;
+    endAutoLive = false;
+    endAutoMs = 0;
+    retireSecondRound();
+    stopPlay();
     armed = false;
     showCard(-1);
     paintCards();
@@ -7863,6 +8196,10 @@ export function initWalk(stage: HTMLElement): void {
     exitChrome = clamp((t - REVEAL_CHROME_MS) / REVEAL_CHROME_FADE_MS, 0, 1);
     exitT0 = reduceMotion.matches ? now - REVEAL_EXIT_MS : now;
     phase = 'walk';
+    // A reader who turned around has not finished the walk, and the credits
+    // engine does not follow them back into it.
+    endAuto = false;
+    endAutoLive = false;
     lift = liftA = liftB = 0;
     pull = pullA = pullB = 0;
     liftFrom = liftCam = pullFrom = null;
@@ -8096,6 +8433,18 @@ export function initWalk(stage: HTMLElement): void {
     // it again (see the whisper's clock in the frame loop).
     hideTapHint();
     endIdleMs = 0;
+    // The reader's own presses steer the credits engine: the first forward
+    // press is the "go on" that lights it (and any later forward press just
+    // turns the page early — the dwell restarts), and a BACKWARD press hands
+    // the whole ending back to them for good.
+    if (endAuto && !endAutoSynth) {
+      if (dir > 0) endAutoLive = true;
+      else {
+        endAuto = false;
+        endAutoLive = false;
+      }
+      endAutoMs = 0;
+    }
     if (lift !== liftB) {
       snapLift();
       return;
@@ -8269,13 +8618,30 @@ export function initWalk(stage: HTMLElement): void {
     }
     // …and a press made DURING the arrival is not a press at all. See inputLive.
     if (!inputLive()) return;
+    // A forward press while the walk stands at the pole is a HOIST-TAP, for
+    // everyone: each one ratchets the flag a quarter of the pole (see
+    // HOIST_TAP_STEP), which is what the gate's whisper asks for. A carried
+    // reader's press is only that — the carry keeps the walk, and walks on
+    // when the flag is up. A manual reader's press is also the hold they are
+    // making, so it falls through to the drive. (The rope lands here too,
+    // under its own id, and reads the same way.)
+    if (dir > 0 && gated() && !reduceMotion.matches) {
+      tapHoistTo = Math.min(1, Math.max(tapHoistTo, hoist) + HOIST_TAP_STEP);
+      wake();
+      if (playing && id !== 'play') return;
+    }
+    // Any other manual press over the carry takes the walk back: the thumb
+    // outranks the engine, and the ▷ is there to ask again.
+    if (playing && id !== 'play') stopPlay();
     // The two mid-screen hints, retired on the first press of any kind after
     // they were offered. Here rather than beside the drive because a press that
     // does nothing else — a tap at the 1600 wall, a press during a camera ride —
     // is still a reader saying they have understood the offer. The press that
     // ANSWERS the poster never reaches this line, which is what stops the hints
     // being retired a beat before they are shown.
-    if (hintsUp) retireHints();
+    // …unless the hints on the sky are the SECOND offer, which a tap must not
+    // kill (see reofferHints — it retires on a real hold instead).
+    if (hintsUp && !hintsSecondRound) retireHints();
     // A real hold cancels a tapped step that is still running itself out.
     if (id !== stepId) endStep();
     addInput(id, dir);
@@ -8317,9 +8683,12 @@ export function initWalk(stage: HTMLElement): void {
 
   function restart(): void {
     endStep();
-    // The whisper does not survive a restart: start over means the poster,
-    // and "tap to go on" over a bloom would be an instruction from a film
-    // that is no longer in its ending.
+    // The carry does not survive a restart: the poster's press is a choice the
+    // reader makes, and the film must not walk itself out of the bloom. The
+    // credits engine goes with it.
+    stopPlay();
+    endAuto = false;
+    endAutoLive = false;
     hideTapHint();
     downAt.clear();
     inputs.length = 0;
@@ -8860,12 +9229,21 @@ export function initWalk(stage: HTMLElement): void {
     // the walker being shoved rather than slowing down.
     moodAt(year, mood);
     const pxPerYearDrive = size.w > 0 ? size.w / Math.max(cam.xWidth, 1e-6) : 0;
-    readK = reduceMotion.matches ? 1 : readingCap(year);
+    // The two READING brakes take only as much of their authored depth as
+    // this reader's hold has earned (see brakeDepth). The scaling is on the
+    // TARGETS, so the dwell's own asymmetric ease still owns how the cap
+    // moves.
+    const braked = reduceMotion.matches ? 1 : brakeDepth(now);
+    readK = reduceMotion.matches ? 1 : 1 - (1 - readingCap(year)) * braked;
     // Years per second at full stride, here rather than in the dwell because the
     // drive already owns both halves of it.
     const fullPerS =
       pxPerYearDrive > 0 ? (WALK_SPEED_PX_S * widthScale(size.w)) / pxPerYearDrive : 0;
-    const dwellTo = dwelling ? dwellCap(speaker, fullPerS) : wordsUp ? READ_CAP : 1;
+    const dwellTo = dwelling
+      ? dwellCap(speaker, fullPerS)
+      : wordsUp
+        ? 1 - (1 - READ_CAP) * braked
+        : 1;
     if (reduceMotion.matches) dwellK = 1;
     else {
       dwellK = ease(dwellK, dwellTo, dt, dwellTo < dwellK ? TAU_DWELL_IN : TAU_DWELL_OUT);
@@ -8893,8 +9271,13 @@ export function initWalk(stage: HTMLElement): void {
       const gating = hoist < 1;
       const limit = gating ? Math.min(endYear, GATE_YEAR) : endYear;
       // …and a beat after the flag lands before the ground moves again, so the
-      // frame the reader earned is not immediately walked out of.
-      const opening = !gating && hoistDoneAt > 0 && now - hoistDoneAt < HOIST_OPEN_MS;
+      // frame the reader earned is not immediately walked out of — a longer
+      // one under the carry, which waits out the midnight quotation's own
+      // arrival (see HOIST_OPEN_CARRY_MS).
+      const opening =
+        !gating &&
+        hoistDoneAt > 0 &&
+        now - hoistDoneAt < (playing ? HOIST_OPEN_CARRY_MS : HOIST_OPEN_MS);
       const pxPerYear = pxPerYearDrive;
       const speed = WALK_SPEED_PX_S * widthScale(size.w) * speedK * capK;
       const step = ((speed / pxPerYear) * dt) / 1000;
@@ -8934,16 +9317,26 @@ export function initWalk(stage: HTMLElement): void {
       // come back for the flag and it is theirs to raise from wherever it is.
       lowerT0 = 0;
       let dh = 0;
-      // Whether the reader has actually FOUND the rope (or the key), as opposed
-      // to still holding the same forward press that walked them here. Only the
-      // first of those retires the offer of the rope: the plain hold is not
-      // evidence of anything, and a reader who is holding forward and watching
-      // the flag creep up eight seconds' worth is exactly who the offer is for.
+      // Whether the reader has actually FOUND the rope (or the key, or the
+      // carry's tap), as opposed to still holding the same forward press that
+      // walked them here. Only the first of those retires the offer of the
+      // rope: the plain hold is not evidence of anything, and a reader who is
+      // holding forward and watching the flag creep up eight seconds' worth is
+      // exactly who the offer is for.
       let deliberate = false;
       if (reduceMotion.matches) {
         if (reducedHoisting) dh = dt / HOIST_REDUCED_MS;
       } else {
-        if (heldDir() > 0) dh = dt / HOIST_HOLD_MS;
+        // manualDir, not heldDir: the carry's engine-owned hold must never
+        // raise the flag. A carried walk stands here — the whisper asking for
+        // a tap — until the reader answers.
+        if (manualDir() > 0) dh = dt / HOIST_HOLD_MS;
+        if (tapHoistTo > hoist) {
+          dh += Math.min(dt / HOIST_TAP_MS, tapHoistTo - hoist);
+          // NOT deliberate: a flag raised in instalments must not retire the
+          // whisper at the first quarter — the reader still has taps to make,
+          // and the instruction stands until the masthead retires it below.
+        }
         if (hoistKey) {
           dh += (HOIST_ARROWUP_RATE * dt) / HOIST_HOLD_MS;
           deliberate = true;
@@ -8961,6 +9354,10 @@ export function initWalk(stage: HTMLElement): void {
         if (hoist >= 1) {
           hoistDoneAt = now;
           reducedHoisting = false;
+          // The tapped answer is complete. A carry, if one is running, is
+          // still in `inputs`, which is the whole of how it resumes on the
+          // far side of the gate's opening beat.
+          tapHoistTo = 0;
           retireRopeHint();
           // The flag is at the masthead and Nehru can speak (paintCards, below,
           // is what lets him).
@@ -8972,6 +9369,9 @@ export function initWalk(stage: HTMLElement): void {
     } else {
       dragPx = 0;
       gateIdleMs = 0;
+      // An answer half-made does not survive leaving the pole, exactly as
+      // the half-raised flag it bought does not (the lowering below).
+      tapHoistTo = 0;
       // R2g: NO RESTING HALF-MAST. A reader who starts the hoist, changes their
       // mind and walks back out of the gate used to leave the flag hanging
       // wherever their hands left it — and a tricolour parked half way up a pole
@@ -8994,7 +9394,13 @@ export function initWalk(stage: HTMLElement): void {
         lowering = hoist > 0;
       } else lowerT0 = 0;
     }
-    announceGate(gated());
+    // The stage knows when the walk stands at the pole, and the stylesheet
+    // takes the ▷ off the ground for it: the whisper there is asking for
+    // taps, and a control that also answers taps cannot share the stage with
+    // it (see .is-gated).
+    const gatedNow = gated();
+    stage.classList.toggle('is-gated', gatedNow);
+    announceGate(gatedNow);
     // The sky's twelve beats, every frame, off the year he has just moved to.
     paintCards();
 
@@ -9653,6 +10059,13 @@ export function initWalk(stage: HTMLElement): void {
     // and the card simply goes home.
     stepWordsClear(state.worldMarkY, now);
 
+    // The frame before the pull-back, and the credits engine's one standing
+    // stop: the de-normalisation is the film's last argument and the reader
+    // starts it. Read here, above both clocks, because the whisper's is
+    // gated on it too.
+    const endGate =
+      phase === 'lift' && latch === REVEAL_CARDS[1] && !linesPending();
+
     // The ending whisper's clock, on the gate's own pattern: it advances only
     // while an ending frame is standing SETTLED — no ride, no dissolve, no
     // end-card — with nothing pressed. A hold does not reset it, deliberately:
@@ -9661,18 +10074,59 @@ export function initWalk(stage: HTMLElement): void {
     // clock rather than the first stall's: a press hides the whisper and zeroes
     // this, and the frame the reader stalls on next offers it again — at the
     // first offer's reading-length patience if it has never been shown, and at
-    // reminder pace once it has (see END_REHINT_MS).
+    // reminder pace once it has (see END_REHINT_MS). …every frame a TAP is
+    // actually being waited on: while the credits engine is turning the pages
+    // itself the film is not waiting on anybody, and the whisper's clock ran
+    // exactly in step with the engine's page dwell — the offer flickered up in
+    // the same frame every synthesized press took it down (probe-found).
     if (
       phase !== 'walk' &&
       lift === liftB &&
       pull === pullB &&
       !lineFading() &&
       latch !== SIGNOFF_CARD &&
-      !tapHinted
+      !tapHinted &&
+      !(endAuto && endAutoLive && !endGate)
     ) {
       endIdleMs += dt;
       if (endIdleMs >= (tapTaught ? END_REHINT_MS : END_HINT_MS)) showTapHint();
     } else endIdleMs = 0;
+
+    // The tired thumb's clock: manual holding accumulates, and at BECKON_MS
+    // the ▷ breathes its once (the CSS owns the breath; animationend takes
+    // the class back off). A reader who has already found the carry is never
+    // beckoned.
+    if (phase === 'walk' && !playing && manualDir() !== 0) holdMs += dt;
+    if (!beckoned && holdMs >= BECKON_MS && playBtn && !playBtn.hidden && !reduceMotion.matches) {
+      beckoned = true;
+      playBtn.classList.add('is-beckoning');
+    }
+
+    // THE CREDITS, CARRIED — for every reader, since the field pass (see
+    // arriveEnd). Armed by the arrival, lit by the reader's own first "go
+    // on" press, and then the pages turn themselves: each one gets its
+    // dissolve plus its sentence-read dwell of standing time. Two stops are deliberate and they are the ending's two
+    // real beats — `endGate` (read above the whisper's clock) holds the frame
+    // before the pull-back until the reader starts it, with the whisper making
+    // the offer there, and the end-card ends the engine, because it is a card
+    // to hold rather than a page to turn.
+    if (endAuto && endAutoLive && phase !== 'walk') {
+      if (
+        !endGate &&
+        lift === liftB &&
+        pull === pullB &&
+        !lineFading() &&
+        latch !== SIGNOFF_CARD
+      ) {
+        endAutoMs += dt;
+        if (endAutoMs >= autoPageMs()) {
+          endAutoMs = 0;
+          endAutoSynth = true;
+          endingPress(1, now);
+          endAutoSynth = false;
+        }
+      } else endAutoMs = 0;
+    }
 
     const settled =
       !driving &&
@@ -9727,6 +10181,12 @@ export function initWalk(stage: HTMLElement): void {
       // because showTapHint flips tapHinted and this term goes quiet until the
       // next press takes the whisper down again.
       !(phase !== 'walk' && latch !== SIGNOFF_CARD && !tapHinted) &&
+      // …and the credits engine has a page-dwell counting whenever it is lit
+      // and not standing at one of its two deliberate stops. Bounded: every
+      // dwell ends in a synthesized press, and the chain ends at the
+      // end-card. (At endGate the loop may sleep — the reader's own press is
+      // what wakes it, exactly as on a manual ending.)
+      !(endAuto && endAutoLive && phase !== 'walk' && latch !== SIGNOFF_CARD && !endGate) &&
       // …and RAISING the flag is the one thing on this stage that moves without
       // the ground moving. speedK covers the plain forward hold, but ArrowUp and
       // the reduced-motion one-shot drive nothing else at all, so without this
@@ -9801,7 +10261,7 @@ export function initWalk(stage: HTMLElement): void {
    * Three things are exempt rather than stop-propagated, because an element that
    * has to know who is listening above it is a bug waiting for the next round:
    * the rope, the end-card (R2m — the whole card, not its three controls), and
-   * the two corner buttons.
+   * the corner buttons — the ✕, the ⛶ and release weekend's ▷.
    */
   /** Which way each live stage pointer is walking, so its release can turn a
    *  short press into a step in the direction it was made in. */
@@ -9809,6 +10269,10 @@ export function initWalk(stage: HTMLElement): void {
   /** R2m: where the press that may open the film landed, and which pointer made
    *  it. Null whenever there is no candidate. See the poster's note below. */
   let posterDown: { id: number; x: number; y: number } | null = null;
+  /** The gate's banked back-zone press (see the pointerdown below): a tap in
+   *  waiting that becomes a hoist-tap on release or a back-hold when its
+   *  window closes. */
+  let gateBack: { id: number; timer: number } | null = null;
   /** How far a finger may travel and still be a tap. A scroll flick covers
    *  hundreds of px; a thumb resting on glass wanders two or three. */
   const POSTER_TAP_PX = 10;
@@ -9819,7 +10283,7 @@ export function initWalk(stage: HTMLElement): void {
     // the card is a box the reader is meant to press things inside, and listing
     // its ✕ and its two buttons separately would leave the sky between them
     // walking the film out from under the offer.
-    if (el && el.closest('.walk-rope, .walk-endcard, .walk-exit, .walk-full, .walk-poster-fresh, a')) return;
+    if (el && el.closest('.walk-rope, .walk-endcard, .walk-exit, .walk-full, .walk-play, .walk-poster-fresh, a')) return;
     /**
      * The poster: a press anywhere on the stage is the way in, and it is not
      * also a step.
@@ -9848,11 +10312,51 @@ export function initWalk(stage: HTMLElement): void {
     const rect = stage.getBoundingClientRect();
     const id = `p${e.pointerId}`;
     const dir = e.clientX - rect.left >= rect.width * ZONE_SPLIT ? 1 : -1;
+    // At the pole AND in the ending, a press on the BACK zone is not
+    // allowed to become a step back yet: the whispers say "tap to raise the
+    // flag" and "tap to go on", and a tap has to mean that WHEREVER it
+    // lands (device-reported twice, once per whisper: a left-zone tap did
+    // the opposite of what the sentence on the sky promised). So the press
+    // is BANKED for TAP_MS — released inside the window it is the tap the
+    // whisper meant (see zoneRelease), still down when the window closes it
+    // becomes the back-hold it always was, so the way back stays exactly
+    // one held press away in both places.
+    if (dir < 0 && (gated() || phase !== 'walk') && !reduceMotion.matches) {
+      const pid = e.pointerId;
+      const timer = window.setTimeout(() => {
+        if (gateBack && gateBack.id === pid) {
+          gateBack = null;
+          zoneDir.set(pid, -1);
+          downAt.set(`p${pid}`, performance.now());
+          pressInput(`p${pid}`, -1);
+        }
+      }, TAP_MS);
+      gateBack = { id: pid, timer };
+      return;
+    }
     zoneDir.set(e.pointerId, dir);
     downAt.set(id, performance.now());
     pressInput(id, dir);
   });
   const zoneRelease = (e: PointerEvent) => {
+    // A banked back-zone press, resolved: released inside its window it is
+    // the tap the whisper asked for — the flag's quarter at the pole, a
+    // page forward in the ending. (One that outlived the window was already
+    // converted to a back-hold by its own timer and is not here.)
+    if (gateBack && e.pointerId === gateBack.id) {
+      window.clearTimeout(gateBack.timer);
+      gateBack = null;
+      if (e.type === 'pointerup') {
+        if (gated()) {
+          tapHoistTo = Math.min(1, Math.max(tapHoistTo, hoist) + HOIST_TAP_STEP);
+          wake();
+        } else if (phase !== 'walk') {
+          endingPress(1, performance.now());
+          wake();
+        }
+      }
+      return;
+    }
     // The poster's candidate press, resolved. A tap opens the film; anything
     // that moved was a scroll and the page has already had it.
     if (posterDown && e.pointerId === posterDown.id) {
@@ -9867,6 +10371,11 @@ export function initWalk(stage: HTMLElement): void {
     const t0 = downAt.get(id);
     downAt.delete(id);
     dropInput(id);
+    // The release knows what the press was — a tap or a hold — which is the
+    // one thing the hints' second offer needs to hear about.
+    if (e.type === 'pointerup' && t0 !== undefined) {
+      noteGesture(performance.now() - t0, performance.now());
+    }
     if (dir !== undefined && t0 !== undefined && performance.now() - t0 < TAP_MS) {
       startStep(id, dir);
     }
@@ -10111,6 +10620,20 @@ export function initWalk(stage: HTMLElement): void {
     enterTheatre();
   });
 
+  // Release weekend's ▷, on the corners' shared contract: the press is the
+  // button's and never also the stage half it sits over.
+  playBtn?.addEventListener('pointerdown', (e) => {
+    e.stopPropagation();
+  });
+  playBtn?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (playing) stopPlay();
+    else startPlay();
+  });
+  // The beckon is three breaths and out; the class comes off when the
+  // animation says so, not on a timer of our own.
+  playBtn?.addEventListener('animationend', () => playBtn.classList.remove('is-beckoning'));
+
 
   // Enter and Space on the focused stage are the poster's press, for a reader
   // who arrived by keyboard. Esc is the way out, and it is listened for on the
@@ -10121,9 +10644,20 @@ export function initWalk(stage: HTMLElement): void {
     const el = e.target as HTMLElement | null;
     // A press on a real control inside the stage is that control's.
     if (el && el !== stage && el.closest('button, a')) return;
-    if (started) return;
-    e.preventDefault();
-    begin();
+    if (!started) {
+      e.preventDefault();
+      begin();
+      return;
+    }
+    // Space, inside the film, is the carry's key — pause and resume, the way
+    // a reader expects of anything that can play itself. Enter stays the
+    // poster's alone, and the key does nothing where the ▷ itself is not
+    // offered (the ending, reduced motion).
+    if (e.key === ' ' && phase === 'walk' && !reduceMotion.matches) {
+      e.preventDefault();
+      if (playing) stopPlay();
+      else startPlay();
+    }
   });
 
   window.addEventListener('keydown', (e) => {
@@ -10238,6 +10772,11 @@ export function initWalk(stage: HTMLElement): void {
   // Anything that takes the page away takes the hold with it, or he walks on
   // while nobody is touching anything.
   function releaseAll(): void {
+    // …and the carry is a held input like the rest of them: a page that has
+    // lost the reader must not go on walking for one. First, so its own
+    // bookkeeping (the button's face, the wake lock) settles before the
+    // wholesale clear below makes its dropInput a no-op.
+    stopPlay();
     inputs.length = 0;
     zoneDir.clear();
     downAt.clear();
@@ -10245,6 +10784,11 @@ export function initWalk(stage: HTMLElement): void {
     hoistKey = false;
     dragId = -1;
     posterDown = null;
+    if (gateBack) {
+      window.clearTimeout(gateBack.timer);
+      gateBack = null;
+    }
+    syncHolding();
   }
   window.addEventListener('blur', releaseAll);
 

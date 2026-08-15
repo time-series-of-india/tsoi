@@ -981,11 +981,15 @@ const OG_IMAGE_ALT =
 
         <!-- The second instruction, and only a reader who has been standing at
              the flagpole for three seconds with nothing happening ever sees it.
-             It retires permanently the moment the flag moves. Since R2c took the
-             halyard's cue chevron off the rope this is the only affordance the
-             gate has, so it is also the only thing that tells a reader who has
-             not found the rope that there is one. -->
-        <p class="walk-whisper walk-whisper-rope" aria-hidden="true" hidden>pull the rope down</p>
+             Release weekend rewrote what it asks for: TAPS, which every reader
+             has (each ratchets the flag a quarter of the pole), where "pull
+             the rope down" sent a phone reader hunting for a halyard. The
+             rope still hangs there and still works, an unadvertised better
+             answer for whoever finds it. The whisper stands until the
+             masthead retires it, because a flag raised in instalments still
+             has taps to ask for; the rope and the key, being found things,
+             retire it on first progress as they always did. -->
+        <p class="walk-whisper walk-whisper-rope" aria-hidden="true" hidden>tap to raise the flag</p>
 
         <!-- The third whisper, release morning's. The whole film is held, and
              then the ending is tapped — and a reader whose thumb has been down
@@ -1039,6 +1043,31 @@ const OG_IMAGE_ALT =
         <button type="button" class="walk-full" aria-label="fill the screen with the film" hidden>
           <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
             <path d="M10 4.5 H4.5 V10 M14 19.5 H19.5 V14" />
+          </svg>
+        </button>
+
+        <!-- Release weekend: the carry. R2b's autopilot, back as an OFFER at
+             the foot of the frame — the first day's readers asked to be
+             carried, and one of them had tapped their way across four
+             centuries to earn the asking. Bottom-centre, on the ground the
+             walker walks, in the LAND ink the retired foot-row controls used
+             to take (the sky ink is the one ink chosen to be wrong down
+             here).
+
+             THE WORD IS THE CONTROL, with the round's own name for the mode
+             ("watch him walk") sitting inside the button over a hairline ▷,
+             so the label and the target are one thing to press rather than a
+             hint pointing at a glyph. While the carry runs the word goes down
+             and the pause pair takes the glyph's place (.is-playing, engine-
+             written); pausing is also what any press on the film does. Up
+             only while the walk itself is — never on the poster, never in
+             the ending, never under reduced motion (see syncControls in
+             walk.ts). -->
+        <button type="button" class="walk-play" aria-label="watch him walk" hidden>
+          <span class="walk-play-word">watch him walk</span>
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path class="walk-play-go" d="M9 6.5 L17.5 12 L9 17.5 Z" />
+            <path class="walk-play-stop" d="M8.5 7 V17 M15.5 7 V17" />
           </svg>
         </button>
 
@@ -1697,6 +1726,11 @@ const OG_IMAGE_ALT =
     transform: translateX(-50%);
     white-space: nowrap;
     font-family: var(--walk-serif);
+    /* Release weekend: bolder. The instruction has to outrank the carry's
+       word at the foot of the frame, and weight is the one axis left — the
+       ink is already the full one and the size is authored. 700 rather than
+       a middle weight because the face is Georgia, which has exactly two. */
+    font-weight: 700;
     font-size: 10px;
     line-height: 1;
     letter-spacing: 0.26em;
@@ -1906,9 +1940,15 @@ const OG_IMAGE_ALT =
      The ✕ and the ⛶ share the corner and are never up together: the engine hides
      the ⛶ the moment the theatre opens and the ✕ takes its place, so one slot
      always means "the other state is one press away". Everything below is the
-     same rule for both. */
+     same rule for both — and, since release weekend, mostly for the ▷ at the
+     foot of the frame: the carry shares the 44px target and the hairline
+     stroke, and its own overrides at the end of the block move it to
+     bottom-centre and swap its ink to the LAND's, because down there it is
+     printed on the ground and the stamp's sky ink is the one ink chosen to be
+     wrong on the landmass (see the hints' height note). */
   .walk-exit,
-  .walk-full {
+  .walk-full,
+  .walk-play {
     position: absolute;
     top: calc(env(safe-area-inset-top, 0px) + 4px);
     right: calc(env(safe-area-inset-right, 0px) + 4px);
@@ -1934,17 +1974,20 @@ const OG_IMAGE_ALT =
   }
 
   .walk-exit[hidden],
-  .walk-full[hidden] {
+  .walk-full[hidden],
+  .walk-play[hidden] {
     display: none;
   }
 
   .walk-exit:hover,
-  .walk-full:hover {
+  .walk-full:hover,
+  .walk-play:hover {
     color: var(--walk-stamp-text);
   }
 
   .walk-exit svg,
-  .walk-full svg {
+  .walk-full svg,
+  .walk-play svg {
     display: block;
     width: 20px;
     height: 20px;
@@ -1967,9 +2010,146 @@ const OG_IMAGE_ALT =
      the download control ring in the land ink they stand on, and the stage
      itself rings in the caption's. Nothing here is a new value. */
   .walk-exit:focus-visible,
-  .walk-full:focus-visible {
+  .walk-full:focus-visible,
+  .walk-play:focus-visible {
     outline: 2px solid var(--walk-stamp-text-dim);
     outline-offset: -6px;
+  }
+
+  /* The carry's overrides. The place: bottom-centre, on the ground, with the
+     safe area carried — the whole bottom edge has been empty since R2m folded
+     the foot-row controls into the end-card — and higher on a coarse pointer,
+     clear of the reach of browser chrome and resting thumbs (device-
+     reported). The ink: the land's — the word at the full alpha, the glyph
+     at the dim with the full on hover — and no halo, because the halo is a
+     sky treatment and the ground behind this is its own dark mass. The face:
+     the word over one svg of two glyphs, and the engine's .is-playing picks —
+     the word and the ▷ while the carry is on offer, the pause pair alone
+     while it is standing. Display rather than opacity, because a translucent
+     second glyph under a hairline first one reads as a smudge. The glyph
+     row is the anchored one, so the word coming and going never moves it. */
+  .walk-play {
+    top: auto;
+    right: auto;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 10px);
+    left: 50%;
+    transform: translateX(-50%);
+    width: auto;
+    height: auto;
+    min-width: 44px;
+    min-height: 44px;
+    padding: 8px 14px;
+    grid-template-rows: auto auto;
+    justify-items: center;
+    row-gap: 6px;
+    align-content: end;
+    color: var(--walk-land-text-dim);
+    text-shadow: none;
+  }
+
+  .walk-stage.is-coarse .walk-play {
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 30px);
+  }
+
+  /* The word takes the DIM land ink at rest, deliberately below the zone
+     hints: on the opening frame "hold to walk" is the instruction and this
+     is the counter-offer, and an offer must not outrank the default it is
+     an alternative to (device-reported: it did, in the full ink). Hover and
+     the beckon bring it up to full. */
+  .walk-play-word {
+    font-family: var(--walk-serif);
+    font-size: 10px;
+    line-height: 1;
+    letter-spacing: 0.26em;
+    text-indent: 0.26em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    color: var(--walk-land-text-dim);
+    transition: color 300ms linear;
+  }
+
+  .walk-play:hover .walk-play-word,
+  .walk-play.is-beckoning .walk-play-word {
+    color: var(--walk-land-text);
+  }
+
+  .walk-play.is-playing .walk-play-word {
+    display: none;
+  }
+
+  /* The held walk does not need a label. While the reader's own hold is down
+     the control fades to a ghost — immediately, the press is the reader
+     telling it to get out of the way — and a release brings it back ONLY
+     after the pause has lasted: the return waits four seconds and then
+     eases in slow. Device-reported reason for the delay: the thumb-first
+     reader releases exactly to READ, and a control fading in at that moment
+     takes the eye that the caption was owed. Inside the ordinary
+     read-and-repress rhythm the control never moves at all; it surfaces in
+     the stands that have genuinely become pauses, which are the ones that
+     might want it. */
+  .walk-play {
+    transition:
+      color 300ms linear,
+      opacity 1200ms ease 4000ms;
+  }
+
+  .walk-stage.is-holding .walk-play {
+    opacity: 0.12;
+    transition:
+      color 300ms linear,
+      opacity 500ms ease;
+  }
+
+  /* …and at the flagpole it leaves the stage entirely: the gate's whisper is
+     asking for taps, and a control that also answers taps cannot stand on
+     the same ground while it does (see is-gated in walk.ts). */
+  .walk-stage.is-gated .walk-play {
+    opacity: 0;
+    pointer-events: none;
+    transition:
+      color 300ms linear,
+      opacity 500ms ease;
+  }
+
+  /* The tired thumb's beckon (see BECKON_MS in walk.ts): three slow breaths
+     on the poster's own cadence, then still again. The engine puts the class
+     on once and animationend takes it off; a reader who asked for less
+     motion is never beckoned (the engine gates it too — this is the belt). */
+  @media (prefers-reduced-motion: no-preference) {
+    .walk-play.is-beckoning {
+      animation: walk-play-beckon 3200ms ease-in-out 3;
+    }
+  }
+
+  @keyframes walk-play-beckon {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.4;
+    }
+  }
+
+  .walk-play:hover {
+    color: var(--walk-land-text);
+  }
+
+  .walk-play svg {
+    filter: none;
+  }
+
+  .walk-play:focus-visible {
+    outline-color: var(--walk-land-text-dim);
+  }
+
+  .walk-play .walk-play-stop,
+  .walk-play.is-playing .walk-play-go {
+    display: none;
+  }
+
+  .walk-play.is-playing .walk-play-stop {
+    display: block;
   }
 
   /* ---------------------------------------------------------- caption --- */
