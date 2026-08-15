@@ -18,6 +18,10 @@ export type DispatchFormat = 'read' | 'beat-deck' | 'dashboard' | 'game' | 'comi
 
 export interface DispatchItem {
   format: DispatchFormat;
+  /** format-mark override: 'peaks' swaps the game gauge (two pins on a track —
+   *  Off by How Much's reveal mechanic) for Inflation Peaks' own terrain line.
+   *  One gauge cannot stand for two games whose mechanics share nothing. */
+  motif?: 'peaks';
   title: string;
   href: string; // deep link straight to the content
   blurb: string; // sells the item — what you'll come away with, not a contents list
@@ -89,6 +93,7 @@ export const DISPATCHES: Record<string, Dispatch> = {
       },
       {
         format: 'game',
+        motif: 'peaks',
         title: INFLATION_PEAKS_TITLE,
         href: INFLATION_PEAKS_HREF,
         blurb:

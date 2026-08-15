@@ -91,6 +91,27 @@ const editionDate = new Date().toLocaleDateString('en-GB', {
       </p>
     )
   }
+  <!-- Independence Day dressing: for a few days around 15 August the saffron
+       rule wears the tricolour — the same device as the walk film's sign-off
+       lockup (literal flag colours, the paper itself as the white band). The
+       window is client-side so it reverts on its own with no redeploy; the
+       no-JS fallback is the everyday saffron border. -->
+  <div class="iday-rule" aria-hidden="true"></div>
+  <script is:inline>
+    // Synchronous during parse (the elements are just above) so the dressed
+    // rule is there before first paint — same pattern as the edition date.
+    (() => {
+      const now = new Date();
+      if (
+        now.getFullYear() === 2026 &&
+        now.getMonth() === 7 &&
+        now.getDate() >= 14 &&
+        now.getDate() <= 17
+      ) {
+        document.querySelector('.masthead')?.classList.add('is-iday');
+      }
+    })();
+  </script>
 </header>
 
 <style>
@@ -153,6 +174,29 @@ const editionDate = new Date().toLocaleDateString('en-GB', {
     color: var(--tsoi-color-on-surface);
   }
 
+  /* The tricolour rule (is-iday only). Same construction as the film's
+     sign-off rule: saffron border, the page surface showing through the
+     2px middle as the white band, green border. Full-bleed to the header's
+     edges via negative inline margins (a border would span them for free,
+     but a border cannot be three colours). */
+  .iday-rule {
+    display: none;
+  }
+
+  .masthead.is-iday {
+    border-bottom: 0;
+    padding-bottom: 0;
+  }
+
+  .masthead.is-iday .iday-rule {
+    display: block;
+    box-sizing: content-box;
+    height: 2px;
+    margin: 14px calc(var(--tsoi-margin-desktop) * -1) 0;
+    border-top: 3px solid #ff9933;
+    border-bottom: 3px solid #138808;
+  }
+
   @media (max-width: 767px) {
     /* drop the URL so the meta row (date + units + theme) stays one line */
     .edition-url {
@@ -166,6 +210,10 @@ const editionDate = new Date().toLocaleDateString('en-GB', {
     .wordmark {
       font: var(--tsoi-text-masthead-mobile);
       letter-spacing: var(--tsoi-text-masthead-mobile-tracking);
+    }
+
+    .masthead.is-iday .iday-rule {
+      margin-inline: calc(var(--tsoi-margin-mobile) * -1);
     }
   }
 </style>

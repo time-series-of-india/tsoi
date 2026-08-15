@@ -70,6 +70,15 @@ const peaks = (() => {
   return { points: line.points, auto: coverAuto(line) };
 })();
 
+// The walk's cover is a picture now rather than a line: the front page
+// supplement's own baked still (same sky, same ridge bands, same rim light)
+// with the walker left out — /independence/rack.jpg, baked beside
+// supplement.jpg by the same script. The authored-ridge motif that stood
+// here first (the one line on the site drawn from invented numbers, with a
+// long apology for being one) retires with it. The mystery rule holds
+// either way: the still's land edge is the smoothed, x-warped bake, not the
+// series a reader could measure anything off.
+
 const sectionDate = new Date()
   .toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })
   .toUpperCase();
@@ -94,12 +103,41 @@ const isNew = (href: string) =>
   <!-- The card's `body` is kept short enough to survive its 2-line clamp at
        phone width. It used to end "…see how far off you are", which the clamp
        cut at exactly the payoff phrase; no loss, the title already says it. -->
-  <!-- Newest first: dispatch No. 2’s game ahead of dispatch No. 1’s. -->
+  <!-- Newest first: the Independence Day flagship, then dispatch No. 2’s game
+       ahead of dispatch No. 1’s. -->
   <div class="rack">
+    <!-- The Independence Day flagship. Same component, same classes as its
+         two siblings; the chip is release day's call — `isNew` elsewhere on
+         this page is derived from the latest dispatch and the flagship is not
+         in one, so it is passed literally here and must be REMOVED BY HAND
+         when the next dispatch ships. Nothing in the copy or the cover names
+         what the reader is walking — the withholding is the piece, and it
+         starts here. -->
+    <!-- R2m: the piece is named, and the kicker states the FORMAT beside the
+         occasion. This card sits in a rack of games and is not one — it is a
+         film the reader drives — and "Independence Day 2026" alone said when it
+         is for and nothing about what it is. The rack has no format-label slot
+         of its own (see GameCard's props: kicker, title, body, peek, cta), and
+         the kicker is where its two siblings carry their identity line, so the
+         format goes there in the site's own middot register. -->
+    <GameCard
+      href="/independence/"
+      kicker="Independence Day 2026 · Interactive film"
+      isNew={true}
+      title="The Walk through Midnight"
+      body="Four and a quarter centuries of India, on foot."
+      peek="Hold the wide side of the picture to walk forward."
+      peekLabel="Controls"
+      cta="Take the walk"
+    >
+      <span slot="cover" class="walk-cover">
+        <img class="walk-still" src="/independence/rack.jpg" alt="" loading="lazy" />
+      </span>
+    </GameCard>
+
     <GameCard
       href={INFLATION_PEAKS_HREF}
       kicker={INFLATION_PEAKS_KICKER}
-      isNew={isNew(INFLATION_PEAKS_HREF)}
       title={INFLATION_PEAKS_TITLE}
       body="A driving game where the terrain is the inflation series. One button, and a long way down."
       peek="Hold to accelerate, release to coast."
@@ -127,6 +165,7 @@ const isNew = (href: string) =>
       peek={round1.q}
       scale={scale}
     />
+
   </div>
 </StoryPage>
 
@@ -173,6 +212,23 @@ const isNew = (href: string) =>
     vector-effect: non-scaling-stroke;
   }
   /* the auto itself carries its own styles (components/play/PeaksAuto.astro) */
+
+  /* The walk's still: the supplement bake without its walker, cropped to a
+     cinematic band a step taller than the siblings' 58px line band — it is a
+     picture of a place, and at 58px it would be a stripe. `cover` centred
+     keeps the rim line's climb in frame at every card width. */
+  .walk-cover { display: block; margin-top: 20px; }
+  .walk-still {
+    display: block;
+    width: 100%;
+    height: 132px;
+    object-fit: cover;
+    object-position: 50% 55%;
+    /* the card sits on paper and the still is night — the same hairline the
+       supplement's frame draws, so the picture has an edge instead of a halo */
+    border: 1px solid var(--tsoi-color-outline);
+    background: #12151f;
+  }
 
   /* Track capped at 480px: the game card holds the intro screen's proportion
      (see GameCard.astro), and the intro card itself is 560 wide — the rack's

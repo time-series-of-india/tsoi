@@ -9,19 +9,17 @@
 // Usage: node site/scripts/build-independence.mjs   (from the repo root, or
 // any cwd — paths below are resolved off this file's own location).
 //
-// Output: site/public/data/independence/{economy,demographics,environment,
-// infrastructure,governance}.json. Each file is { panel, updated, series[] },
-// series[].points is [year, value] pairs, years ascending, no null points.
+// Output: site/public/data/independence/economy.json — { panel, updated,
+// series[] }, series[].points is [year, value] pairs, years ascending, no null
+// points. The other four panels are still built and still validated here; since
+// R3 they are no longer WRITTEN, because the page walks one line and reads one
+// file. See the write section at the foot for why they stay built.
 //
-// Manifest/hashing: NOT registered in hash-data.mjs's RUNTIME_FILES yet.
-// That allowlist is hand-maintained against actual frontend fetch() call
-// sites (see the comment at the top of hash-data.mjs), and no
-// /independence page exists in this worktree yet to fetch these files.
-// build-read-inflation.mjs sets the precedent for this: a dataset for a
-// not-yet-shipped page writes plain (unhashed) JSON and stays out of the
-// manifest pipeline until the page ships. Do the same here — add these five
-// logical paths to RUNTIME_FILES in hash-data.mjs when the /independence
-// page lands and actually fetches them.
+// Manifest/hashing: the one logical path is registered in hash-data.mjs's
+// RUNTIME_FILES, because /independence fetches it in the browser. Run
+// `node site/scripts/hash-data.mjs` after this generator so data-manifest.json
+// picks up the new content hash; a stale manifest points the page at the
+// previous version of the numbers.
 import { readFileSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -91,18 +89,122 @@ function points(rows) {
 }
 
 // ---- economy.json -----------------------------------------------------
+// India is the walk; the other three are comparators the scrollytelling stage
+// can bring in and drop again. Each takes its FULL available span from the
+// source (World starts 1820, the UK and China at 1000, India at 1600) — the
+// unequal starts are information, the same convention the panels already use,
+// so nothing is clipped to a common window here.
+const GDP_ENTITIES = [
+  ['IND', 'India'],
+  ['OWID_WRL', 'World'],
+  ['GBR', 'United Kingdom'],
+  ['CHN', 'China'],
+];
 const gdpRaw = readCsv('gdp-per-capita-maddison.csv');
-const gdpInd = seriesFor(gdpRaw, 'IND', 'GDP per capita');
+const gdpSeries = GDP_ENTITIES.map(([code, entity]) => ({
+  id: 'gdp_pc', entity, label: 'GDP per capita',
+  unit: 'international-$ at 2011 prices',
+  points: points(seriesFor(gdpRaw, code, 'GDP per capita')),
+}));
+
+// ---- the estimated tail, 2023-2026 -----------------------------------------
+// Maddison (MPD 2023, via OWID) stops at 2022, and a piece published in 2026
+// that ends its line four years short reads as stale rather than as careful.
+// So India and the World are CHAINED forward off their own 2022 level by an
+// authored per-capita real growth rate per year. Nothing here is Maddison and
+// nothing here is a new source: it is one multiplication per year on top of the
+// last Maddison value, and every extended series says so in `estimated_from`.
+//
+// AUDITED 2026-08-14 (R3). Every figure below was re-derived against a live
+// source on that date; the VERIFY tags this note replaces carried numbers from
+// the SUPERSEDED 2011-12-base national accounts and three of the four India
+// constants were wrong, one of them by two percentage points.
+//
+// WHAT THE AUDIT FOUND. On 27 February 2026 MoSPI released a new National
+// Accounts series on a 2022-23 base year, and it rewrote India's recent growth
+// history: FY2023/24 went from 9.2% to 7.2%, FY2024/25 from 6.5% to 7.1%, and
+// FY2025/26 came in at 7.7%. The IMF adopted the rebased series in the April
+// 2026 WEO. The old constant for 2023 is exactly reconstructible as 9.2 − 0.85,
+// which is how the stale base was caught. Compounded, the four superseded India
+// factors understated India's 2026 per-capita level by about 5.8%.
+//
+// The second finding is smaller and is a direction error rather than a
+// magnitude one: the superseded note netted India at ~0.85%/yr population
+// growth and the World at ~0.9%/yr. In WPP 2024 it is the other way round —
+// India runs HIGHER than the world, 0.86-0.90 against 0.83-0.87. Worth at most
+// 0.06pp on any one constant, but the arithmetic is now done per year off the
+// actual series rather than off one rounded assumption for the whole tail.
+//
+// THE DERIVATION, per year: IMF real GDP growth minus UN WPP population growth.
+//
+//   India (WEO fiscal-year rows, per WEO footnote 5)
+//     2023  FY2023/24  7.2 − 0.891 = 6.31  -> 0.063
+//     2024  FY2024/25  7.1 − 0.887 = 6.21  -> 0.062
+//     2025  FY2025/26  7.7 − 0.868 = 6.83  -> 0.068
+//     2026  FY2026/27  6.4 − 0.845 = 5.55  -> 0.056   (projection)
+//
+//   World (calendar years)
+//     2023  3.3 − 0.871 = 2.43  -> 0.024
+//     2024  3.5 − 0.858 = 2.64  -> 0.026
+//     2025  3.5 − 0.841 = 2.66  -> 0.027
+//     2026  3.0 − 0.830 = 2.17  -> 0.022   (projection)
+//
+// SOURCES, named exactly:
+//   · IMF, World Economic Outlook Update, July 2026 ("Global Economy in
+//     Crosscurrents of War and Technology", published 8 July 2026), Table 1 and
+//     footnote 5 — the growth figures for 2024, 2025 and 2026, both panels.
+//   · IMF, World Economic Outlook, April 2026 ("Global Economy in the Shadow of
+//     War", published 14 April 2026), via the IMF DataMapper API series
+//     NGDP_RPCH, which self-reports this vintage and a 2026-04-08 timestamp —
+//     the 2023 figures, which the July Update's table does not reach back to.
+//   · UN DESA, World Population Prospects 2024 revision, medium variant,
+//     PopGrowthRate. Still the current revision as of this audit. India's rows
+//     are the fiscal-year average of the two adjacent calendar-year rates, to
+//     match the fiscal-year basis of the WEO rows above; that averaging is worth
+//     at most 0.02pp and is done for consistency rather than for accuracy.
+//   · Corroboration, not used in the arithmetic: MoSPI Provisional Estimates,
+//     5 June 2026 (FY2025-26 7.7%, FY2024-25 7.1%) and the World Bank India
+//     Development Update, April 2026 (FY26 7.6%, FY25 7.1%).
+//
+// THE FISCAL-YEAR MISMATCH IS STILL HERE AND IS STILL FLAGGED RATHER THAN
+// HIDDEN, and the audit sharpened what it costs. A Maddison level is a
+// CALENDAR-year quantity, so chaining fiscal-year growth onto it shifts India's
+// tail about a quarter earlier relative to the World series beside it. The IMF
+// publishes both bases for the projection years only — footnote 5 gives India
+// 7.0% for calendar 2026 against 6.4% for FY2026/27, a 0.6pp gap. Rebuilding
+// 2023-2025 on a calendar basis would mean reweighting MoSPI quarterlies rather
+// than lifting a WEO row, which is a bigger apparatus than a four-year tail on a
+// four-century walk can justify. So the fiscal rows stand, and this is the note
+// that says so. (One further approximation, unchanged and noted for
+// completeness: the WEO world aggregate is PPP-weighted and the WPP world
+// population growth is a straight sum. Dividing one by the other is the standard
+// approximation against a Maddison 2011$ PPP level, and it is an approximation
+// rather than an identity.)
+//
+// Only these two series are extended. The UK and China are comparators the walk
+// never draws, and inventing four years of them would be estimate for its own
+// sake.
+const ESTIMATED_FROM = 2023;
+const INDIA_PC_GROWTH = { 2023: 0.063, 2024: 0.062, 2025: 0.068, 2026: 0.056 };
+const WORLD_PC_GROWTH = { 2023: 0.024, 2024: 0.026, 2025: 0.027, 2026: 0.022 };
+
+function extend(series, growth) {
+  let value = series.points.at(-1)[1];
+  for (const year of Object.keys(growth).map(Number).sort((a, b) => a - b)) {
+    if (series.points.at(-1)[0] >= year) continue;
+    value *= 1 + growth[year];
+    series.points.push([year, roundVal(value)]);
+  }
+  series.estimated_from = ESTIMATED_FROM;
+}
+
+extend(gdpSeries.find((s) => s.entity === 'India'), INDIA_PC_GROWTH);
+extend(gdpSeries.find((s) => s.entity === 'World'), WORLD_PC_GROWTH);
+
 const economy = {
   panel: 'economy',
   updated: UPDATED,
-  series: [
-    {
-      id: 'gdp_pc', entity: 'India', label: 'GDP per capita',
-      unit: 'international-$ at 2011 prices',
-      points: points(gdpInd),
-    },
-  ],
+  series: gdpSeries,
 };
 
 // ---- demographics.json --------------------------------------------------
@@ -251,11 +353,52 @@ function checkClose(label, got, want, tol = 0.005) {
   }
 }
 
-const gdpS = economy.series.find((s) => s.id === 'gdp_pc');
+const gdpS = economy.series.find((s) => s.id === 'gdp_pc' && s.entity === 'India');
 checkClose('economy gdp_pc India 1900', findPoint(gdpS, 1900), 955);
 checkClose('economy gdp_pc India 1947', findPoint(gdpS, 1947), 985);
 checkClose('economy gdp_pc India 1991', findPoint(gdpS, 1991), 2062.3);
 checkClose('economy gdp_pc India 2022', findPoint(gdpS, 2022), 7765.6);
+
+const gdpWrl = economy.series.find((s) => s.id === 'gdp_pc' && s.entity === 'World');
+const gdpGbr = economy.series.find((s) => s.id === 'gdp_pc' && s.entity === 'United Kingdom');
+const gdpChn = economy.series.find((s) => s.id === 'gdp_pc' && s.entity === 'China');
+checkClose('economy gdp_pc World 1950', findPoint(gdpWrl, 1950), 3360);
+checkClose('economy gdp_pc World 2022', findPoint(gdpWrl, 2022), 16676.75);
+// 1947 is the year the walk turns, so the UK is checked there rather than at a
+// round decade: it is the only comparator whose 1947 value the copy can name.
+checkClose('economy gdp_pc United Kingdom 1947', findPoint(gdpGbr, 1947), 10527);
+checkClose('economy gdp_pc China 1950', findPoint(gdpChn, 1950), 799);
+checkClose('economy gdp_pc China 2022', findPoint(gdpChn, 2022), 19238.18);
+
+// The estimated tail, checked as a chain rather than as four magic numbers:
+// each year must be its predecessor times its own authored growth, and the two
+// unextended comparators must still stop where Maddison stops. The end year is
+// read off the growth table rather than written down again, so adding a row
+// above moves the check with it.
+const ESTIMATED_TO = Math.max(...Object.keys(INDIA_PC_GROWTH).map(Number));
+for (const [s, growth] of [[gdpS, INDIA_PC_GROWTH], [gdpWrl, WORLD_PC_GROWTH]]) {
+  if (s.estimated_from !== ESTIMATED_FROM) {
+    throw new Error(`VALIDATION FAILED: ${s.entity} gdp_pc missing estimated_from`);
+  }
+  if (s.points.at(-1)[0] !== ESTIMATED_TO) {
+    throw new Error(
+      `VALIDATION FAILED: ${s.entity} gdp_pc ends ${s.points.at(-1)[0]}, expected ${ESTIMATED_TO}`,
+    );
+  }
+  for (const year of Object.keys(growth).map(Number).sort((a, b) => a - b)) {
+    checkClose(
+      `economy gdp_pc ${s.entity} ${year} (chained)`,
+      findPoint(s, year),
+      findPoint(s, year - 1) * (1 + growth[year]),
+      0.0005,
+    );
+  }
+}
+for (const s of [gdpGbr, gdpChn]) {
+  if (s.estimated_from != null || s.points.at(-1)[0] !== 2022) {
+    throw new Error(`VALIDATION FAILED: ${s.entity} gdp_pc must stay unextended at 2022`);
+  }
+}
 
 const cmS = demographics.series.find((s) => s.id === 'child_mortality');
 checkClose('demographics child_mortality India 1911', findPoint(cmS, 1911), 33.34);
@@ -326,14 +469,31 @@ checkClose('governance women_parliament India 2025', findPoint(wpS, 2025), 13.8)
 console.log('All validations passed.\n');
 
 // ---- write ------------------------------------------------------------
-const written = [
-  writeData('independence/economy.json', economy),
-  writeData('independence/demographics.json', demographics),
-  writeData('independence/environment.json', environment),
-  writeData('independence/infrastructure.json', infrastructure),
-  writeData('independence/governance.json', governance),
-];
+// ONE FILE, since R3. The five-panel build (git: ca6fdd0) fetched all five in
+// the browser and this generator emitted all five; the piece is a single walked
+// line now and economy.json is the only one anything reads. The other four were
+// still being written, still being hashed into data-manifest.json, and still
+// being uploaded to the edge on every deploy, for nothing.
+//
+// The four panels above are DELIBERATELY still built and still validated. They
+// cost nothing at build time, their validation gates are the only standing check
+// that the nine source CSVs still parse and still hold the values SOURCES.md
+// says they do, and a later stage that wants demographics or environment back
+// wants them derived rather than re-derived. What is gone is only the emission.
+//
+// economy.json's path and its hashing are untouched — the same logical path in
+// hash-data.mjs's RUNTIME_FILES, hashed the same way. The four retired paths had
+// to come OUT of that list in the same change, and this is not a tidy-up: the
+// hashing loop hard-exits on a registered path with no file behind it, so
+// dropping the emission while leaving the registration would fail the first
+// deploy that ran from a clean public/data. Already-generated files on disk are
+// left exactly where they are; nothing here deletes anything.
+const written = [writeData('independence/economy.json', economy)];
 for (const path of written) console.log(`wrote ${path}`);
+console.log(
+  'not written (built and validated, but unread by the page since R3): ' +
+    'demographics, environment, infrastructure, governance',
+);
 
 // ---- report: first 2 / last 2 points of every series ---------------------
 console.log();
@@ -343,7 +503,9 @@ for (const panel of [economy, demographics, environment, infrastructure, governa
     const p = s.points;
     const head = p.slice(0, 2).map(([y, v]) => `${y}=${v}`).join(', ');
     const tail = p.slice(-2).map(([y, v]) => `${y}=${v}`).join(', ');
-    const extra = s.baseline ? ` baseline=${s.baseline}` : '';
+    const extra =
+      (s.baseline ? ` baseline=${s.baseline}` : '') +
+      (s.estimated_from ? ` estimated_from=${s.estimated_from}` : '');
     console.log(`  ${s.id} [${s.entity}] (${p.length} pts)${extra}: first [${head}] last [${tail}]`);
   }
 }

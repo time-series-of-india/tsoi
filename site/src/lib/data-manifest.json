@@ -1,19 +1,15 @@
 {
   "/data/economy/bank-performance.json": "/data/economy/bank-performance.cbdca076.json",
   "/data/economy/beats.json": "/data/economy/beats.283ff827.json",
-  "/data/economy/inflation-board.json": "/data/economy/inflation-board.9a38aa2f.json",
+  "/data/economy/inflation-board.json": "/data/economy/inflation-board.62c8e647.json",
   "/data/economy/mcc.json": "/data/economy/mcc.3b333aa3.json",
-  "/data/economy/play/inflation-peaks.json": "/data/economy/play/inflation-peaks.90c20e81.json",
+  "/data/economy/play/inflation-peaks.json": "/data/economy/play/inflation-peaks.e3c22bbb.json",
   "/data/economy/product-view.json": "/data/economy/product-view.6d4ef9c1.json",
   "/data/economy/read-upi-architecture.json": "/data/economy/read-upi-architecture.f24163a1.json",
   "/data/economy/reads/shops-vs-people.json": "/data/economy/reads/shops-vs-people.c2781895.json",
-  "/data/economy/rupee-time-machine.json": "/data/economy/rupee-time-machine.9de65969.json",
+  "/data/economy/rupee-time-machine.json": "/data/economy/rupee-time-machine.748e162d.json",
   "/data/economy/state-wise.json": "/data/economy/state-wise.f845cd60.json",
   "/data/economy/upi-ecosystem.json": "/data/economy/upi-ecosystem.94434cd0.json",
-  "/data/independence/demographics.json": "/data/independence/demographics.364b6c70.json",
-  "/data/independence/economy.json": "/data/independence/economy.c5d36bc6.json",
-  "/data/independence/environment.json": "/data/independence/environment.0467e6df.json",
-  "/data/independence/governance.json": "/data/independence/governance.a58866f5.json",
-  "/data/independence/infrastructure.json": "/data/independence/infrastructure.8671784d.json",
-  "/data/meta/traffic.json": "/data/meta/traffic.28696846.json"
+  "/data/independence/economy.json": "/data/independence/economy.8dbc36ca.json",
+  "/data/meta/traffic.json": "/data/meta/traffic.4ebe74a8.json"
 }
