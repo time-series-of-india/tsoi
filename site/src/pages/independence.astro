@@ -990,11 +990,13 @@ const OG_IMAGE_ALT =
         <!-- The third whisper, release morning's. The whole film is held, and
              then the ending is tapped — and a reader whose thumb has been down
              for four centuries has no way to know the gesture changed. This is
-             the rope's own pattern at the other end of the piece: offered only
-             when an ending frame has been standing settled with nothing pressed
-             for a few seconds, and the FIRST ending press — whether it was ever
-             shown or not — retires it for good, because that press is the
-             lesson. -->
+             the rope's own pattern at the other end of the piece: offered when
+             an ending frame has been standing settled with nothing pressed for
+             a few seconds. Release weekend made it a standing offer rather
+             than a one-time lesson — a press hides it for THIS frame, and any
+             later frame the reader stalls on offers it again, sooner, because
+             the field found readers waiting on the third and fourth pages of a
+             film that was waiting on them (see END_REHINT_MS in walk.ts). -->
         <p class="walk-whisper walk-whisper-tap" aria-hidden="true" hidden>tap to go on</p>
 
         <!-- The halyard's hit zone. Positioned over the mast by the engine and
@@ -1037,6 +1039,28 @@ const OG_IMAGE_ALT =
         <button type="button" class="walk-full" aria-label="fill the screen with the film" hidden>
           <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
             <path d="M10 4.5 H4.5 V10 M14 19.5 H19.5 V14" />
+          </svg>
+        </button>
+
+        <!-- Release weekend: the carry. R2b's autopilot, back as an OFFER at
+             the foot of the frame — the first day's readers asked to be
+             carried, and one of them had tapped their way across four
+             centuries to earn the asking. Bottom-centre, on the ground the
+             walker walks, in the LAND ink the retired foot-row controls used
+             to take (the sky ink is the one ink chosen to be wrong down
+             here). Same hairline contract as the ✕ and the ⛶ otherwise: two
+             glyphs in one svg, and the engine's .is-playing on the button
+             decides whether the offer (▷) or the standing carry (the pause
+             pair) is the one showing. Up only while the walk itself is —
+             never on the poster, never in the ending, never under reduced
+             motion (see syncControls in walk.ts). Any press on the film takes
+             the walk back from it; the third hint below is what names the
+             offer at the opening. -->
+        <p class="walk-hint walk-hint-play" aria-hidden="true">or watch him walk</p>
+        <button type="button" class="walk-play" aria-label="watch him walk" hidden>
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path class="walk-play-go" d="M9 6.5 L17.5 12 L9 17.5 Z" />
+            <path class="walk-play-stop" d="M8.5 7 V17 M15.5 7 V17" />
           </svg>
         </button>
 
@@ -1904,9 +1928,15 @@ const OG_IMAGE_ALT =
      The ✕ and the ⛶ share the corner and are never up together: the engine hides
      the ⛶ the moment the theatre opens and the ✕ takes its place, so one slot
      always means "the other state is one press away". Everything below is the
-     same rule for both. */
+     same rule for both — and, since release weekend, mostly for the ▷ at the
+     foot of the frame: the carry shares the 44px target and the hairline
+     stroke, and its own overrides at the end of the block move it to
+     bottom-centre and swap its ink to the LAND's, because down there it is
+     printed on the ground and the stamp's sky ink is the one ink chosen to be
+     wrong on the landmass (see the hints' height note). */
   .walk-exit,
-  .walk-full {
+  .walk-full,
+  .walk-play {
     position: absolute;
     top: calc(env(safe-area-inset-top, 0px) + 4px);
     right: calc(env(safe-area-inset-right, 0px) + 4px);
@@ -1932,17 +1962,20 @@ const OG_IMAGE_ALT =
   }
 
   .walk-exit[hidden],
-  .walk-full[hidden] {
+  .walk-full[hidden],
+  .walk-play[hidden] {
     display: none;
   }
 
   .walk-exit:hover,
-  .walk-full:hover {
+  .walk-full:hover,
+  .walk-play:hover {
     color: var(--walk-stamp-text);
   }
 
   .walk-exit svg,
-  .walk-full svg {
+  .walk-full svg,
+  .walk-play svg {
     display: block;
     width: 20px;
     height: 20px;
@@ -1965,9 +1998,68 @@ const OG_IMAGE_ALT =
      the download control ring in the land ink they stand on, and the stage
      itself rings in the caption's. Nothing here is a new value. */
   .walk-exit:focus-visible,
-  .walk-full:focus-visible {
+  .walk-full:focus-visible,
+  .walk-play:focus-visible {
     outline: 2px solid var(--walk-stamp-text-dim);
     outline-offset: -6px;
+  }
+
+  /* The carry's overrides. The place: bottom-centre, on the ground, with the
+     safe area carried — the whole bottom edge has been empty since R2m folded
+     the foot-row controls into the end-card. The ink: the land's, at the dim
+     alpha with the full ink on hover, exactly the pair the ✕ takes from the
+     stamp's box up in the sky — and no halo, because the halo is a sky
+     treatment and the ground behind this is its own dark mass. The face: one
+     svg, two glyphs, and the engine's .is-playing picks — the ▷ while the
+     carry is on offer, the pause pair while it is standing. Display rather
+     than opacity, because a translucent second glyph under a hairline first
+     one reads as a smudge. */
+  .walk-play {
+    top: auto;
+    right: auto;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 10px);
+    left: 50%;
+    transform: translateX(-50%);
+    color: var(--walk-land-text-dim);
+  }
+
+  .walk-play:hover {
+    color: var(--walk-land-text);
+  }
+
+  .walk-play svg {
+    filter: none;
+  }
+
+  .walk-play:focus-visible {
+    outline-color: var(--walk-land-text-dim);
+  }
+
+  .walk-play .walk-play-stop,
+  .walk-play.is-playing .walk-play-go {
+    display: none;
+  }
+
+  .walk-play.is-playing .walk-play-stop {
+    display: block;
+  }
+
+  /* …and the third hint, which is the offer's one sentence ("watch him
+     walk", the round's own name for the mode). It sits directly over the ▷
+     it names, in the land's full ink for the same reason the button is in
+     the land's dim one, and lives and dies with the other two hints (same
+     class, same engine show/retire — see hintEls in walk.ts). */
+  .walk-hint-play {
+    top: auto;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 58px);
+    left: 50%;
+    color: var(--walk-land-text);
+    /* The .walk-ui halo is a sky treatment; on the ground it read as a glow
+       (device-reported). Same call as the button's filter: none. */
+    text-shadow: none;
+    /* Its two siblings inherit this from the .walk-hints block; this one
+       stands alone next to the button it names. */
+    pointer-events: none;
   }
 
   /* ---------------------------------------------------------- caption --- */
