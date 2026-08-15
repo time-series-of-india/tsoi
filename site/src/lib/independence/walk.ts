@@ -1066,9 +1066,15 @@ const END_REHINT_MS = 2000;
 /** Release weekend: the pace the CREDITS turn themselves at, for a reader the
  *  carry brought to the end. Counted only while an ending frame is standing
  *  settled — a page's own dissolve runs first — so each sentence gets its
- *  fade plus this long to be read. Tuned against the field's "not too slow,
- *  not too fast". */
+ *  fade plus its dwell to be read. The dwell READS THE SENTENCE it stands
+ *  on: a base beat plus a per-word allowance (see autoPageMs), because a
+ *  flat number was right for the short lines and visibly rushed the long
+ *  ones ("the climb since has been almost vertical…", fourteen words,
+ *  field-reported). Stages with no line up — the rides, the page turns —
+ *  keep the flat beat. */
 const AUTO_PAGE_MS = 2000;
+const AUTO_PAGE_BASE_MS = 1000;
+const AUTO_PAGE_WORD_MS = 150;
 /** …and the two thresholds behind the opening hints' second offer. A run of
  *  TAPSTORM_N taps inside TAPSTORM_WINDOW_MS, from a reader who has never
  *  held for HOLD_LEARNED_MS, is the exhausted tapper from the field reports:
@@ -2436,7 +2442,11 @@ const REVEAL_EXIT_MS = 300;
  * levels has got further (see the render's `settle`), because the mark stops
  * needing to be parked the moment a frame reaches it.
  */
-const LIFT_MS = 1600;
+// Release weekend slows the ride from 1600: the crane is the world mark's
+// whole arrival — the one glimpse of the world, riding up — and at 1.6s it
+// read as a camera move rather than a look. The mark's fade is a pure
+// function of the ride, so it slows with it for free.
+const LIFT_MS = 2600;
 /** How long a ride has left once a press has asked it to hurry up. Short enough
  *  to read as "answered at once" and long enough not to be a jump cut. */
 const RIDE_SNAP_MS = 260;
@@ -6805,6 +6815,17 @@ export function initWalk(stage: HTMLElement): void {
    *  have had the slot, and while the stage it is in is still arriving — the
    *  press gate's whole question, and the reason a press at the last line's own
    *  fade cuts it rather than turning the page. */
+  /** The credits engine's dwell for the page it is standing on: sentence-
+   *  aware where a sentence is up (a nested coda counts its parent's words
+   *  too, which only ever errs long, and long is kind on the line that says
+   *  midnight), the flat beat where none is. */
+  function autoPageMs(): number {
+    if (!liveLines.length || linesUp <= 0) return AUTO_PAGE_MS;
+    const el = liveLines[linesUp - 1];
+    const words = (el?.textContent ?? '').trim().split(/\s+/).length;
+    return AUTO_PAGE_BASE_MS + words * AUTO_PAGE_WORD_MS;
+  }
+
   function linesPending(): boolean {
     // The press window, not the loop's: a press in the settled-looking tail of
     // the LAST line's fade turns the page rather than dying on an invisible
@@ -10071,7 +10092,7 @@ export function initWalk(stage: HTMLElement): void {
         latch !== SIGNOFF_CARD
       ) {
         endAutoMs += dt;
-        if (endAutoMs >= AUTO_PAGE_MS) {
+        if (endAutoMs >= autoPageMs()) {
           endAutoMs = 0;
           endAutoSynth = true;
           endingPress(1, now);
