@@ -1158,14 +1158,18 @@ const OG_IMAGE_ALT =
      proper masthead back. */
 
   /* The folio, verbatim from the games and the reads: byline face, uppercase,
-     a hairline of navigation above the masthead. */
+     a hairline of navigation above the masthead. padding-BLOCK rather than the
+     canonical block's `padding: 4px 0`, because here the folio and the
+     .tsoi-container are the same element — the shorthand was zeroing the
+     container's own padding-inline, which put "Economy" on the viewport edge
+     on phones (desktop hid it behind the 1280px centring). */
   .folio {
     font: var(--tsoi-text-byline);
     font-weight: 500;
     font-size: 11px;
     text-transform: uppercase;
     letter-spacing: 0.1em;
-    padding: 4px 0;
+    padding-block: 4px;
     margin-bottom: calc(var(--tsoi-spacing-unit) * 2);
   }
   .folio a {

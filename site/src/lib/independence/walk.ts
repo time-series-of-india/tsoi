@@ -397,6 +397,19 @@ const SIGNOFF_CARD = END_CARDS[END_CARDS.length - 1];
  */
 const LINE_UP_MS = 1800;
 const LINE_IN_MS = 3600;
+/**
+ * Release day: how much of a line's fade a press may still CUT, as a fraction
+ * of the fade. The rule "a press inside the fade completes it" ran the full
+ * duration, and the first line's is 3.6 seconds — but an ease's last stretch
+ * is visually flat, so a reader who finished reading the sentence and pressed
+ * at the 90%-opacity mark was spending a press on a cut they could not see.
+ * Reported from the field as the first correct-text needing two taps. Past
+ * this fraction the sentence has been legible for a while, nothing can be
+ * skipped that has not been shown, and the press means what the reader meant:
+ * next. The LOOP still waits on the true duration (lineFading) — this governs
+ * only what a press does.
+ */
+const LINE_CUT_FRAC = 0.6;
 
 /** The 1947 card, which the hoist gates. Looked up rather than written down so
  *  reordering the table above cannot silently point this at Dandi. */
@@ -6559,6 +6572,14 @@ export function initWalk(stage: HTMLElement): void {
     return lineMs > 0 && lineAt > 0 && performance.now() - lineAt < lineMs;
   }
 
+  /** …and the press gate's narrower version of the same question: is the fade
+   *  still young enough that a press should cut it rather than advance? The
+   *  loop waits on the whole fade; the reader only on the part that reads as
+   *  motion. See LINE_CUT_FRAC. */
+  function lineCutting(): boolean {
+    return lineMs > 0 && lineAt > 0 && performance.now() - lineAt < lineMs * LINE_CUT_FRAC;
+  }
+
   /**
    * …and what a forward press on a card built out of lines does. R2m makes it
    * the whole of the sequence rather than an interruption of one.
@@ -6582,7 +6603,7 @@ export function initWalk(stage: HTMLElement): void {
    */
   function advanceLines(): boolean {
     if (!liveLines.length || linesUp <= 0) return false;
-    if (lineFading()) {
+    if (lineCutting()) {
       cutLines(latch >= 0 ? cards[latch] : null, liveLines, linesUp - 1);
       lineAt = 0;
       lineMs = 0;
@@ -6599,7 +6620,10 @@ export function initWalk(stage: HTMLElement): void {
    *  press gate's whole question, and the reason a press at the last line's own
    *  fade cuts it rather than turning the page. */
   function linesPending(): boolean {
-    return linesUp < liveLines.length || lineFading();
+    // The press window, not the loop's: a press in the settled-looking tail of
+    // the LAST line's fade turns the page rather than dying on an invisible
+    // cut — the same dead tap the first line had, at the other end of the card.
+    return linesUp < liveLines.length || lineCutting();
   }
 
   /** Last opacity written per beat card, so a frame that changes nothing writes
