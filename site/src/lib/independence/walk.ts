@@ -993,6 +993,14 @@ const HOIST_HINT_MS = 3000;
  *  because an ending line is something the reader is READING — the whisper
  *  should arrive about when the sentence has been finished, not race it. */
 const END_HINT_MS = 4000;
+/** Release weekend: the whisper is a standing offer rather than a one-time
+ *  lesson. It used to retire forever on the first ending press, and the field
+ *  said that is one press too early — a reader who tapped once and then stood
+ *  reading the next frame had no way to know the film was waiting on them
+ *  AGAIN. So every settled ending frame re-offers it, and only the delay
+ *  remembers: the first offer keeps END_HINT_MS's patience, and once the
+ *  gesture has been taught the reminder comes at reading pace. */
+const END_REHINT_MS = 2000;
 /** How near the mast line a pointer-down counts as taking hold of the rope. */
 const ROPE_HIT_PX = 44;
 
@@ -5794,12 +5802,20 @@ export function initWalk(stage: HTMLElement): void {
   let ropeHinted = false;
   let ropeRetired = false;
   /** The ending's own version of the pair above: time an ending frame has stood
-   *  settled with nothing pressed, and whether "tap to go on" has been offered.
-   *  Retired for good by the FIRST ending press anywhere in the chain — shown
-   *  or not — because that press is the lesson the whisper exists to teach. */
+   *  settled with nothing pressed, and whether "tap to go on" is currently up.
+   *  Release weekend retires the retirement: the whisper used to die for good
+   *  on the first ending press, and the field said the frames AFTER that one
+   *  went back to being unexplained. Now every settled ending frame re-offers
+   *  it; a press hides it and resets the clock rather than ending it.
+   *  `tapTaught` only remembers whether the offer has ever been made, so the
+   *  first one keeps its reading-length patience and the reminders come
+   *  quicker (see END_REHINT_MS). `tapHideT` is the fade-out's timer, held so
+   *  a re-offer landing inside the 400ms fade does not have its `hidden` set
+   *  out from under it. */
   let endIdleMs = 0;
   let tapHinted = false;
-  let tapRetired = false;
+  let tapTaught = false;
+  let tapHideT = 0;
 
   /* -- the way in, and the way out (R2d) -- */
   /** Whether the reader has entered the film. Before this the stage is a POSTER:
@@ -7329,6 +7345,8 @@ export function initWalk(stage: HTMLElement): void {
     resize();
     measureCaption();
     syncControls();
+    // The theatre is the state the screen is kept lit for.
+    syncWakeLock();
     wake();
   }
 
@@ -7422,7 +7440,62 @@ export function initWalk(stage: HTMLElement): void {
     resize();
     measureCaption();
     syncControls();
+    // …and the glass is handed back: with the theatre gone there is nothing
+    // left to keep lit.
+    syncWakeLock();
     wake();
+  }
+
+  /* -- the screen, kept lit (release weekend) -- */
+  /**
+   * THE SCREEN STAYS LIT WHILE THE FILM HAS THE READER, and this is the field
+   * report that built it: a phone dimming mid-walk. A held thumb keeps most
+   * screens awake by itself; what does not is the reader WATCHING — the
+   * arrival they let run, the flag creeping up the eight-second way, a
+   * caption being read with nothing pressed — so the sentinel is asked for
+   * while the theatre is open and let go when it is not (the poster, the
+   * in-flow frame after the ✕, a hidden tab — where the browser revokes it
+   * anyway, which is why the sentinel's own `release` event is listened to
+   * rather than trusted to our bookkeeping).
+   *
+   * Everything here is best-effort and silent: a browser without the API, a
+   * denied request, a revoked sentinel — the film's behaviour is identical in
+   * every case, minus the favour. (The API also only exists on secure
+   * origins, so the :4001 preview never has it; production does.)
+   * `wakeWanted` is re-read when a request resolves, because the reader can
+   * leave the theatre inside the round-trip.
+   */
+  let wakeSentinel: WakeLockSentinel | null = null;
+  let wakeAsking = false;
+  const wakeWanted = (): boolean => started && !document.hidden && theatre;
+
+  function syncWakeLock(): void {
+    const want = wakeWanted();
+    if (want && !wakeSentinel && !wakeAsking && navigator.wakeLock) {
+      wakeAsking = true;
+      navigator.wakeLock
+        .request('screen')
+        .then((s) => {
+          wakeAsking = false;
+          if (!wakeWanted()) {
+            void s.release().catch(() => {});
+            return;
+          }
+          wakeSentinel = s;
+          s.addEventListener('release', () => {
+            if (wakeSentinel === s) wakeSentinel = null;
+          });
+        })
+        .catch(() => {
+          wakeAsking = false;
+        });
+      return;
+    }
+    if (!want && wakeSentinel) {
+      const s = wakeSentinel;
+      wakeSentinel = null;
+      void s.release().catch(() => {});
+    }
   }
 
   /**
@@ -7654,31 +7727,44 @@ export function initWalk(stage: HTMLElement): void {
   }
 
   /**
-   * The ending's whisper, on the rope's exact pattern. The film is HELD for
-   * four centuries and then TAPPED for its last nine frames, and the reader
-   * whose thumb has been down the whole way has been taught the wrong gesture
-   * by every minute of the piece. Offered only when an ending frame has stood
-   * settled with nothing pressed for END_HINT_MS; the first ending press
-   * retires it forever, whether it was ever shown or not.
+   * The ending's whisper, on the rope's pattern with one difference the field
+   * asked for. The film is HELD for four centuries and then TAPPED for its
+   * last nine frames, and the reader whose thumb has been down the whole way
+   * has been taught the wrong gesture by every minute of the piece. It used to
+   * be offered once and retired forever by the first ending press — but the
+   * press that hides it on THIS frame proves nothing about the reader's
+   * patience on the NEXT one, and release day's readers stood on later frames
+   * waiting for a film that was waiting for them. So the offer stands for the
+   * whole ending: each settled frame re-offers it on its own idle clock (see
+   * the whisper's clock in the frame loop), and a press hides it rather than
+   * ends it.
    */
   function showTapHint(): void {
-    if (tapHinted || tapRetired || !tapHintEl) return;
+    if (tapHinted || !tapHintEl) return;
     tapHinted = true;
+    tapTaught = true;
+    // A re-offer can land inside the previous hide's 400ms fade; the pending
+    // timeout would set `hidden` on the whisper that just came back.
+    if (tapHideT) {
+      window.clearTimeout(tapHideT);
+      tapHideT = 0;
+    }
     tapHintEl.hidden = false;
     if (!reduceMotion.matches) {
       requestAnimationFrame(() => tapHintEl.classList.add('is-shown'));
     } else tapHintEl.classList.add('is-shown');
   }
 
-  function retireTapHint(): void {
-    if (tapRetired) return;
-    tapRetired = true;
+  function hideTapHint(): void {
+    if (!tapHinted) return;
+    tapHinted = false;
     if (!tapHintEl) return;
     tapHintEl.classList.remove('is-shown');
     if (reduceMotion.matches) tapHintEl.hidden = true;
     else {
-      window.setTimeout(() => {
-        if (tapHintEl) tapHintEl.hidden = true;
+      tapHideT = window.setTimeout(() => {
+        tapHideT = 0;
+        if (tapHintEl && !tapHinted) tapHintEl.hidden = true;
       }, 400);
     }
   }
@@ -8005,9 +8091,10 @@ export function initWalk(stage: HTMLElement): void {
    * stage as a cut, which is what they were already getting inside each card.
    */
   function endingPress(dir: number, now: number): void {
-    // The first press of the chain is the whisper's lesson learned, whichever
-    // press it is and whether the whisper was ever shown.
-    retireTapHint();
+    // A press answers the whisper for THIS frame and no more: it goes down and
+    // its clock starts over, so the next frame the reader stalls on can offer
+    // it again (see the whisper's clock in the frame loop).
+    hideTapHint();
     endIdleMs = 0;
     if (lift !== liftB) {
       snapLift();
@@ -8230,6 +8317,10 @@ export function initWalk(stage: HTMLElement): void {
 
   function restart(): void {
     endStep();
+    // The whisper does not survive a restart: start over means the poster,
+    // and "tap to go on" over a bloom would be an instruction from a film
+    // that is no longer in its ending.
+    hideTapHint();
     downAt.clear();
     inputs.length = 0;
     // Start over means the bank is closed too: a reader who chose the top of
@@ -9566,18 +9657,21 @@ export function initWalk(stage: HTMLElement): void {
     // while an ending frame is standing SETTLED — no ride, no dissolve, no
     // end-card — with nothing pressed. A hold does not reset it, deliberately:
     // the stuck reader this exists for is the one holding and waiting for a
-    // film that is waiting for a tap.
+    // film that is waiting for a tap. Release weekend makes it EVERY frame's
+    // clock rather than the first stall's: a press hides the whisper and zeroes
+    // this, and the frame the reader stalls on next offers it again — at the
+    // first offer's reading-length patience if it has never been shown, and at
+    // reminder pace once it has (see END_REHINT_MS).
     if (
       phase !== 'walk' &&
       lift === liftB &&
       pull === pullB &&
       !lineFading() &&
       latch !== SIGNOFF_CARD &&
-      !tapHinted &&
-      !tapRetired
+      !tapHinted
     ) {
       endIdleMs += dt;
-      if (endIdleMs >= END_HINT_MS) showTapHint();
+      if (endIdleMs >= (tapTaught ? END_REHINT_MS : END_HINT_MS)) showTapHint();
     } else endIdleMs = 0;
 
     const settled =
@@ -9628,10 +9722,11 @@ export function initWalk(stage: HTMLElement): void {
       // the whisper's own timer is what is left to wait for.)
       !(atGate && !ropeHinted && !ropeRetired) &&
       // …and its twin at the other end of the piece: an ending frame with the
-      // tap whisper still unoffered has a timer counting toward the offer, and
-      // the timer only advances on a frame. Bounded at END_HINT_MS, and only
-      // until the whisper is shown or retired.
-      !(phase !== 'walk' && latch !== SIGNOFF_CARD && !tapHinted && !tapRetired) &&
+      // tap whisper down has a timer counting toward the (re-)offer, and the
+      // timer only advances on a frame. Still bounded — at most END_HINT_MS —
+      // because showTapHint flips tapHinted and this term goes quiet until the
+      // next press takes the whisper down again.
+      !(phase !== 'walk' && latch !== SIGNOFF_CARD && !tapHinted) &&
       // …and RAISING the flag is the one thing on this stage that moves without
       // the ground moving. speedK covers the plain forward hold, but ArrowUp and
       // the reduced-motion one-shot drive nothing else at all, so without this
@@ -10173,7 +10268,12 @@ export function initWalk(stage: HTMLElement): void {
       releaseAll();
       saveResume();
       sleep();
-    } else wake();
+    } else {
+      // The browser revoked any wake lock on the way out; a reader coming back
+      // to the theatre gets it asked for again.
+      syncWakeLock();
+      wake();
+    }
   });
 
   // …and the bank's second teller: pagehide is the one event a navigation
