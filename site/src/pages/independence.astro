@@ -1,0 +1,2836 @@
+---
+// The Independence Day 2026 flagship: one line, walked.
+//
+// A reader holds the stage and a small ink figure walks a landscape from 1600 to
+// the end of the record. The ground is India's GDP per person (Maddison to 2022
+// in 2011 int-$, chained to 2026) — but the page does not say so, anywhere,
+// until the reader gets there. Nothing above this line, in the title, the
+// standfirst, the meta description, the caption copy or the canvas's own alt
+// text, may name the series. That withholding IS the piece: the reveal — prose
+// and the axes on arrival, then, on the next press, the figure looking up as the
+// camera cranes to the world's mark high overhead, and on the one after that the
+// full pull-back to the whole line — only works if the reader has been walking
+// something unexplained.
+//
+// One word in the caption copy below comes close and is approved: Plassey's
+// "revenue". It is historical fact about the East India Company rather than a
+// description of the ground, and it is meant to be recognised in hindsight.
+// Nothing else may be added to that list.
+//
+// AUDITED AND KEPT, 2026-08-14 (R3). R2d's approved copy puts "the treasury is
+// nearly empty" in the 1991 card. It is a fact about the government's reserves
+// in June 1991 rather than about the line the reader is walking — reserves were
+// around US$1.2bn, roughly two weeks of imports, with 67 tonnes of gold pledged
+// abroad — and it is the nearest any pre-reveal card comes to the series. Raised
+// with the user in this round and closed: the line STAYS. It is the second and
+// last approved exception, alongside Plassey's "revenue". Nothing may be added
+// to that list of two.
+//
+// One moment on the stage is interactive: at 1947 the walk stops at a flagpole
+// and the reader raises the flag, which is also what raises the dawn. The rope's
+// hit zone (.walk-rope) is the ONE element on this page that takes a DOWN
+// gesture of its own (touch-action: none) rather than leaving it to the page's
+// scroll, and it exists in the tree only while the walk is held at the pole.
+// R2d's hold bar was the other one; R2g retired the bar, so the exception is
+// down to one element and a few seconds of the reading.
+//
+// R1e made the stage a film frame, and it is THEME-INDEPENDENT: its light is a
+// function of the walker's year (LIGHT_STOPS in src/lib/independence/walk.ts),
+// not of --tsoi-color-*, so two readers with opposite toggles see the same dusk.
+// The article around it still follows the site theme.
+//
+// R2b gave the piece a control band under the stage and moved the year, the era
+// ribbon and three buttons (back, play, forward) into it, on the page's own
+// paper. R2c took that back and put two hairline chevrons ON THE FILM, in the
+// bottom corners, with the year between them.
+//
+// R2d is the UX round and it changes four things about the reader's hands:
+//
+//  · The chevrons are gone. In their place is a full-width HOLD BAR along the
+//    bottom edge of the film, split 33/67 so the centre of the screen is
+//    forward. A chevron looks like a step and gets tapped; a bar is a thing you
+//    lean on, which is the gesture this piece is made of.
+//  · The year and the era ribbon move to the TOP of the frame, out from under
+//    the reader's thumb — and out of the land ink into a sky ink of their own,
+//    resolved against the sky at the top of the frame rather than at the caption
+//    band (see --walk-stamp-text).
+//  · Entry becomes a thing the reader does. The stage opens as a POSTER — the
+//    1600 frame at its in-flow size, one word on the sky — and the press that
+//    answers it takes the film fullscreen (.is-theatre, plus a
+//    silently-catch()ed requestFullscreen). ✕ or Esc brings the page back.
+//  · Two reading-flow rules: a caption may not start fading before a wall-clock
+//    floor has passed, and the years after a beat are walked at a reduced pace,
+//    so a fast walker cannot outrun the words.
+//
+// R2g finishes the sentence R2d started and takes the bar back out. The year
+// went to the top of the frame in R2d and the bar spent two rounds advertising
+// hold zones at the bottom edge, where nothing else on the film was happening.
+// So the chrome is gone entirely and what is left is what was always underneath
+// it — the STAGE'S OWN HALVES, split 33/67 at the same asymmetry, with two
+// floating labels in the middle of the picture instead of a strip along its
+// foot. The two arrow keys are unchanged.
+//
+// R2g also stops the film opening explained. The stage lands as a DARK poster —
+// the 1600 landscape at a seventh of its own light, no year, no card, one word
+// breathing on the sky — and the press that answers it blooms the world up to
+// full over three seconds, sends a few birds across the top of the frame, brings
+// the date in behind the light, and sets the walker down on a RUNWAY of flat
+// ground west of 1600 so that crossing the first year is something he does
+// rather than somewhere he starts. And it splits the film's home by form factor:
+// a phone gets R2d's theatre, a desktop begins IN THE FRAME with a quiet ⛶ in
+// the corner. See the intro section in src/lib/independence/walk.ts.
+//
+// Everything over the canvas is DOM, positioned in the sky and coloured from the
+// same light: --walk-text / --walk-text-dim / --walk-land-text /
+// --walk-land-text-dim / --walk-text-halo / --walk-vig are published onto
+// .walk-stage by the engine every time they move, and the transitions below are
+// what stop them stepping. There are two inks rather than one because the
+// overlay sits on two different backgrounds: the captions float in the SKY,
+// whose colour crosses from night to paper, and the foot furniture stands on the
+// LANDMASS, which is near-black in every palette in the table. Each ink is
+// resolved against the thing it is actually drawn over (see resolveInk in
+// walk.ts), which is the root fix for a caption that used to dissolve into a
+// mid-grey sky around 1966. --walk-foot is still the readout's opacity, and it
+// is still how the year dissolves into the pull-back's x-axis.
+//
+// The stage is one ordinary section in normal document flow. Nothing on this
+// page reads or writes scroll position, and there is no tall track, no sticky
+// and no snap. A reader can leave the stage mid-walk and come back to it exactly
+// where they left it.
+//
+// src/lib/independence/charts.ts is still on disk and still correct; this page
+// no longer uses it. It is the panel-chart implementation the five-panel build
+// (git: ca6fdd0) used, which later stages will either adopt or retire.
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Masthead from '../components/layout/Masthead.astro';
+import Footer from '../components/layout/Footer.astro';
+import ShareButtons from '../components/editorial/ShareButtons.astro';
+
+// R2m NAMES THE PIECE. It shipped through eleven build rounds as "The walk",
+// which was the working title and read as one: a description of the mechanic,
+// in the register of a filename. "The Walk through Midnight" is the user's, and
+// it is the piece — Nehru's midnight hour, the gate the whole film is built
+// around, and the only moment in four centuries the reader does something.
+//
+// IT PASSES THE MYSTERY RULE, which is the only test a title on this page has to
+// pass. "Midnight" is a time of night and a famous speech; nothing in it names
+// money, income, output, prices or a series, and a reader who meets it in a feed
+// or a tab learns nothing they are meant to walk to.
+//
+// This is the TITLE and not the poster. The one word on the dark frame — `walk`,
+// which is the start control — is deliberately untouched: it is an instruction
+// the reader answers with their thumb, and a four-word title breathing on the
+// sky is a caption rather than an invitation.
+const TITLE = 'The Walk through Midnight';
+const STANDFIRST =
+  'Four and a quarter centuries of India, on foot. Walk it yourself; the ground will explain itself at the end.';
+
+// The social card is the WISHES CARD, not a picture of the stage. A card that
+// showed the walk would have to show the ground, and the ground is the thing
+// this page spends four centuries not naming — an unfurled preview is a spoiler
+// served to everyone who never opens the link. So the share image is the
+// piece's own 1947 midnight with the flag at the top of the mast: true to the
+// piece, and giving nothing away.
+//
+// Both PNGs live in public/independence/ as static assets. og.png is the
+// 1200x630 landscape; card.png is the 1080x1350 portrait the reader can send on
+// from the ending.
+//
+// R2l REGENERATES BOTH FROM THE FILM ITSELF. R3 drew them in a standalone HTML
+// compositor — its own sky, its own hills, its own flag — which is a second
+// drawing of the piece that has to be kept true to the first one by hand, and
+// was already off it. They are now a screenshot of the engine's own 1947 frame
+// with the reader's own gesture completed: walked to the flagpole, the flag
+// hauled to the masthead, the dawn coming up behind it, and every piece of
+// furniture (the year, the era ribbon, the hints, the cards, the controls) taken
+// off so the frame is the film and nothing else. The greeting lockup is composed
+// over it in the sign-off's own type. The flag cannot be flag-code-wrong on
+// these cards by construction, because it is the engine's own drawMast.
+const OG_IMAGE = '/independence/og.png';
+// The alt is held to the same rule as everything else on this page: it
+// describes the PICTURE and names no series.
+const OG_IMAGE_ALT =
+  'A small figure on a dark ridge raising the Indian tricolour at first light. ' +
+  'Time Series of India wishes you a happy Independence Day.';
+---
+
+<BaseLayout
+  title={`${TITLE} — Time Series of India`}
+  description={STANDFIRST}
+  og_type="article"
+  og_image={OG_IMAGE}
+  og_image_alt={OG_IMAGE_ALT}
+>
+  <Masthead />
+
+  <main class="indy">
+    <!-- The lead is ordinary article furniture in normal flow, and R2e puts the
+         stage back in the page column under it: a framed deck in the article's
+         own measure rather than a full-bleed band. The wrapper survives for one
+         reason — it is where --walk-serif is declared. -->
+    <div class="walk-frame">
+      <header class="tsoi-container title-block">
+        <!-- Share on the kicker line's right edge — the exact placement the
+             Inflation Peaks masthead taught (see .mast-top in
+             components/play/InflationPeaks.astro, and the same reasoning: no
+             reader toolbar here, so a whole toolbar row would hold one icon).
+             It shares the PAGE, which is the right object from up here: the
+             link's own preview image is the midnight card, and the card file
+             itself stays the ending's gift on the end-card's share. -->
+        <div class="title-top">
+          <p class="kicker">INDEPENDENCE DAY 2026</p>
+          <ShareButtons title={TITLE} variant="icon" align="end" />
+        </div>
+        <h1>{TITLE}</h1>
+        <p class="standfirst">{STANDFIRST}</p>
+      </header>
+
+    <div class="tsoi-container walk-column">
+    <section class="walk-stage is-poster is-intro" tabindex="0" aria-label="The Walk through Midnight. Press to begin, then hold the film itself to walk: press and hold anywhere on the wide right side to walk forward, and the narrow left side walks back. The left and right arrow keys do the same. Escape leaves the film.">
+      <div class="walk-canvas">
+        <canvas
+          role="img"
+          aria-label="A landscape of ground rising and falling across the centuries, with a small figure walking it. The picture itself moves him by hand: holding the wide right side walks him forward through the years and holding the narrow left side walks him back."
+        ></canvas>
+        <!-- Neither of these is painted on the canvas, and for the same reason:
+             both are constant, and repainting a constant across the whole frame
+             sixty times a second is the most expensive thing the stage could do.
+             The grain was on the canvas first (one 'overlay' fillRect a frame)
+             and measured at half the frame budget on a CPU-rastered phone stage;
+             as a composited layer it costs nothing per frame. The vignette
+             still takes its DEPTH from the light — --walk-vig, a property write
+             on the frames the light moves and not a pass. The grain takes
+             nothing from anywhere: it is one constant strength for the whole
+             walk (see .walk-grain below). -->
+        <div class="walk-grain" aria-hidden="true"></div>
+        <div class="walk-vignette" aria-hidden="true"></div>
+      </div>
+
+      <div class="walk-ui">
+        <!-- The date stamp. R2c had the year and the era ribbon at the FOOT of
+             the film, between the two chevrons; R2d's hold bar took that edge
+             for the reader's thumb, and a readout under a thumb is a readout
+             nobody can read. So it goes to the top of the frame, where a date
+             stamp on documentary footage goes.
+
+             The move changes which ink it takes. At the foot it stood on the
+             LANDMASS, which is near-black in every row of the light table; at
+             the top it is in open SKY, whose colour crosses from midnight to
+             paper across the walk. It therefore takes a sky ink of its own,
+             resolved against the sky AT THIS BOX rather than at the caption
+             band a fifth of the way down the frame — see --walk-stamp-text and
+             resolveInk() in walk.ts. -->
+        <div class="walk-centre">
+          <div class="walk-foot">
+            <p class="walk-year">1600</p>
+            <!-- Two stacked spans so a change of period cross-fades instead of
+                 blinking; walk.ts's ERAS table owns the wording and the spans.
+                 It never names the series — see the mystery rule at the top. -->
+            <p class="walk-era"><span class="is-shown">Mughal rule</span><span></span></p>
+          </div>
+        </div>
+
+        <!-- The deck. walk.ts's CAPTION_YEARS owns the years, and R2c changed
+             the rule that gets a card on and off the sky a second time. A card
+             is not the last one walked past, and its fade is no longer
+             symmetric: nothing is written over the sky BEFORE the year it
+             belongs to, and after it the card eases up over two years, holds,
+             and then takes up to thirty years to leave — clamped so it is gone
+             well before the next beat speaks. So the sky is empty between beats,
+             which is what a landscape looks like when nothing is happening in
+             it, and walking back takes a card off for free. The last three cards
+             in this block are the reveal's two parts and R2f's one ending screen,
+             all stage-driven rather than year-driven (the sign-off is a fourth
+             and lives outside the block entirely, below); the Nehru card is the
+             one that is not the year's to give either, because it waits for the
+             flag.
+
+             R2h puts COLOUR in the deck, and the rule is one charged phrase per
+             card and never more — an <em> with a hue class, no other change to
+             the mark-up and NO CHANGE AT ALL to the words. The first five cards
+             stay uncoloured on purpose, so the first colour the reader meets in
+             the text is the famine red. The hues, what they mean and why the
+             values are a shade off the approved board's are all in the
+             stylesheet, under "colour in the deck".
+
+-->
+
+        {/* Astro strips a JSX comment from the output and ships an HTML one.
+            This block is the ROUND'S OWN WORKING and it names reserves, tolls
+            and a currency figure; the page above it is four centuries of not
+            naming things, and an audit note that leaks what the deck withholds
+            would be a poor way to record having checked the withholding. So it
+            stays exactly here, beside the cards it is about, and stays out of
+            the shipped HTML. The design notes above it are HTML comments and
+            remain so — they say nothing a reader could not already see.
+
+             COPY AUDIT, 2026-08-14 (R3). Every factual claim in this deck was
+             re-checked against a named source. Two cards were corrected in place
+             and the fix is written on each of them; four findings need an
+             editorial decision rather than a correction and are recorded here
+             UNFIXED, so that nothing quietly passes as checked.
+
+             CONFIRMED, no change:
+               · 1757 — Plassey, 23 June 1757 (National Army Museum). Shah Alam
+                 II's farman granting the Diwani is dated 12 August 1765, so
+                 "within eight years" is right to within seven weeks. Britannica,
+                 "Treaty of Allahabad".
+               · 1857 — the rising began at Meerut on 10 May 1857 and the sepoys
+                 marched on Delhi (Britannica, "Indian Rebellion of 1857"). The
+                 Government of India Act 1858 got royal assent on 2 August 1858
+                 and commenced with the Queen's Proclamation on 1 November 1858.
+                 "After a year of rising" is compressed — the interval is nearer
+                 fifteen months — but the rising itself ran past a year, so the
+                 phrase is not false and stands.
+               · 1876-1902 — "some ten million" sits inside every serious range
+                 and on the cautious side of the modern consensus. Colonial
+                 official figures floor the three famines at ~7.6M; modern
+                 demographic reconstruction ceilings them near 18M. Maharatna,
+                 The Demography of Famines (1996); Davis, Late Victorian
+                 Holocausts (2001), 12.2-29.3M for 1876-1902; Imperial Gazetteer
+                 of India (1907).
+               · 1919 — 13 April 1919, Jallianwala Bagh is the correct name of
+                 the enclosed garden, firing ran about ten minutes and ~1,650
+                 rounds, and the Hunter Commission's official count is 379.
+                 Britannica, "Jallianwala Bagh Massacre". Note for a later round:
+                 "estimates run nearly a thousand" if anything UNDERSTATES the
+                 upper end — the Congress figure is ~1,000 killed and Swami
+                 Shraddhanand's is 1,500.
+               · 1930 — Gandhi left Sabarmati on 12 March 1930 and walked 387km /
+                 240 miles to Dandi, breaking the salt law at 8:30am on 6 April
+                 1930. Distance, dates and dateline all exact. Britannica,
+                 "Salt March". THE LAW ITSELF, which R2m moves to the front of
+                 the card, is the Salt Act of 1882 — a consolidating act that
+                 reserved the manufacture and sale of salt to the government,
+                 taxed what it sold, and made it an offence for anyone else to
+                 make salt or collect it from a natural deposit. So "the law
+                 forbids Indians to make their own salt" is the statute stated
+                 rather than a paraphrase of it, and the handful Gandhi picks
+                 up at Dandi is natural salt off the mud, which is exactly what
+                 the act reserved.
+               · 1991 — budget speech delivered 24 July 1991; the Hugo
+                 attribution is Singh's own, in the speech; the quoted fragment
+                 is verbatim (lower-cased mid-sentence as delivered, capitalised
+                 here as a display quote, which is ordinary practice). Budget
+                 1991-92 Speech of Shri Manmohan Singh, indiabudget.gov.in. The
+                 "treasury is nearly empty" line is well supported: reserves were
+                 about US$1.2bn in June 1991, roughly two weeks of imports, with
+                 67 tonnes of gold pledged abroad.
+               · 1947 — the tryst-with-destiny passage is Nehru's, to the
+                 Constituent Assembly. (Strictly the delivery began late on 14
+                 August and ran across midnight; "MIDNIGHT · 15 AUGUST 1947" is
+                 the conventional framing and stands.)
+
+             CORRECTED IN PLACE — see the note on each card:
+               · 1947 — a silent elision inside the quotation. Fixed.
+               · 1966 — "the harvests" was true of wheat and not of foodgrains.
+                 Fixed to "the wheat harvest".
+
+             FOUND WRONG, ANSWERED IN R2l. Each of the four below would have
+             changed a sentence's shape, which is an editorial call rather than an
+             audit's, so R3 recorded them here unfixed and reported them to the
+             round's caller. THEY HAVE NOW BEEN ANSWERED: the copy session of
+             2026-08-14 rewrote all four cards (and four more beside them, for
+             reasons that are not the audit's), and each card carries the note of
+             what it was told. The findings stay written out below as the record of
+             what was wrong; the cards above are what was done about it:
+               · 1600 — "the sole right to trade with Mughal India" is
+                 anachronistic twice over. The 31 December 1600 charter is right,
+                 but the monopoly ran over the EAST INDIES, against other English
+                 subjects, and the Company had no Mughal relationship at all in
+                 1600: the first voyage went to Banten on Java in 1601 and the
+                 first Indian factory came at Surat in 1613. Proposed: "the sole
+                 right to trade east of the Cape of Good Hope". Britannica, "East
+                 India Company".
+               · 1615 — Roe is correctly "England's first ambassador": he was the
+                 first ACCREDITED royal ambassador, which the William Hawkins
+                 precedent of 1609 does not defeat, Hawkins having travelled as a
+                 Company servant. But he landed at Surat on 18 September 1615 and
+                 was not received by Jahangir until 10 January 1616, so the
+                 dateline "JAHANGIR'S COURT · 1615" puts him at the court a year
+                 early. Proposed: "SURAT · 1615", or "JAHANGIR'S COURT · 1615-16".
+               · 1690 — the card conflates two events eight years apart. On 24
+                 August 1690 Job Charnock landed at Sutanuti and settled: no
+                 lease, no three villages. The zamindari rights over Sutanuti,
+                 Gobindapur and Kalikata were acquired on 10 November 1698, by
+                 Charles Eyre, from the Sabarna Roy Choudhury family. Either the
+                 event moves to 1698 or the sentence becomes Charnock's landing;
+                 the second keeps the beat year and the terrain, and is the one
+                 to prefer if the walk's geometry matters more than the villages.
+               · 1943 — "Three million people die" is Sen's figure (Poverty and
+                 Famines, 1981) and is the top of the mainstream range rather
+                 than its centre. Dyson & Maharatna's re-evaluation (IESHR 28(3),
+                 1991) puts excess mortality nearer 2.1M. Not indefensible, but a
+                 single hard number adopts the maximum. Proposed: "Some three
+                 million people die."
+
+             R2m, THREE TOUCH-UPS, and none of them is a factual correction:
+               · 1600 — shortened, and the one claim that MOVED is a claim that
+                 got stronger. "A handful of merchants" was rhetorical; "a few
+                 hundred" is the charter's own count, which named 218
+                 adventurers. Elizabeth and Akbar's title are dropped for
+                 length (the card ran to six lines on a phone). The card no
+                 longer states the charter's SCOPE at all — it says only that
+                 one was granted "to trade" — which is a withholding rather
+                 than an error: the scope is recorded here (east of the Cape of
+                 Good Hope, sole among English subjects, 218 named adventurers,
+                 31 December 1600) and the card keeps "the East" back so that
+                 the Company's own name is what connects London to Agra. The
+                 passive "are granted" is chosen for the same reason: on the
+                 day it was an office issuing a licence.
+               · 1690 — "the bank of the river Hooghly" rather than "the bank
+                 of the Hooghly". One word, glossing a proper name; no fact
+                 changes and the dateline is untouched.
+               · 1876 — the sentence drops its trailing "between 1876 and 1902".
+                 The span is not lost: it was already under the card, in the
+                 dateline (THE FAMINE DECADES · 1876-1902), which is where a
+                 date belongs on every other card in the deck. The finding above
+                 stands unchanged; only the duplicate goes.
+               · 1930 — the law moves to the front of the card. See the 1882
+                 Salt Act note above; no fact changes.
+               · 1991 — no words change at all. The charged-phrase ink extends
+                 from half the quotation to the whole of it.
+
+             The mystery rule covers all twelve cards and was re-checked with
+             them: the one approved word that comes near the series is "revenue"
+             in the 1757 card, and the approved second is "treasury" in the 1991
+             card (see the note at the head of this file). R2l re-checked it a
+             third time against the eight rewritten cards and the two words are
+             still the only two: "permits and licences" and "opens its doors" name
+             a regime and a border rather than a quantity, and nothing anywhere in
+             the deck states an amount of anything but people.
+        */}
+
+        <div class="walk-cards" aria-live="polite">
+          <!-- R2l COPY LOCK. The card opens on TWO CITIES rather than on London
+               alone, which is why the dateline drops its place: the sentence is
+               already standing in Agra and in London, and a single place under it
+               would name the wrong one.
+               POPULATION FLOOR. "A hundred million" is the conservative floor of
+               every serious estimate rather than a best guess: Davis (1951) puts
+               the subcontinent at 125M in 1600 and Moosvi's reconstruction nearer
+               145M, and Akbar's empire held most of it.
+               THE CHARTER, for the record and no longer on the card: the 31
+               December 1600 monopoly ran from the Cape of Good Hope to the
+               Strait of Magellan, against other ENGLISH subjects, and against
+               nobody else. R2l carried that as "the sole right to trade with the
+               East", which replaced the R3 audit's "sole right to trade with
+               Mughal India" (anachronistic twice over — see the working note
+               above). R2m keeps the fact and drops the clause; see below.
+
+               R2m SHORTENS IT AND TAKES THE DESTINATION OUT OF IT, and the two
+               are one decision. It ran to six lines on a phone and its dateline
+               reached the walker's head at the trailhead, so both titles go —
+               "the emperor" and "Queen Elizabeth" cost the most and carry the
+               least, the sentence being about a hundred million people and a
+               charter rather than about who held either.
+
+               THE MIDDLE SENTENCE NAMES NO DESTINATION, and that is the card
+               rather than a saving. "The East" must not appear anywhere before
+               the Company's own name: London is a room with a few hundred men
+               in it and a piece of paper, and the thing that reaches back
+               across the card to Agra is the NAME, arriving last. Say where
+               they are going first and the name is a label on something the
+               reader has already been told.
+
+               "ARE GRANTED" is deliberately passive and deliberately
+               bureaucratic. A charter granted is a non-event — a licence issued
+               in an office — and it has to read as one, because the whole card
+               is the distance between what this looked like on the day and what
+               it turned out to be. An active verb ("win") makes it an
+               achievement and puts the drama a sentence early.
+
+               "A FEW HUNDRED" is no longer rhetorical at all: the charter named
+               218 adventurers, so the number is what the document says. Its
+               actual scope stays in the audit comment below and out of the
+               card. -->
+          <p class="walk-card is-beat">
+            In Agra, Akbar rules a hundred million people. In London, a few hundred merchants are
+            granted a royal charter to trade. They call themselves the East India Company.<small
+              >31 DECEMBER 1600</small
+            >
+          </p>
+
+          <!-- R2l COPY LOCK, and it answers the R3 audit's dateline finding. Roe
+               landed at Surat in September 1615; his first audience with Jahangir
+               was at Ajmer in January 1616, so a dateline reading "JAHANGIR'S
+               COURT · 1615" put him at the court a year early. The dateline moves
+               to the landing and the sentence keeps the court, where it belongs —
+               as the place he is heading for and is nobody in. -->
+          <p class="walk-card is-beat">
+            England’s first ambassador lands at Surat to ask permission to trade. At Jahangir’s court
+            he is one petitioner among many; the empire barely notices.<small>SURAT · 1615</small>
+          </p>
+
+          <!-- R2l COPY LOCK, and it answers the R3 audit's conflation finding. The
+               1690 event is Job Charnock's settlement at Sutanuti in August 1690:
+               no lease and no three villages. The zamindari of Sutanuti,
+               Gobindapur and Kalikata was bought in 1698, eight years later, so
+               the old sentence dated 1698's transaction to 1690's beat. The beat
+               year and the terrain are kept and the sentence becomes the landing.
+               -->
+          <!-- R2m: "the river Hooghly" rather than "the Hooghly". One word, and
+               it is the only one on the card that a reader outside Bengal has
+               no way to place: everything else in the sentence is a common
+               noun, so an unglossed proper name lands as a district, a family
+               or a fort as readily as a river. Naming the thing costs a word
+               and makes the bank a riverbank. -->
+          <p class="walk-card is-beat">
+            In Bengal, the company raises a trading post on the bank of the river Hooghly. The
+            village around it will grow into Calcutta.<small>BENGAL · 1690</small>
+          </p>
+
+          <!-- R2l COPY LOCK. The battle is named for what it was: Mir Jafar,
+               the Nawab's own commander, had been bought by prior agreement, and
+               the outcome was settled before the armies met. The old sentence's
+               "within eight years it is collecting Bengal's revenue" was the
+               diwani of 1765 counted from 1757 — true, and a second date inside a
+               card that already has one. What replaces it is the fact the beat is
+               about: after Plassey the merchants rule Bengal and take its
+               revenue. "Revenue" is one of the deck's two approved money words
+               (see the working note above). -->
+          <p class="walk-card is-beat">
+            At Plassey, the company’s army meets the Nawab of Bengal, and the battle is decided
+            before it begins: his own commander has been bought. Merchants now rule Bengal, and
+            collect its revenue.<small>BATTLE OF PLASSEY · 23 JUNE 1757</small>
+          </p>
+
+          <!-- R2l COPY LOCK, and the facts are the R3 audit's, unchanged: Meerut,
+               10 May 1857; the march on Delhi; the transfer to the Crown under the
+               Government of India Act 1858. What changed is the shape of the
+               second sentence — the old one had the Crown taking India from the
+               Company as an act, which reads as a decision somebody made in the
+               middle of a war. The rising is crushed first and the transfer
+               follows from it, which is the order it happened in. -->
+          <p class="walk-card is-beat">
+            Sepoys at Meerut turn their rifles on their officers and march on Delhi. A year of rising
+            follows, and when it is crushed, India passes from the Company to the
+            Crown.<small>THE RISING · 10 MAY 1857</small>
+          </p>
+
+          <!-- R2m: the trailing range goes. "between 1876 and 1902" was printed
+               twice — once as the tail of the sentence and once, three
+               millimetres below it, as the dateline — and the duplicate was
+               costing the card its ending. The charged phrase is the number, and
+               a number followed by a subordinate clause is a number the reader
+               reads past. The dateline keeps the span; the sentence stops on
+               "people". Nothing about the fact changes and the loss ink covers
+               exactly the same words it did, less the range. -->
+          <p class="walk-card is-beat">
+            The rains fail, and grain ships leave the ports anyway. <em class="walk-ink-loss"
+              >Famines kill some ten million people.</em
+            ><small>THE FAMINE DECADES · 1876–1902</small>
+          </p>
+
+          <!-- R2l COPY LOCK. Every fact here is the R3 audit's and the count is
+               untouched at 379. What the sentence gains is the two things that
+               make it what it was: it was BAISAKHI, a festival day, which is why
+               a walled garden was full of people, and the firing stopped when the
+               ammunition ran low rather than at an order — about 1,650 rounds, on
+               the Hunter Committee's record and Dyer's own testimony. "Penned"
+               did the work of the blocked exits in one adjective and lost the
+               reason the crowd was there at all. -->
+          <p class="walk-card is-beat">
+            On a festival day in Amritsar, soldiers block the way out of a walled garden and fire
+            into the crowd until their ammunition runs out. The official count is <em
+              class="walk-ink-loss">379 dead; estimates run nearly a thousand</em
+            >.<small>JALLIANWALA BAGH · 13 APRIL 1919</small>
+          </p>
+
+          <!-- R2l COPY LOCK. Dates, distance and dateline are the R3 audit's,
+               unchanged. "Makes salt" becomes the gesture that was actually
+               photographed and reported — he picked up a handful of natural salt
+               from the mud at Dandi — and the HANDFUL is deliberate: the deck
+               opens on a handful of merchants granted a monopoly and this is what
+               begins to end it. The echo is the reason for the word and it stays.
+
+               R2m PUTS THE LAW FIRST, and it is a change of order rather than
+               of fact. The prohibition is the Salt Act of 1882, which reserved
+               the manufacture and sale of salt to the government and taxed
+               what it sold; the R2l sentence carried it as a trailing relative
+               clause ("which the law forbids"), so the reader met the act
+               before the rule it broke and the two verbs that matter — FORBIDS
+               and DISOBEY — sat at opposite ends of the card with the march
+               between them. Stated first, the law is the thing standing there
+               when Gandhi arrives, and the two verbs touch. -->
+          <p class="walk-card is-beat">
+            The law forbids Indians to make their own salt. Gandhi walks 240 miles to the sea and
+            picks up a handful. <em class="walk-ink-defiance">A nation learns to disobey.</em
+            ><small>DANDI · 6 APRIL 1930</small>
+          </p>
+
+          <!-- R2l COPY LOCK, and it answers the R3 audit's last open finding. "Three
+               million" is Sen's figure (Poverty and Famines, 1981) and is the top
+               of the mainstream range rather than its centre: the Famine Inquiry
+               Commission's 1.5M is the low outlier, Dyson & Maharatna's
+               re-evaluation (IESHR 28(3), 1991) puts excess mortality nearer
+               2.1M, and recent scholarship runs 2.1-3M. One hard number adopted
+               the maximum; "Around" states the range the figure sits at the top
+               of without spending a clause on it. -->
+          <p class="walk-card is-beat">
+            Famine again, now in Bengal, in the middle of a war. <em class="walk-ink-loss"
+              >Around three million people die.</em
+            ><small>BENGAL · 1943</small>
+          </p>
+
+          <!-- R3 AUDIT FIX. This was set as “…we made a tryst with destiny… At
+               the stroke of the midnight hour, India will awake to life and
+               freedom.” The ellipsis in the middle correctly marked the omitted
+               clause about redeeming the pledge; the SECOND fragment then
+               dropped “when the world sleeps” with no mark at all, which
+               presents a doctored sentence as verbatim. It is also the most
+               famous phrase in the speech, so it was a strange four words to
+               lose. Restored, with the comma after “Long years ago” that is in
+               the delivered text. The elision that remains is marked. -->
+          <p class="walk-card is-beat">
+            “Long years ago, we made a tryst with destiny… At the stroke of the midnight hour, when
+            the world sleeps, India will awake to <em class="walk-ink-dawn">life and freedom</em>.”<small
+              >JAWAHARLAL NEHRU · MIDNIGHT · 15 AUGUST 1947</small
+            >
+          </p>
+
+          <!-- R3 AUDIT FIX, and the audit brief itself flagged this one as the
+               claim to check hardest. It read “the harvests have doubled”, which
+               reads as ALL harvests and is not true: total foodgrain output went
+               from about 72Mt in 1965-66 to about 121Mt in 1975-76 — 1.68x — and
+               did not double until the early 1980s. WHEAT did exactly what the
+               sentence claims: 12.26Mt in 1965 to 24.10Mt in 1975 on the USDA
+               series, and 10.4Mt in the 1965-66 drought year to 28.8Mt in
+               1975-76 on Indian crop-year figures. So the sentence keeps its
+               shape and its verb, and names the crop it is true of. -->
+          <p class="walk-card is-beat">
+            New seeds, new wells, a different countryside. Within a decade <em
+              class="walk-ink-growth-deep">the wheat harvest has doubled</em
+            >.<small>THE GREEN REVOLUTION · 1966</small>
+          </p>
+
+          <!-- R2l COPY LOCK, and the card gains the thing the reforms actually
+               were. Industrial licensing was abolished for most industries in the
+               24 July 1991 statement, and "four decades" is the licensing regime
+               counted from the Industries (Development and Regulation) Act, 1951 —
+               forty years to the month. The speech, the Hugo attribution and the
+               quoted fragment are the R3 audit's and are unchanged; "the treasury
+               is nearly empty" is the deck's second approved money word and is
+               well supported (about US$1.2bn of reserves in June 1991, roughly two
+               weeks of imports).
+
+               INK CHANGE. The green comes OFF this card: green is the Green
+               Revolution's colour and a hue that means one thing must not appear
+               on a second card meaning another. The charged phrase is the quotation
+               instead, in the dawn ink — at the lightness the 1991 sky needs. See
+               .walk-ink-dawn-deep, which is a measured exception exactly as the
+               1966 green is.
+
+               R2m EXTENDS THE INK TO THE WHOLE QUOTATION. It covered the second
+               half of the sentence only, which split one borrowed line into a
+               grey clause and a coloured one and read as emphasis inside the
+               quotation rather than as the quotation being the charged thing.
+               The colour is a NAMING here — this card's phrase is somebody
+               else's words — so it takes all of them. The quotation marks stay
+               outside the span: they are the card's punctuation, not Hugo's.
+               Contrast re-measured over the longer span's extent, both form
+               factors (see the note on .walk-ink-dawn-deep). -->
+          <p class="walk-card is-beat">
+            The treasury is nearly empty. India ends four decades of permits and licences, and opens
+            its doors to the world. &ldquo;<em class="walk-ink-dawn-deep"
+              >No power on earth can stop an idea whose time has come.</em
+            >&rdquo;<small>MANMOHAN SINGH, QUOTING VICTOR HUGO · BUDGET SPEECH · 24 JULY 1991</small
+            >
+          </p>
+
+          <!-- The reveal, in TWO parts, and the split is R2e's. It used to be one
+               card that named the ground, explained the average, and pointed at a
+               mark overhead, all while the camera was still standing still. The
+               first part now does one thing — it names what the reader has been
+               walking — and the press that answers it is what cranes the camera
+               up to the world's mark. So the second sentence arrives over the
+               picture it is about.
+
+               R2f splits part one's two sentences into two LINES that arrive one
+               after the other, slowly. The first names the ground; the second
+               explains what the line actually measures, and a reader given both
+               at once reads neither.
+
+               R2l makes the second REPLACE the first rather than join it (see
+               LINE_IN_MS / LINE_UP_MS / LINE_HOLD_MS in walk.ts). "The ground you
+               just walked is money." arrives at twice its old pace, has the slot
+               to itself long enough to be read, and then cross-dissolves into the
+               sentence that explains it — so at rest there is one sentence on the
+               sky and not a paragraph. Both spans are in the DOM the whole time
+               and share one reserved grid cell, so the swap is opacity and
+               nothing else; the engine lights them with .walk-line / .is-up, and
+               a press part-way through advances the sequence one stage, so nobody
+               is ever locked out of their own forward control. -->
+          <p class="walk-card is-prose is-lines">
+            <span class="walk-line"
+              >The ground you just walked is <em class="walk-ink-saffron">money</em>.</span
+            >
+            <!-- R2m REORDERS the second line and changes not one word of it.
+                 It ended on "in one consistent measure", which is the sentence's
+                 caveat: the last thing the reader was left holding, at the end
+                 of the only sentence in the piece that explains what they have
+                 been walking, was a methodological reassurance. The SPAN is what
+                 the line is for — Akbar's court to now, four and a quarter
+                 centuries, which is the walk they have just finished — so it
+                 goes last and the caveat sits in the middle where a caveat
+                 belongs. Same slot, same reserved grid cell, same dissolve. -->
+            <!-- Release day: "The line" is saffron, and it is the same naming
+                 the two sentences around it do rather than a third code. The
+                 reader is looking at a saffron line while they read the words,
+                 and the piece has spent four centuries teaching that this
+                 colour is that thing: the rim light on the ground they walked,
+                 "money" one stage earlier, and — one press later, in the teal
+                 that only ever means the second series — "the world's average"
+                 on the mark high overhead. Naming the subject rather than the
+                 predicate is the small difference from those two, and it is the
+                 right way round here: the other sentences colour what the thing
+                 IS, and this one points at the thing itself.
+                 No new measurement: same card, same stage of the film, and the
+                 ending's sky is the one static frame in the piece — this is
+                 .walk-ink-saffron on exactly the sky it was resolved against. -->
+            <span class="walk-line"
+              ><em class="walk-ink-saffron">The line</em> is what the average Indian earned in a
+              year, in one consistent measure, from Akbar&rsquo;s court to now.</span
+            >
+          </p>
+
+          <!-- R2l: .is-late. This is the one card in the deck that arrives after
+               something else in the frame has been given time to be looked at —
+               the teal mark comes up alone at the top of the crane, holds the
+               frame by itself for MARK_WORDS_GAP_MS, and only then is this
+               sentence brought in, on a fade several times the deck's ordinary
+               one. The waiting is the engine's (see the lift's card gate in
+               walk.ts); the slowness is this class. -->
+          <!-- prettier-ignore -->
+          <p class="walk-card is-prose is-late">The mark high overhead is <em class="walk-ink-world">the world&rsquo;s average</em>.</p>
+
+          <!-- The ending, and R2f makes it ONE screen rather than three presses.
+               R2b had a single long card, R2e cut it into three parts a press
+               apart, and the feel-check on that says the presses were doing the
+               pacing a fade should do: three arrivals, each one a page turn, on a
+               frame that had already stopped moving. So the three sentences are
+               three LINES on one card, on the same schedule the reveal takes —
+               the spine fact, the shape of the climb, and the distance still to
+               go — and the press after them brings the sign-off.
+
+               R2l makes those three arrivals three DISSOLVES rather than a stack.
+               The spine fact comes up slowly and alone; it fades out as the climb
+               fades in; that fades out as the last line fades in, and the last
+               line stays. One sentence over the finished chart at any moment,
+               which is what the frame is for. All three spans share one reserved
+               grid cell so nothing reflows during a swap, and a press at any
+               point advances the sequence one stage rather than turning the page
+               — the reader can go as fast as they like and cannot skip a sentence
+               they have not been shown. -->
+          <p class="walk-card is-prose is-lines">
+            <span class="walk-line">In 1966, India was still poorer than in 1600.</span>
+            <span class="walk-line"
+              >The climb since has been almost vertical, and most of it happened within living
+              memory.</span
+            >
+            <!-- R2m REPLACES the last line, and it is the only place in the
+                 piece that says "we".
+                 "And there is still a long way to go." is true and is nobody's:
+                 it reports a distance, from outside, about a country the reader
+                 has just spent four centuries inside. The walk's whole argument
+                 is that the ground was walked rather than watched, and the last
+                 sentence of it was the one line that stepped back out again.
+                 Two sentences now, and they are the two halves the ending has
+                 been building: what has been done since the midnight the reader
+                 raised the flag on, and what has not. Still ONE line and one
+                 dissolve — the third stage of the three, on the same schedule
+                 and the same reserved slot as the two before it. -->
+            <!-- …and release day splits the two halves onto two presses. They
+                 were one sentence pair arriving together, and the second half
+                 is the turn: what has been done, and then what has not. Read
+                 in one breath, "and we still have a long way to go" is a
+                 qualifier on the good news; given its own arrival, it is the
+                 last thing the piece says.
+
+                 The coda is NESTED INSIDE the line it follows rather than
+                 being a fourth sibling, and that is what makes it a stage
+                 without a new mechanism: every line of a card shares one grid
+                 cell (see .walk-line below), so a fourth sibling would arrive
+                 ON TOP of the third instead of under it. Inside, it is
+                 ordinary flow — a block, so it starts a new line — and the
+                 engine's own line list picks it up in document order, which
+                 makes it stage four of the dissolve for free. The one rule it
+                 needed is in cutLines/dissolveTo: a line does not put out the
+                 line it is standing inside. The slot is still reserved for
+                 both from the moment the card is latched, so nothing reflows
+                 when it arrives. -->
+            <span class="walk-line"
+              >We have come a long way since that
+              <em class="walk-ink-midnight">midnight in 1947</em>.
+              <span class="walk-line is-coda">And we still have a long way to go.</span></span
+            >
+          </p>
+        </div>
+
+        <!-- The sign-off, and R2f takes it OUT of the caption deck.
+             It is the only thing on this stage that is a LOCKUP rather than a
+             caption: the site's masthead device — the Playfair wordmark over a
+             saffron rule — redrawn in the flag's three colours, with the paper
+             sky itself showing through the 2px gap as the white band. At 2026 the
+             stage's sky IS TSOI paper, so it should read as the masthead having
+             quietly come down onto the film. The flag colours are literal here
+             rather than tokens, for the same reason they are literal in the
+             engine's drawMast: the tricolour is the tricolour in either theme.
+
+             Why it is not in the deck any more: it is centred in the FRAME and
+             every other card hangs at 20% of it, so showing it used to move the
+             whole block — and the block moved while the outgoing ending line was
+             still fading, which re-laid that line out mid-dissolve. That is one
+             of R2f's two text flickers (see showCard in walk.ts). A lockup with
+             its own place on the stage cannot move anything else on the way in.
+
+             R2M MAKES IT THE END-CARD, and it is one card where R3 had a lockup
+             floating over a row of two text links along the bottom edge. The
+             lockup is UNCHANGED — the same masthead device, the same tricolour
+             rule, the same wish under it, at the same sizes R2l reverted them to
+             — and what joins it is everything the end of the piece was already
+             offering, gathered into the object that is offering it:
+
+              · A THUMBNAIL of the card the reader can send. `send someone this
+                card` asked them to download a picture they had never seen; the
+                card they are being offered is the 1947 midnight they walked to,
+                and showing it is the difference between a link and an offer.
+                Its `src` is deliberately not in the markup — see the note on
+                data-src below.
+              · TWO ACTIONS, as real buttons in the piece's own quiet furniture
+                register (10px tracked capitals, no rule, no box, no icon —
+                exactly what the two text links were). `Share this card` is the
+                Web Share API where the sheet can carry the FILE and the
+                download everywhere else; `Start over` is the same restart it
+                always was, and keeps its class so the stage's pointer
+                exemptions and the engine's handler are untouched.
+              · A ✕ that CLOSES it, in the ✕'s own two hairline strokes. The
+                film behind it is finished and stays walkable backward; a
+                forward press summons the card again. Escape is deliberately NOT
+                bound to it — Escape already leaves the theatre, and one key
+                with two meanings at the end of a forty-minute piece is a key
+                that does the wrong one.
+
+             ACCESSIBILITY. The card is a labelled region and takes focus when it
+             opens (tabindex="-1", focused by the engine); the ✕ and both actions
+             are real buttons in the tab order behind it; closing puts focus back
+             on the stage. It keeps a polite live region of its own so a reader
+             who is not looking at the film is still told the piece has signed
+             off; the two regions never change in the same breath. -->
+        <div class="walk-signoff" aria-live="polite">
+          <div
+            class="walk-card is-signoff walk-endcard"
+            role="region"
+            aria-label="Independence Day card"
+            tabindex="-1"
+          >
+            <button type="button" class="walk-endcard-close" aria-label="close this card">
+              <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <path d="M7.5 7.5 L16.5 16.5 M16.5 7.5 L7.5 16.5" />
+              </svg>
+            </button>
+            <p class="signoff-mark">Time Series of India</p>
+            <span class="signoff-rule" aria-hidden="true"></span>
+            <p class="signoff-line">wishes you a happy Independence Day</p>
+            <!-- The picture the two buttons under it are about.
+                 `data-src` rather than `src`, and it is the one deferral on this
+                 page: card.png is the full 1080x1350 share asset (about a
+                 megabyte), it lives at the dead centre of the stage from first
+                 paint, and `loading="lazy"` defers nothing for an element that
+                 is already in the viewport. The engine sets the real src when
+                 the pull-back starts — several seconds and one press before the
+                 card can possibly be on screen — so the thumbnail is warm when
+                 it arrives and no reader who never reaches the ending pays for
+                 it. Decorative: the buttons name it and the lockup beside it is
+                 the same wish the picture carries. -->
+            <img
+              class="walk-endcard-thumb"
+              data-src="/independence/card.png"
+              alt=""
+              width="1080"
+              height="1350"
+              decoding="async"
+            />
+            <div class="walk-endcard-actions">
+              <!-- The label is DATE-GATED and the engine rewrites it at mount
+                   (see shareCopy in walk.ts), on the same 14-17 August 2026
+                   window the masthead's tricolour dressing uses. The out-of-
+                   window wording is what is in the markup, so a page whose
+                   script never ran is not wishing anybody a happy Independence
+                   Day in November. -->
+              <button type="button" class="walk-share">Share the midnight card</button>
+              <button type="button" class="walk-restart">Start over</button>
+            </div>
+            <!-- The download, kept as the anchor it has always been so the
+                 share path has something honest to fall back to (see the share
+                 handler in walk.ts). Out of the tab order and out of the
+                 accessibility tree: `Share this card` above is the control, and
+                 this is the mechanism it uses when the share sheet will not
+                 carry a file. -->
+            <a
+              class="walk-send"
+              href="/independence/card.png"
+              download="tsoi-independence-day.png"
+              tabindex="-1"
+              aria-hidden="true">download the card</a
+            >
+          </div>
+        </div>
+
+        <!-- The two hints, and they are R2g's replacement for R2d's hold bar.
+             The bar was built to advertise the hold zones when the year lived at
+             the foot of the film; the year moved to the top of the frame in the
+             same round, and a strip of chrome along the bottom edge spent two
+             rounds labelling controls nowhere near where the reader was looking.
+             So the chrome is gone and the labels moved into the middle of the
+             picture, one over each zone, at the height where a reader's eye
+             already is.
+
+             They sit in the SKY — above the ridges, clear of the land — so they
+             take the caption's own resolved ink rather than the land's. They are
+             not controls and take no pointer: the zones under them are the
+             control, and they are the whole stage (see ZONE_SPLIT in walk.ts).
+
+             THE HEIGHT IS A MEASURED NUMBER rather than a taste — see the rule
+             below.
+
+             They arrive when the opening bloom finishes and retire for good on
+             the reader's first press of any kind. Session-only, as the bar's
+             labels were. -->
+        <div class="walk-hints" aria-hidden="true">
+          <p class="walk-hint walk-hint-back">back</p>
+          <p class="walk-hint walk-hint-fwd">hold to walk</p>
+        </div>
+
+        <!-- The poster's one word, and the way in.
+             R2c opened the film already walkable, with a whispered instruction
+             over two hairline chevrons. R2d makes ENTRY a thing the reader does.
+             R2g makes the frame behind it DARK: the 1600 landscape composed
+             exactly as it always was and then stopped down to a seventh of its
+             own light, with no year over it, no era ribbon, no card and no
+             hints. A landscape sensed rather than seen, and one word alive on
+             it, breathing on a slow pulse.
+
+             The press that answers it blooms the world up to full over about
+             three seconds, sends a few birds across the top of the sky, and
+             brings the date in over the last third of the light. It comes back
+             when the reader leaves the film, so the way back in is the same word
+             as the way in — but the bloom belongs to a fresh walk, and pressing
+             it a second time simply resumes. -->
+        <!-- R2m: "begin the walk" rather than "walk". Same treatment, same
+             place, same breath. One word was an instruction that could be read
+             as a label — the film is called The Walk through Midnight now, and
+             a stage with the word "walk" alive on it reads as a title card as
+             readily as an invitation. "Begin" is the verb the press actually
+             performs, and it is the difference between naming the thing and
+             asking for it. -->
+        <p class="walk-poster" aria-hidden="true">begin the walk</p>
+
+        <!-- R2j: what the press is about to do, where it is about to do
+             something the reader did not ask for. On a coarse pointer the film
+             opens FULL SCREEN (see `coarse` in walk.ts), and the device
+             feel-check said that arrives as a surprise — a page the reader was
+             scrolling turns into the whole phone. One line under the word fixes
+             it, and the line is deliberately the smallest thing on the stage: it
+             is a note about the mechanism, not a second invitation, and anything
+             louder would compete with the one word it sits under.
+
+             Not shown on the fine-pointer layout, where the walk begins in the
+             article's own frame and nothing goes full screen. The class the
+             engine writes ONCE at init (.is-coarse) is what gates it, rather than
+             a media query beside it, so what the reader is told and what the
+             press actually does cannot come apart.
+
+             No icon: the piece has none anywhere, and a ⛶ glyph here would be
+             the third thing in the corner. aria-hidden with the poster, because
+             the stage's own label already says what the press does and a screen
+             reader is not being taken full screen by surprise. -->
+        <p class="walk-poster-note" aria-hidden="true">Opens in full screen.</p>
+
+        <!-- Release morning: the way back in for a walk the browser threw
+             away. A locked phone or a navigation can reload the page mid-walk;
+             the engine banks the year (sessionStorage) and the poster's word
+             becomes "resume the walk". This is the other half of that offer —
+             a real button, because a reader who resumes by default must be
+             able to decline. Hidden unless there is actually something to
+             decline. -->
+        <button type="button" class="walk-poster-fresh" hidden>start over instead</button>
+
+        <!-- The second instruction, and only a reader who has been standing at
+             the flagpole for three seconds with nothing happening ever sees it.
+             It retires permanently the moment the flag moves. Since R2c took the
+             halyard's cue chevron off the rope this is the only affordance the
+             gate has, so it is also the only thing that tells a reader who has
+             not found the rope that there is one. -->
+        <p class="walk-whisper walk-whisper-rope" aria-hidden="true" hidden>pull the rope down</p>
+
+        <!-- The third whisper, release morning's. The whole film is held, and
+             then the ending is tapped — and a reader whose thumb has been down
+             for four centuries has no way to know the gesture changed. This is
+             the rope's own pattern at the other end of the piece: offered only
+             when an ending frame has been standing settled with nothing pressed
+             for a few seconds, and the FIRST ending press — whether it was ever
+             shown or not — retires it for good, because that press is the
+             lesson. -->
+        <p class="walk-whisper walk-whisper-tap" aria-hidden="true" hidden>tap to go on</p>
+
+        <!-- The halyard's hit zone. Positioned over the mast by the engine and
+             present in the tree ONLY while the walk is held at the flagpole, so
+             the reader's vertical scroll is untouched everywhere else. It and
+             R2d's hold bar are the only two elements on this page with
+             touch-action: none. -->
+        <div class="walk-rope" hidden aria-hidden="true"></div>
+
+        <!-- R2M: the two floating text links that used to sit along the bottom
+             edge here — `start over` and `send someone this card` — are gone.
+             Both are inside the end-card now (see .walk-endcard above), which is
+             the object they were always about: one asked the reader to restart a
+             piece whose last frame was a wish, and the other to download a
+             picture they had never been shown. A card that carries the wish, the
+             picture and both actions is one thing to answer rather than three
+             things arranged around a frame. -->
+
+        <!-- The way out of the theatre. Top RIGHT, because top-centre is the
+             date stamp's now. Two hairline strokes rather than a glyph or an
+             icon font, in the dim SKY ink with the overlay's halo, on a 44px
+             target that carries the safe area with it. Esc does the same thing,
+             and so does the browser's own fullscreen exit — one path out, three
+             ways to ask for it. -->
+        <button type="button" class="walk-exit" aria-label="leave the film" hidden>
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path d="M7.5 7.5 L16.5 16.5 M16.5 7.5 L7.5 16.5" />
+          </svg>
+        </button>
+
+        <!-- …and R2g's way IN, which only exists on a desktop.
+             R2d made the theatre the answer everywhere: one press and the stage
+             becomes the viewport. On a phone that is right — the in-flow deck is
+             a postcard and the walk is a landscape — and on a desktop it is a
+             modal thrown over an article the reader was reading. So a fine
+             pointer begins the walk IN THE FRAME and gets this instead: two
+             hairline corner brackets in the same ink and on the same 44px target
+             as the ✕, in the same corner, and never at the same time as it.
+             (See `coarse` in walk.ts for how the two homes are told apart.) -->
+        <button type="button" class="walk-full" aria-label="fill the screen with the film" hidden>
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path d="M10 4.5 H4.5 V10 M14 19.5 H19.5 V14" />
+          </svg>
+        </button>
+
+        <!-- What a reader who cannot see the flagpole is told about it. Names no
+             series; the mystery rule applies here like everywhere else. -->
+        <p class="walk-live" aria-live="polite"></p>
+      </div>
+    </section>
+    </div>
+    </div>
+
+    <!-- Sources, and this block is on the page BEFORE the reader has walked —
+         a view-source reader, a screen-reader user tabbing past the stage, and
+         anyone who scrolls first all meet it ahead of the reveal. So the
+         mystery rule governs it exactly as it governs the deck: nothing here
+         names the ground. It is "the series" throughout. Two proper nouns are
+         allowed to stand, because a source you cannot name is not a source, and
+         neither of them says out loud what is being measured.
+
+         The site's read-footer register — an h2 and an ordered list in the
+         byline face — because that is what the rest of the site does under a
+         piece, and a flagship that invents its own colophon is a flagship
+         nobody can check.
+
+         Reads end in NAVIGATION, not promotion: there is no folio and no next-
+         thing offer under this list, because the site footer immediately below
+         already does the navigating. Nothing may be added here that sells
+         something. -->
+    <div class="tsoi-container end">
+      <!-- Collapsed by default since release morning: six long items under a
+           film is a page of methodology the reader meets before they have any
+           reason to care. A <details> keeps it one line — the reader who wants
+           to argue with the ground opens it; everyone else scrolls one row.
+           The affordance is typographic (the summary's own show/hide word,
+           flipped by [open]) because the piece has no icons anywhere. -->
+      <details class="refs-fold">
+        <summary>
+          <h2>Sources</h2>
+          <span class="refs-fold-cue" aria-hidden="true"></span>
+        </summary>
+        <ol class="refs">
+        <li>
+          <!-- The link goes to the Maddison Project's own release page rather
+               than to Our World in Data's grapher, and that is the mystery rule
+               reaching into a URL: the OWID slug for this series spells the
+               thing out, and a reader who hovers the link before walking reads
+               it off their own status bar. Groningen's page carries the same
+               release, is the actual source OWID redistributes, and gives
+               nothing away. -->
+          The ground: the <a
+            href="https://www.rug.nl/ggdc/historicaldevelopment/maddison/releases/maddison-project-database-2023"
+            >Maddison Project Database</a
+          >, 2023 release, via Our World in Data — the series the walk is drawn from, on one
+          consistent 2011 basis end to end. India before 1870 is scholarly reconstruction rather
+          than measurement, and the benchmark years are sparse that far back (1600, 1650, 1700,
+          1750, then decades, then every year from 1884); the line between them is a monotone
+          cubic interpolation (PCHIP) that cannot invent a hill the data does not have.
+        </li>
+        <li>
+          The dashed last stretch, 2023&ndash;2026, is not Maddison and is not measured. It is
+          estimated forward from the 2022 benchmark, one step a year, using International Monetary
+          Fund <em>World Economic Outlook</em> figures net of United Nations World Population
+          Prospects population growth: the WEO Update of July 2026 for 2024 onward, the WEO of
+          April 2026 for 2023, and the 2024 revision of World Population Prospects throughout.
+          India&rsquo;s WEO rows are fiscal years and the rest of the walk is calendar years; the
+          last two years are projections rather than outturns. The rim light on that stretch is
+          dashed for all of these reasons at once.
+        </li>
+        <li>
+          The famine tolls are the cautious end of the modern range: Arup Maharatna, <em
+            >The Demography of Famines</em
+          > (1996) and Mike Davis, <em>Late Victorian Holocausts</em> (2001) for 1876&ndash;1902,
+          and Amartya Sen, <em>Poverty and Famines</em> (1981) for Bengal in 1943 — against which
+          Tim Dyson and Arup Maharatna&rsquo;s re-evaluation (<em
+            >Indian Economic and Social History Review</em
+          > 28(3), 1991) puts the Bengal figure lower.
+        </li>
+        <li>
+          Jallianwala Bagh: the official count of 379 is the Hunter Commission&rsquo;s. The higher
+          estimates are the Indian National Congress&rsquo;s contemporary figure.
+        </li>
+        <li>
+          The two quotations are as delivered: Jawaharlal Nehru to the Constituent Assembly on the
+          night of 14&ndash;15 August 1947, and Manmohan Singh closing the budget speech of 24 July
+          1991, quoting Victor Hugo (<a href="https://www.indiabudget.gov.in/doc/bspeech/bs199192.pdf"
+            >Budget 1991&ndash;92 speech</a
+          >). The passage from Nehru is abridged where marked and nowhere else.
+        </li>
+        <li>
+          Further reading, and the oldest argument in the piece: Dadabhai Naoroji, <em
+            >Poverty and Un-British Rule in India</em
+          > (1901).
+        </li>
+        </ol>
+      </details>
+    </div>
+  </main>
+
+  <Footer />
+</BaseLayout>
+
+<style>
+  .indy {
+    padding-top: calc(var(--tsoi-spacing-unit) * 3);
+  }
+
+  /* --------------------------------------------------------- the frame --- */
+  /* Nothing but a box that carries one custom property now. R2b made this a flex
+     column so a title strip, a stage and a control band could share one
+     viewport; the band is gone, the controls are on the film, and the lead is
+     ordinary article furniture in normal flow above an ordinary block. What is
+     left here is --walk-serif, declared below and wanted by the overlay. */
+
+  /* -------------------------------------------------------------- lead --- */
+  /* At the Inflation Peaks measure, at every width. R2b compressed all of this
+     — a smaller title, a shorter deck measure, a phone-only type scale — so the
+     lead, the stage and the band would fit one 100dvh column. The frame is not
+     that column any more, so the compression has no job and the piece gets its
+     proper masthead back. */
+
+  .title-block {
+    max-width: 900px;
+    margin-bottom: calc(var(--tsoi-spacing-unit) * 2);
+  }
+
+  /* The kicker line, now a row: the label at the left edge, the share control
+     at the right — InflationPeaks' .mast-top, in this masthead's own spacing.
+     The kicker keeps the row's bottom margin. */
+  .title-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: calc(var(--tsoi-spacing-unit) * 2);
+    margin-bottom: calc(var(--tsoi-spacing-unit) * 1.5);
+  }
+
+  .kicker {
+    margin: 0;
+    font: var(--tsoi-text-label-caps);
+    letter-spacing: var(--tsoi-text-label-caps-tracking);
+    text-transform: uppercase;
+    color: var(--tsoi-color-primary-text);
+  }
+
+  .title-block h1 {
+    margin: 0;
+    font: var(--tsoi-text-headline-xl);
+    letter-spacing: var(--tsoi-text-headline-xl-tracking);
+    text-wrap: balance;
+  }
+
+  .standfirst {
+    margin: calc(var(--tsoi-spacing-unit) * 1.5) 0 0;
+    max-width: 62ch;
+    font: var(--tsoi-text-deck);
+    letter-spacing: var(--tsoi-text-deck-tracking);
+    color: var(--tsoi-color-on-surface-variant);
+  }
+
+  /* All that survives the R2b compression block: the rhythm, tightened a
+     little on a phone, where the lead and the stage are still competing for the
+     same screen even though they no longer share a fixed column. The TYPE is
+     the peaks page's at every width. */
+  @media (max-width: 899px) {
+    .indy {
+      padding-top: calc(var(--tsoi-spacing-unit) * 1.5);
+    }
+
+    .title-block {
+      margin-bottom: calc(var(--tsoi-spacing-unit) * 1.5);
+    }
+
+    .title-top {
+      margin-bottom: calc(var(--tsoi-spacing-unit) * 0.75);
+    }
+  }
+
+  /* -------------------------------------------------------------- walk --- */
+  /* R2e: THE FILM COMES BACK TO THE PAGE. R2d gave the piece a theatre — one
+     press takes the stage fullscreen — and the moment that existed, the in-flow
+     stage stopped needing to pretend to be one. A full-bleed band edge to edge
+     is a promise of immersion the page cannot keep with a masthead over it; a
+     FRAMED DECK is honest about being an object on a page, and the object is the
+     way in.
+
+     So it is Inflation Peaks' register, because that is the house answer to
+     "a machine sitting in an article": the page column (.tsoi-container, the
+     same measure the title above it takes), a hairline in the outline token, and
+     no radius — the peaks board carries none, and a rounded film frame beside a
+     square one is two answers to one question.
+
+     The height is ~58% of the viewport, which on a phone is the 55-60vh the
+     round asked for and on a desktop hits the 660px ceiling before it gets
+     anywhere near uncomfortable. Floored so a short landscape phone is not a
+     letterbox. There is no viewport arithmetic left in here at all: R2b through
+     R2d sized this box against the masthead and the lead (--walk-lead /
+     --walk-head, measured by a script on every resize), and a deck in the column
+     needs to know nothing about what is above it.
+
+     Nothing here reads or hijacks scroll. The stage is an ordinary block in
+     normal document flow. */
+
+  .walk-stage {
+    position: relative;
+    display: block;
+    width: 100%;
+    height: 58dvh;
+    min-height: 420px;
+    max-height: min(660px, 100dvh);
+    overflow: hidden;
+    border: 1px solid var(--tsoi-color-outline);
+    /* The canvas paints every pixel of this box, so the box's own colour is
+       what a reader sees while the script and the data are still on the wire —
+       one frame on a fast machine, a visible beat on a phone. It was the 1600
+       sky's amber once, from before R2g: the first PAINTED frame is now the
+       poster — the landscape stopped down to a seventh of its light — and a
+       bright amber slab that cuts to near-black reads as a flash, where
+       near-black arriving at near-black reads as the film loading. */
+    background: #131015;
+    /* The whole stage is the control. `manipulation` kills the double-tap zoom
+       on a stage a reader is tapping and holding, and nothing else: vertical
+       panning is untouched, because the page's scroll is the reader's. */
+    touch-action: manipulation;
+    cursor: pointer;
+
+    /* Fallbacks. The engine overwrites these on the first frame; they exist so
+       the stage is never colourless if the data or the script fails. Two inks,
+       because the overlay sits on two backgrounds: --walk-text is the caption's,
+       resolved against the SKY behind the caption band, and --walk-land-text is
+       the foot furniture's, resolved against the LANDMASS it stands on. */
+    --walk-text: rgba(240, 228, 210, 0.85);
+    --walk-text-dim: rgba(240, 228, 210, 0.45);
+    --walk-land-text: rgba(240, 228, 210, 0.85);
+    --walk-land-text-dim: rgba(240, 228, 210, 0.45);
+    /* …and a THIRD pair, R2d's: the date stamp is in open sky at the TOP of the
+       frame, which is a different colour from the sky behind the caption band a
+       fifth of the way down it, so it gets its own resolution rather than
+       borrowing the caption's. See resolveInk() in walk.ts. */
+    --walk-stamp-text: rgba(240, 228, 210, 0.85);
+    --walk-stamp-text-dim: rgba(240, 228, 210, 0.45);
+    --walk-text-halo: rgba(0, 0, 0, 0.55);
+    /* R3: the stamp's own halo. The overlay's shared halo is computed from the
+       CAPTION's ambiguity, and the two boxes cross over at different years —
+       see stampAmbiguity in walk.ts. */
+    --walk-stamp-halo: rgba(0, 0, 0, 0.55);
+    --walk-vig: 0.3;
+  }
+
+  /* -------------------------------------------------------- the theatre --- */
+  /* Entering the walk fills the screen with it. The stage leaves normal flow and
+     becomes the viewport; the script locks the body's scroll behind it and puts
+     it back on the way out, and it also ASKS for real fullscreen in the same
+     gesture — but that request is progressive enhancement and this rule is the
+     whole of the effect if it is refused.
+
+     100dvh rather than 100vh because a phone's browser chrome is what dvh is
+     for, and a film with a URL bar sitting over its bottom edge is a film with
+     its hold bar under the reader's own address bar. The min/max-height on the
+     in-flow stage have to be unset here or they fight the fixed box — and so
+     does R2e's frame: a hairline is what says "object on a page", and there is
+     no page left to be an object on. */
+  .walk-stage.is-theatre {
+    position: fixed;
+    inset: 0;
+    width: 100vw;
+    height: 100dvh;
+    min-height: 0;
+    max-height: none;
+    border: 0;
+    z-index: 200;
+    /* …and the theatre takes the GESTURE too, which the in-flow stage must never
+       do. `manipulation` above leaves vertical panning to the browser because
+       the page's scroll belongs to the reader — but in here the script has
+       locked the body's scroll and there is nothing left to pan. What that
+       leaves is a bug reported twice: a thumb held on the film wanders a few
+       pixels as thumbs do, the browser claims the drift as the start of a pan,
+       fires pointercancel, and the hold ends on a reader who never let go. So
+       the fullscreen stage claims the gesture outright. Scoped to .is-theatre
+       ONLY: leave the page's own scroll alone. */
+    touch-action: none;
+  }
+
+  /* One serif for the whole piece. Georgia rather than the house Playfair on
+     purpose: this type is set in italics and at a weight between regular and
+     bold, and the site ships neither a Playfair italic nor a Playfair 500 —
+     both would be synthesised. The mockups are set in Georgia for the same
+     reason. (The sign-off at the very end is the one exception, and it is set in
+     the house display face precisely because it is quoting the masthead.) */
+  .walk-frame {
+    --walk-serif: Georgia, 'Times New Roman', serif;
+  }
+
+  /* Desktop: the lead is an article header with room to breathe. The stage's
+     own height is the same rule at every width now — 58dvh under a 660px
+     ceiling — so there is nothing here for it to override. */
+  @media (min-width: 900px) {
+    .title-block {
+      margin-bottom: calc(var(--tsoi-spacing-unit) * 4);
+    }
+  }
+
+  /* A stage a reader taps and holds must never answer with the browser's own
+     feedback: no tap-highlight flash, no text/element selection starting on
+     the canvas mid-hold, no long-press callout. Set on every descendant, not
+     just inherited — tap-highlight and Safari's user-select don't inherit
+     reliably. */
+  .walk-stage,
+  .walk-stage * {
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  /* A pointer press must not leave a focus ring on the frame; a keyboard reader
+     who has tabbed to it still gets one, because the two arrows do something. */
+  .walk-stage:focus {
+    outline: none;
+  }
+
+  /* The stage's ring, and R3 makes it TWO. Measured first, then fixed: the ring
+     runs the whole perimeter of the film, and the perimeter is not one
+     background. At 1600 the top edge is a bright amber sky and the bottom edge
+     is near-black landmass, so the caption's ink — dark, because it was
+     resolved against that bright sky — measured 3.59:1 along the top and
+     1.32:1 along the foot. One ink cannot clear a border that crosses the
+     horizon, and no amount of resolving fixes that, because both answers are
+     correct for half the ring.
+
+     So the indicator is a PAIR of adjacent bands in the two inks the stage
+     already publishes: the land ink from the edge inward, the caption's ink
+     immediately inside it. They are chosen against opposite backgrounds and
+     therefore land on opposite sides of every crossover — where one washes out,
+     the other is at its strongest, and the two are always high-contrast against
+     EACH OTHER, which is the thing a focus indicator is actually held to.
+
+     The second band is on .walk-ui rather than on the stage because an inset
+     box-shadow paints under its own element's descendants, and the canvas is a
+     descendant that covers every pixel of the stage. .walk-ui is the overlay
+     layer above the canvas and has no background of its own, so a shadow inset
+     into it is drawn over the picture. The outline is unaffected — outlines
+     paint above descendants — which is why it can stay where it is.
+
+     Geometry: the land band occupies 0-3px from the edge, the outline 3-5px.
+     Adjacent, no gap. */
+  /* Release morning adds the .is-tabbed gate on both bands, for a Chromium
+     habit the feel-check caught: focusing the stage by CLICK correctly shows
+     no ring, but the first arrow key afterwards flips the browser's input
+     modality to keyboard and lights it anyway — so a mouse reader driving with
+     the arrows watched the whole film get "highlighted". The engine stamps
+     .is-tabbed only when focus was actually reached BY the keyboard (a Tab
+     press; any pointer press clears it), which is the distinction
+     :focus-visible was supposed to draw and doesn't. A reader who tabs to the
+     film keeps both bands exactly as R3 measured them. */
+  .walk-stage.is-tabbed:focus-visible {
+    outline: 2px solid var(--walk-text);
+    outline-offset: -3px;
+  }
+
+  .walk-stage.is-tabbed:focus-visible .walk-ui {
+    box-shadow: inset 0 0 0 3px var(--walk-land-text);
+  }
+
+  .walk-canvas {
+    position: absolute;
+    inset: 0;
+  }
+
+  .walk-canvas canvas {
+    position: absolute;
+    inset: 0;
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+
+  /* Film grain: one 96px tile of deterministic noise, repeated, overlay-blended.
+     The strength is nothing like the 0.5 a plain noise plate would take — an
+     overlay blend of full-range noise at 0.5 is a snowstorm — and it used to be
+     a flat 0.12, the strength the canvas version had (a noise pattern at alpha
+     22/255), which is the one that reads as film rather than as dirt.
+
+     R2h made it BREATHE WITH THE ERA — 0.08 + 0.25 × --walk-vig, published by
+     the engine's palette pass — and R2i puts it back. A grain that changes
+     strength as the walk goes reads as the STOCK changing under the picture,
+     which is a different film rather than a darker hour of the same one; the
+     constant one reads as a single roll and it is the one the feel-check kept.
+     So this is a literal again and the engine publishes nothing for it.
+
+     R2j GATES IT ON THE OPENING, and that is a different question from how
+     strong it is. The strength is still the one literal below and still never
+     moves during the walk. What changed is that the walk is not the whole of the
+     page: the poster is a near-black frame, and a noise plate over near-black
+     has nothing to sit IN — the overlay blend can only lift, so what the reader
+     lands on is a dark picture with speckle over it, which is dirt on the lens
+     rather than grain in the stock. The device feel-check read the first load as
+     "grainy orange" and this is half of that answer (the other half is the
+     poster's own palette — see POSTER_DESAT in walk.ts).
+
+     So: zero while .is-intro is on the stage, and the engine takes that class off
+     at the moment it starts the bloom, which leaves the grain arriving on one
+     compositor-side opacity transition timed to the light itself. --walk-bloom-ms
+     is written ONCE at init from BLOOM_MS, so the two cannot drift apart; the
+     fallback is R2i's bloom length in case the write never happens. This is not a
+     return of R2h's per-frame --walk-grain: nothing here is written in a frame.
+     */
+  .walk-grain {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.12;
+    transition: opacity var(--walk-bloom-ms, 2800ms) linear;
+    mix-blend-mode: overlay;
+    background-image: url('data:image/png;base64,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');
+    background-repeat: repeat;
+    background-size: 96px 96px;
+  }
+
+  /* Transition-free on the way DOWN and timed to the bloom on the way up, by the
+     same trick the poster's note uses: a transition is read off the state being
+     transitioned TO, so this rule's `none` makes going dark a cut and the base
+     rule's duration makes coming back a wash. It matters twice — the class is on
+     the stage in the MARKUP so the very first paint is already at zero with
+     nothing animating, and `start over` puts it back instantly rather than
+     dimming the grain out over five seconds under a poster that is already up. */
+  .walk-stage.is-intro .walk-grain {
+    opacity: 0;
+    transition: none;
+  }
+
+  /* The frame closing in. Static geometry, palette-driven depth. */
+  .walk-vignette {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: radial-gradient(
+      ellipse 78% 82% at 50% 46%,
+      rgba(6, 4, 2, 0) 40%,
+      rgba(6, 4, 2, var(--walk-vig)) 100%
+    );
+    transition: background 400ms linear;
+  }
+
+  /* ---------------------------------------------------------- overlay --- */
+  /* Everything the reader reads, dissolved into the sky: no boxes, no rules, no
+     panel. pointer-events: none throughout, so a press on the words walks
+     exactly like a press on the ground under them — except the one control that
+     is a control. */
+
+  .walk-ui {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    font-family: var(--walk-serif);
+    text-shadow:
+      0 0 3px var(--walk-text-halo),
+      0 0 12px var(--walk-text-halo);
+  }
+
+  /* --------------------------------------------------- the date stamp --- */
+  /* The year and the era ribbon, top-centre, like a date burnt into documentary
+     footage. R2c had them at the FOOT of the film between two chevrons; the hold
+     bar took that edge, and a readout under the reader's own thumb is a readout
+     that cannot be read.
+
+     The ink changes with the position and it has to. At the foot the row stood
+     on the LANDMASS, which is near-black in every row of the light table, so it
+     took --walk-land-text. Up here it is in open SKY, which crosses from
+     midnight to paper over four centuries — so it takes a sky ink, and a sky ink
+     resolved AT THIS BOX rather than the caption's, because the top of the frame
+     and the caption band a fifth of the way down it are two different colours
+     (steeply so at 1600 and at the 1947 dawn). See --walk-stamp-text.
+
+     A step smaller than the R2c foot treatment: it is orientation rather than a
+     headline, and a date stamp that shouts is a chyron. */
+
+  /* R3 gives this box the overlay's halo recomputed at its OWN sky. .walk-ui's
+     text-shadow rides the caption's ambiguity, which is the right signal for the
+     caption band and the wrong one here: the horizon glow is worth a quarter of
+     the pixel under the caption and nothing at all at the top of the frame, so
+     the two boxes pass through the ink crossover about fifteen years apart on
+     the way down (~1786) and eight on the way back up (~1965). Across those two
+     windows the shared halo is at its weakest exactly where the stamp's ink is
+     at its most ambiguous. Same two shadows, one variable further along. */
+  .walk-centre {
+    position: absolute;
+    top: calc(3% + env(safe-area-inset-top, 0px));
+    left: 0;
+    right: 0;
+    display: grid;
+    place-items: center;
+    text-shadow:
+      0 0 3px var(--walk-stamp-halo),
+      0 0 12px var(--walk-stamp-halo);
+  }
+
+  .walk-foot {
+    min-width: 0;
+    text-align: center;
+    opacity: var(--walk-foot, 1);
+    /* Not a transition: the engine publishes this continuously off the
+       pull-back's own ease, and a transition on top of an eased value lags it. */
+  }
+
+  /* R2m: the stamp scales with the stage on the same one multiplier the deck
+     takes (see --walk-type-k). It is the film's only permanent piece of type
+     and it sat at a phone's 17px on a theatre four times the width, where it
+     read as a caption somebody had forgotten to set. Phones are byte-identical:
+     the multiplier is exactly 1 at the reference width. */
+  .walk-year {
+    margin: 0;
+    font-family: var(--tsoi-font-mono);
+    font-weight: 500;
+    font-size: calc(17px * var(--walk-type-k));
+    line-height: 1;
+    letter-spacing: 0.12em;
+    text-indent: 0.12em;
+    font-variant-numeric: tabular-nums;
+    color: var(--walk-stamp-text);
+    transition: color 300ms linear;
+  }
+
+  .walk-era {
+    display: grid;
+    margin: calc(5px * var(--walk-type-k)) 0 0;
+    min-height: 1.1em;
+  }
+
+  .walk-era span {
+    grid-area: 1 / 1;
+    justify-self: center;
+    opacity: 0;
+    font-family: var(--walk-serif);
+    /* …and the era sub-line with it, on the same multiplier, so the step
+       between the year and the era it is in stays the ratio it was authored
+       at. */
+    font-size: calc(10px * var(--walk-type-k));
+    line-height: 1;
+    letter-spacing: 0.2em;
+    text-indent: 0.2em;
+    text-transform: uppercase;
+    color: var(--walk-stamp-text-dim);
+    transition:
+      opacity 240ms ease,
+      color 300ms linear;
+  }
+
+  .walk-era span.is-shown {
+    opacity: 1;
+  }
+
+  /* ------------------------------------------------------- the hints --- */
+  /* R2d's hold bar, in two labels and no chrome.
+
+     The bar existed because the year lived at the foot of the film and the
+     reader's thumb was already down there. R2d moved the year to the top of the
+     frame in the same round and the bar spent two rounds advertising controls at
+     the one edge of the picture nothing was happening at. R2g deletes it — rule,
+     tick, labels, both buttons and the height variable everything else was
+     clearing — and puts the instruction where the reader is looking: two
+     floating words in the middle of the film, one over each zone.
+
+     THE ZONES ARE NOT THESE. The control is the whole stage, split 33/67 by the
+     engine (ZONE_SPLIT in walk.ts); these are labels for it and take no pointer
+     at all, which is why the block is pointer-events: none like the rest of the
+     overlay and why there is no button here to tab to. The stage's own tabindex
+     and the two arrow keys are the keyboard path, unchanged.
+
+     THE HEIGHT IS 48% AND IT IS A MEASURED NUMBER. The round asked for 55-58%,
+     and on a phone that is a hair above the ground line and reads correctly —
+     but the vertical fit puts the TOP of the visible ground at FIT_TOP of the
+     plot, which is 0.55, and on a wide desktop frame (where the screen slope is
+     gentle enough that the fit's steepness cap never bites) the land's own edge
+     lands at about 54% of the stage. At 56% both labels were printed on the
+     black landmass in the SKY's ink, which is the one ink chosen to be wrong
+     there. 48% clears the highest the ground can reach at any width and is still
+     open sky, under the fog on the horizon — so they take the caption's resolved
+     ink and the overlay's halo, exactly as the round intended.
+
+     Centred in their own zones rather than in the frame: the left one over the
+     middle of the back zone, the right one over the middle of the forward one.
+
+     They arrive when the opening bloom finishes and go on the reader's first
+     press of any kind, for the life of the page. */
+
+  .walk-hints {
+    position: absolute;
+    top: 48%;
+    left: 0;
+    right: 0;
+    pointer-events: none;
+  }
+
+  .walk-hint {
+    position: absolute;
+    top: 0;
+    margin: 0;
+    transform: translateX(-50%);
+    white-space: nowrap;
+    font-family: var(--walk-serif);
+    font-size: 10px;
+    line-height: 1;
+    letter-spacing: 0.26em;
+    text-indent: 0.26em;
+    text-transform: uppercase;
+    color: var(--walk-text);
+    opacity: 0;
+    transition:
+      opacity 900ms ease,
+      color 300ms linear;
+  }
+
+  /* The middles of the two zones: 33% wide and 67% wide, so 16.5% and 66.5%. */
+  .walk-hint-back {
+    left: 16.5%;
+  }
+
+  .walk-hint-fwd {
+    left: 66.5%;
+  }
+
+  /* R3: the alpha was 0.55 and the ink is --walk-text, which is resolved to
+     clear INK_TARGET at its OWN published alpha — so multiplying a composited
+     opacity on top of it threw away most of the margin the bisection had just
+     bought. Measured at 0.55 the two labels ran 2.6:1 on the 1600 afternoon.
+     They are up for one moment of the reading, over a sky the caption's ink was
+     resolved against a quarter of a frame above them, and there is no dim ink in
+     the file that is resolved for this box — so they take the full one, and the
+     quiet comes from 10px uppercase at a quarter-em of tracking rather than from
+     an alpha. The transition still runs from 0; only the destination moved. */
+  .walk-hint.is-shown {
+    opacity: 1;
+  }
+
+  /* Before the reader has entered the film there is one word on the stage and
+     nothing else: no deck, no colophon, and no date stamp either.
+
+     The stamp's opacity is the engine's (--walk-foot, which carries both the
+     opening's arrival and the pull-back's dissolve), and this rule is what
+     covers the frames before the first one is published — the poster must never
+     flash a year it is about to withhold. */
+  .walk-stage.is-poster .walk-cards,
+  .walk-stage.is-poster .walk-signoff,
+  .walk-stage.is-poster .walk-foot {
+    opacity: 0;
+  }
+
+  /* ------------------------------------------------------ poster + exit --- */
+  /* The invitation, and it is one word. Roughly where the captions live, in the
+     sky ink with the overlay's halo, faded up a beat after first paint so it
+     arrives rather than appears. No ring, no icon, nothing that looks like a
+     button: the whole stage is the target.
+
+     R2g gives it a PULSE, and the pulse is the only thing alive on the dark
+     poster: the frame behind it is the 1600 landscape at a seventh of its light
+     and this is the one thing at full. A slow breath rather than a blink — three
+     and a half seconds, ease-in-out, and the halo swells with the alpha so the
+     word looks lit rather than switched. It runs only while the invitation is
+     up, so nothing is animating for the whole of the walk.
+
+     The animation is on .is-shown rather than on the element, so the 700ms
+     arrival fade is not fighting a keyframe: the word fades up first and starts
+     breathing where the fade left it. */
+  @keyframes walk-poster-breathe {
+    0%,
+    100% {
+      opacity: 0.62;
+      text-shadow:
+        0 0 3px var(--walk-text-halo),
+        0 0 14px var(--walk-text-halo);
+    }
+    50% {
+      opacity: 0.95;
+      text-shadow:
+        0 0 5px var(--walk-text-halo),
+        0 0 26px var(--walk-text-halo);
+    }
+  }
+
+  .walk-poster {
+    position: absolute;
+    top: 20%;
+    left: 0;
+    right: 0;
+    margin: 0;
+    text-align: center;
+    font-family: var(--walk-serif);
+    font-style: italic;
+    /* R2m: UNCHANGED at 21px, and that is a measured decision rather than an
+       omission. Going from one word to three raised the obvious question of
+       whether the invitation still fits; measured with a Range rather than off
+       the element (which is edge-to-edge and centred, so its own box is the
+       whole stage), "begin the walk" sets to 173px inside a 358px in-flow
+       phone stage. It has the air it always had, so it keeps the treatment it
+       always had. */
+    font-size: 21px;
+    line-height: 1;
+    letter-spacing: 0.12em;
+    text-indent: 0.12em;
+    color: var(--walk-text);
+    opacity: 0;
+    transition:
+      opacity 700ms ease,
+      color 300ms linear;
+  }
+
+  .walk-poster.is-shown {
+    opacity: 0.92;
+    animation: walk-poster-breathe 3500ms ease-in-out 700ms infinite;
+  }
+
+  .walk-poster[hidden] {
+    display: none;
+  }
+
+  /* R2j's one new string, and everything about it is set to keep it under the
+     word rather than beside it: small against the poster's 21, the dim sky ink
+     rather than the lit one, no italic, no letter-spacing, and the same 700ms
+     arrival so it comes up with the invitation instead of after it.
+
+     It follows the poster's OWN state through the sibling combinator, which is
+     what keeps one source of truth for "is the invitation up": showPoster()
+     toggles .is-shown on the word and this reads it.
+
+     R2m SHOWS IT EVERYWHERE and makes it quieter. It was gated on .is-coarse
+     because only a coarse pointer's press went full screen; the entry is the
+     theatre on every form factor now (see begin() in walk.ts), so a desktop
+     reader is owed the same warning and the gate has nothing left to gate. And
+     it drops a step in both directions the round asked for — 10px against the
+     old 11, at 0.7 of the dim ink's own alpha rather than 0.92 — because a note
+     shown to everybody has to sit further under the one word it explains than a
+     note shown to a phone did. */
+  .walk-poster-note {
+    position: absolute;
+    top: calc(20% + 28px);
+    left: 0;
+    right: 0;
+    margin: 0;
+    text-align: center;
+    font-family: var(--walk-serif);
+    font-size: 10px;
+    line-height: 1.3;
+    letter-spacing: 0.01em;
+    color: var(--walk-text-dim);
+    opacity: 0;
+  }
+
+  /* The transition is declared on the LIT state only, so the note arrives over
+     700ms with the word and leaves the instant the word does. That asymmetry is
+     the fix rather than an oversight: the word's exit is a keyframe animation
+     being removed, which is a cut, and a note that fades out over most of a
+     second after it is a caption left holding an empty stage. */
+  .walk-poster.is-shown + .walk-poster-note {
+    opacity: 0.7;
+    transition:
+      opacity 700ms ease,
+      color 300ms linear;
+  }
+
+  /* The decline, under the note, in the note's own whisper voice — but a
+     button, with the pointer to say so. Visible only while the poster is
+     offering a resume (the engine unhides it), and it fades up with the same
+     grammar as the note above it. */
+  .walk-poster-fresh {
+    position: absolute;
+    top: calc(20% + 52px);
+    left: 0;
+    right: 0;
+    margin: 0 auto;
+    display: block;
+    width: fit-content;
+    padding: 4px 10px;
+    background: none;
+    border: 0;
+    cursor: pointer;
+    /* The overlay it lives in is pointer-events: none like all the film's
+       words; this is a control, exactly like the ✕ and the ⛶. */
+    pointer-events: auto;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    z-index: 3;
+    font-family: var(--walk-serif);
+    font-size: 11px;
+    letter-spacing: 0.02em;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    color: var(--walk-text-dim);
+    opacity: 0;
+  }
+
+  .walk-poster-fresh[hidden] {
+    display: none;
+  }
+
+  .walk-poster.is-shown ~ .walk-poster-fresh:not([hidden]) {
+    opacity: 0.75;
+    transition:
+      opacity 700ms ease,
+      color 300ms linear;
+  }
+
+  /* The way out, and — on a desktop — the way in. Top right, because top-centre
+     is the stamp's. Two strokes on a 44px target, in the dim sky ink with the
+     overlay's halo carried as a drop-shadow (text-shadow does not reach an SVG
+     stroke).
+
+     The ✕ and the ⛶ share the corner and are never up together: the engine hides
+     the ⛶ the moment the theatre opens and the ✕ takes its place, so one slot
+     always means "the other state is one press away". Everything below is the
+     same rule for both. */
+  .walk-exit,
+  .walk-full {
+    position: absolute;
+    top: calc(env(safe-area-inset-top, 0px) + 4px);
+    right: calc(env(safe-area-inset-right, 0px) + 4px);
+    display: grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    background: none;
+    border: 0;
+    /* R3: the stamp's DIM ink, not the caption's. These two live in the top
+       right corner, which is the stamp's sky rather than the caption band's —
+       and the stamp's dim is the one dim ink in the piece that is genuinely
+       resolved at the dim alpha instead of being the full ink's colour
+       published translucent. They were on --walk-text-dim, which is that
+       shorthand AND resolved against the wrong box; measured 2.7:1 at 1600. */
+    color: var(--walk-stamp-text-dim);
+    cursor: pointer;
+    pointer-events: auto;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    transition: color 300ms linear;
+  }
+
+  .walk-exit[hidden],
+  .walk-full[hidden] {
+    display: none;
+  }
+
+  .walk-exit:hover,
+  .walk-full:hover {
+    color: var(--walk-stamp-text);
+  }
+
+  .walk-exit svg,
+  .walk-full svg {
+    display: block;
+    width: 20px;
+    height: 20px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.2;
+    stroke-linecap: round;
+    /* …and the halo follows the ink to the stamp's box, for the same reason. */
+    filter:
+      drop-shadow(0 0 3px var(--walk-stamp-halo))
+      drop-shadow(0 0 12px var(--walk-stamp-halo));
+  }
+
+  /* R3's focus-ring rule, and it is one rule for the whole stage: A RING TAKES
+     THE SAME VAR ITS ELEMENT'S INK DOES. A static ring colour cannot clear four
+     centuries of sky — the piece already learned that about text — and the
+     var-driven inks are re-resolved every frame against the exact box each
+     control sits in, which is more than the 3:1 a ring is held to needs. So the
+     ✕ and the ⛶ ring in the stamp's dim ink they are drawn in, `start over` and
+     the download control ring in the land ink they stand on, and the stage
+     itself rings in the caption's. Nothing here is a new value. */
+  .walk-exit:focus-visible,
+  .walk-full:focus-visible {
+    outline: 2px solid var(--walk-stamp-text-dim);
+    outline-offset: -6px;
+  }
+
+  /* ---------------------------------------------------------- caption --- */
+  /* One caption at a time, in the sky, stacked in the same grid cell. Stacking
+     rather than swapping is what keeps the block from jumping when a two-line
+     caption follows a one-line one — and it is also what makes the block's
+     RECT constant, which the engine measures to keep the world mark out of the
+     prose at the reveal (see WORLD_MARK_* in walk.ts).
+
+     Two kinds of card share the cell, and they are shown by different rules:
+
+      · The twelve BEATS are driven by the walker's distance from their year.
+        The engine writes their opacity every frame, so they carry no opacity
+        transition of their own — a transition on top of a per-frame value only
+        lags it. Their fade is in walk.ts (see cardAlpha).
+      · The reveal's two and the ending's four are STAGE-driven one-shots and
+        keep the old latch and its staggered cross-fade: the outgoing caption is
+        most of the way out before the incoming one starts, because two
+        dissolving through each other in the same cell is unreadable for the
+        whole overlap.
+
+     THE BLOCK ITSELF NEVER MOVES, and R2f is what made that a rule.
+
+     It used to take two classes from the engine — .is-wide for the cards after
+     the walk (a wider measure) and .is-signoff for the colophon (the middle of
+     the frame) — and both were set on the same call that latched the incoming
+     card, which is to say WHILE THE OUTGOING ONE WAS STILL FADING. Traced: on
+     the press out of reveal part one the block went 350px → 405px and the
+     sentence dissolving in it re-wrapped from three lines to five under the
+     reader's eye; on the press to the sign-off the block jumped from 20% of the
+     stage to 50% and the last ending line slid down the frame as it went. Those
+     are the two text flickers the R2f feel-check reported, and they were a
+     REFLOW rather than anything to do with alpha — which is why every opacity
+     ramp in the trace was already clean.
+
+     So the geometry is a constant now and the MEASURE belongs to the card: a
+     beat's title card takes 30ch inside this cell and the prose cards take 38ch,
+     both centred in it, and nothing about the cell changes when the latch does.
+     The colophon, which is the one thing that genuinely wanted a different place
+     on the stage rather than a different measure, is not in this block at all —
+     see .walk-signoff. */
+
+  /* top: 20% rather than R2c's 16%. The date stamp moved to the top of the frame
+     in R2d and the caption band has to clear it: the acceptance is 24px of sky
+     between the era ribbon's baseline and the top of the tallest live card on a
+     390×844 phone. */
+  /* R2M: THE DECK'S TYPE SCALES WITH THE STAGE, and this is the whole of the
+     mechanism.
+     --walk-stage-w is the stage's own width in px, unitless, written by the
+     engine's resize() and by nothing else (see resize in walk.ts). It is the
+     stage rather than the viewport because the film has two homes that are
+     hundreds of pixels apart at the same viewport width — the article's column
+     and the theatre — and a media query would set the words for a box they are
+     not in.
+     THE PHONE IS UNTOUCHED, and that is arithmetic rather than an intention:
+     the ease starts at exactly the reference width, so at 390 the numerator is
+     zero, the clamp takes its lower bound of 1, and every number below it
+     computes to the px it has always been. Above that it eases — 16px of
+     caption reaches 21 (1.31x) at a 900px stage — and it is CAPPED there. The
+     cap is the reason for a clamp rather than a plain calc: the famine legs
+     frame 26 years across the whole stage, the cards hang at 20% of it, and
+     type that kept growing on a 1600px theatre would walk the deck down into
+     the ground it is describing. Everything in the deck takes the same one
+     multiplier, so nothing inside a card can drift out of proportion with the
+     rest of it. */
+  .walk-stage {
+    --walk-type-k: clamp(1, calc(1 + (var(--walk-stage-w, 390) - 390) / 1655), 1.31);
+  }
+
+  .walk-cards {
+    position: absolute;
+    top: 20%;
+    left: 50%;
+    transform: translateX(-50%);
+    /* The CELL is measured in ch and the ch is this element's own, so the block
+       grows with the words in it rather than clipping them into more lines. */
+    font-size: calc(16px * var(--walk-type-k));
+    display: grid;
+    /* The block as a whole, not the cards in it. R2d's poster sits in the
+       caption band, and 1600's card used to be a WALL card lit at full from
+       first paint, so on the poster frame the invitation and the opening title
+       were printed over each other. Fading the BLOCK is what fixed it without
+       touching the per-frame opacity the engine writes onto each card.
+       R2g removes the collision at its source — the walker starts west of 1600
+       on the runway, so no card is lit until he has crossed it — and this stays
+       anyway, because the poster is a frame with no words on it at all and one
+       composited layer is the cheapest way to say so. */
+    opacity: 1;
+    transition: opacity 600ms ease;
+    /* The cell is as wide as the widest caption needs (the reveal's prose); the
+       title-card captions take their own narrower measure inside it. */
+    width: min(44ch, 92%);
+  }
+
+  /* The colophon's own place on the stage: the middle of the frame, not the
+     caption band. It is a lockup rather than a sentence and it is the only thing
+     the piece ever puts in the centre of the picture, so it gets a slot of its
+     own instead of dragging the caption block down to it — which is what it used
+     to do, over the top of a line that had not finished fading (see the block's
+     note above). */
+  /* pointer-events: none on the SLOT and auto on the card, which is R2m's one
+     addition here. The slot is an absolutely-positioned box in the middle of
+     the picture and the picture is the control: while the card is hidden a
+     press inside this box must reach the stage's own zones exactly as a press
+     anywhere else does, and while it is shown the card itself takes its own
+     presses (the ✕ and the two buttons) without the stage hearing them. */
+  .walk-signoff {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    display: grid;
+    width: min(40ch, 88%);
+    opacity: 1;
+    transition: opacity 600ms ease;
+    pointer-events: none;
+  }
+
+  .walk-card {
+    grid-area: 1 / 1;
+    align-self: start;
+    justify-self: center;
+    width: min(30ch, 100%);
+    margin: 0;
+    text-align: center;
+    font-style: italic;
+    font-size: calc(16px * var(--walk-type-k));
+    line-height: 1.5;
+    color: var(--walk-text);
+    opacity: 0;
+    visibility: hidden;
+    transition:
+      opacity 220ms ease,
+      visibility 0s linear 220ms,
+      color 300ms linear;
+  }
+
+  .walk-card.is-shown {
+    opacity: 1;
+    visibility: visible;
+    transition:
+      opacity 300ms ease 140ms,
+      visibility 0s,
+      color 300ms linear;
+  }
+
+  /* …and the one card that arrives slowly rather than promptly: the sentence
+     that names the world's mark. It is shown a beat after the mark itself has
+     come up alone in the frame (the beat is the engine's — MARK_WORDS_GAP_MS),
+     so it needs no delay of its own; what it needs is to fade rather than to
+     appear, at something nearer the reveal's pace than the deck's. */
+  .walk-card.is-shown.is-late {
+    transition:
+      opacity 1800ms ease,
+      visibility 0s,
+      color 300ms linear;
+  }
+
+  /* A beat card's opacity is written by the engine every frame off the walker's
+     distance from its year, so it must not be transitioned or latched here. It
+     is taken out of the layout's way with visibility rather than display, so the
+     grid cell keeps the height of the tallest card and the block never jumps —
+     and `is-lit` is the engine's own visibility latch, flipped only as a card
+     leaves or enters zero. */
+  .walk-card.is-beat,
+  .walk-card.is-beat.is-lit {
+    transition: color 300ms linear;
+  }
+
+  .walk-card.is-beat.is-lit {
+    visibility: visible;
+  }
+
+  /* The reveal's two parts and the ending screen are the only cards that are
+     prose rather than a title card. A caption measure of 30ch put the reveal on
+     eight lines, which ran off the sky and onto the black land where ink is not
+     readable; a wider measure and a step down in size keeps the whole of it in
+     the air where it belongs.
+
+     R2f moves that wider measure from the BLOCK to the card. It is the same
+     38ch it always was and it renders identically; what changes is that the cell
+     around it stops resizing when the latch moves, which is what the outgoing
+     card used to re-wrap in. */
+  .walk-card.is-prose {
+    width: min(38ch, 100%);
+    font-size: calc(15px * var(--walk-type-k));
+    line-height: 1.45;
+  }
+
+  /* R2f's sequential fade, and R2l turns it into a CROSS-DISSOLVE. It is the
+     piece's one remaining piece of choreography that is not the camera.
+
+     Two cards are built out of LINES rather than out of one sentence: reveal
+     part one (the ground is money / what the line measures) and the ending
+     screen (the 1966 fact / the climb / the distance left). R2f had them arrive
+     one after another and STAY, stacking up into a paragraph. The feel-check on
+     that is what this round answers: a stack is a slide, and a reader who is
+     given a second sentence while the first is still on the sky reads the block
+     rather than the sentence. So each line now replaces the one before it — the
+     outgoing one fades out as the incoming one fades in, and at rest only the
+     LAST line of a card is up.
+
+     THE SLOT IS RESERVED AND NOTHING REFLOWS, which is R2f's flicker lesson kept:
+     every line of a card is in the DOM from the moment the card is latched and
+     all of them occupy the SAME grid cell, so the card's box is the tallest line
+     in it and does not change when the stage does. The only thing that ever
+     animates here is opacity. (Screen readers get the whole card's text once,
+     when the card is shown, and hear nothing at all about the dissolves.)
+
+     The engine owns the schedule and lights each line with .is-up (see
+     LINE_UP_MS / LINE_HOLD_MS / LINE_IN_MS in walk.ts). It does NOT own the
+     durations: they are here, in a custom property the engine switches by class,
+     so the fades a reader sees are the CSS's and the engine only decides when
+     each stage starts.
+
+     The card's own fade still runs underneath — the two multiply, and both are
+     monotonic, so the composite is too. That is the whole reason the lines are
+     spans inside the card rather than cards of their own: a second card in the
+     cell would be a second latch to keep in step. */
+  .walk-card.is-lines {
+    display: grid;
+    align-items: center;
+  }
+
+  .walk-line {
+    display: block;
+    grid-area: 1 / 1;
+    opacity: 0;
+    text-wrap: balance;
+    transition: opacity var(--walk-line-ms, 1800ms) ease;
+  }
+
+  .walk-line.is-up {
+    opacity: 1;
+  }
+
+  /* A line that arrives UNDER the one before it instead of over it — the
+     ending's last half-sentence (see the markup). It is a .walk-line like any
+     other, so it fades and is driven exactly like any other; being nested puts
+     it in ordinary flow rather than in the shared grid cell, and `display:
+     block` above already starts it on a line of its own. All this adds is the
+     air between the two, which is a line's worth less than a paragraph's: they
+     are one thought with a turn in the middle. */
+  .walk-line.is-coda {
+    margin-top: 0.55em;
+  }
+
+  /* The FIRST line of a card comes up at twice the cross-dissolve's pace: it is
+     arriving out of an empty slot rather than out of another sentence, over a
+     frame that has just stopped moving, and it is the line that tells the reader
+     what they have been looking at. The engine takes this class off the moment
+     the line starts to leave, so its fade-OUT is the ordinary cross-dissolve and
+     the two halves of the swap are the same length. */
+  .walk-line.is-slow {
+    --walk-line-ms: 3600ms;
+  }
+
+  /* …and the press that says "get on with it". The class is on the card for one
+     forced reflow and no longer (see cutLines in walk.ts): it is how a press-
+     driven stage change is a CUT rather than another second and a half of a fade
+     the reader has just asked to skip. */
+  .walk-card.is-cut .walk-line {
+    transition: none;
+  }
+
+  /* ------------------------------------------------- colour in the deck --- */
+  /* R2h. ONE charged phrase per card and never more, in four hues with fixed
+     meanings drawn out of the piece's own world: LOSS in a dried-blood red,
+     DEFIANCE in a lit saffron, DAWN in the 1947 horizon gold, GROWTH in the
+     flag's green — plus two colours that are not a code at all but a naming, the
+     line's own saffron on the word "money" and the world track's teal on the
+     world's average. The teal is used for nothing else on this stage, ever: it
+     is the second series, and a second series that appears in a sentence about
+     something else has stopped meaning anything.
+
+     The first five cards are deliberately uncoloured. The first colour a reader
+     of this piece ever meets in the text is the famine red at 1876, which only
+     works if there is nothing before it.
+
+     The mark-up is <em> because the emphasis is real, and the emphasis is the
+     COLOUR: the card is already italic and CSS italic does not compound, so
+     `inherit` on both axes says out loud that a phrase is not a second italic
+     and not a bolder weight either. Alpha and halo stay the card's — the span is
+     inside the element whose opacity the engine writes every frame, and the
+     text-shadow comes down from .walk-ui — so a coloured phrase fades in, holds
+     and leaves on exactly the same curve as the words around it.
+
+     THE VALUES ARE MEASURED rather than authored, and they are a shade off the
+     approved board's. Each one is the board's hue at the nearest lightness that
+     holds 4.5:1 against its own card's sky, swept across every year the card is
+     at full alpha with the vignette modelled, the way the ink sweep measures
+     (see resolveInk in walk.ts). Six of the seven moved by under a tenth of a
+     step. The seventh is the 1966 green and it is a genuine exception, noted
+     where it is used below. */
+  .walk-card em {
+    font-style: inherit;
+    font-weight: inherit;
+  }
+
+  /* loss — 1876, 1919, 1943. One value for all three: a hue with a fixed meaning
+     that changes shade between two famines is not a code. Bengal is the binding
+     case (its sky is the darkest frame in the piece AND its card is clamped to
+     four years, so it is still lit as the dawn starts coming up under it). */
+  /* Release day: REDDER, on the same measurement. The device pass called the
+     old #d67c69 more salmon than blood, and it was — the value was the board's
+     hue at the lightest lightness that cleared the bar, which spent all of its
+     room on lightness and none on chroma. This is the same measurement run the
+     other way: the sky behind these three cards was swept again (the real
+     composited frame, canvas + grain + vignette, every year each card is lit at
+     both widths — the binding background is 1876's, at a relative luminance of
+     0.0234), the luminance pinned at exactly the value 4.55:1 needs against it,
+     and the CHROMA taken as far as that leaves room for. C 0.116 → 0.150 in
+     OKLCH, hue 33° → 31°, which is a third more colour at the same legibility.
+     Not to the gamut's edge, which is #ff5556 and a warning light. */
+  .walk-ink-loss {
+    color: #e46e5b;
+  }
+
+  /* defiance — 1930, and the only phrase that took the board's value unchanged.
+     Dandi is walked across the famine floor, which is the darkest stretch of the
+     table outside Bengal itself, so a lit saffron has all the room it needs. */
+  .walk-ink-defiance {
+    color: #f0a050;
+  }
+
+  /* dawn — 1947, inside the quotation. Lifted toward the horizon's own light
+     rather than away from it, because the sky it stands on is midnight. */
+  .walk-ink-dawn {
+    color: #ffc993;
+  }
+
+  /* dawn, deep — 1991, and the second measured exception in this board.
+     R2l takes the green off the 1991 card (green belongs to the Green Revolution
+     alone now) and puts the dawn ink on the quotation instead. The 1947 value
+     above cannot be reused: it was resolved against MIDNIGHT, and on the daylight
+     sky of 1991 a pale gold measures 1.0:1 across the whole window the card is
+     lit for — invisible, in the same way the board's on-dark green was invisible
+     at 1974. So this is the dawn's own hue at the lightness the sky under THIS
+     card needs: swept over every year the card is at full alpha, with the
+     vignette modelled, on both the phone theatre and the desktop frame, the
+     shallowest contrast it reaches is 4.5:1 (phone, ~1996; desktop, ~1995). It
+     reads as a burnt amber rather than as first light, which is the honest cost
+     of putting a midnight colour on a daylight card and is the same trade the
+     1966 green makes below. */
+  .walk-ink-dawn-deep {
+    color: #8a4500;
+  }
+
+  /* …and the exception, which is the 1966 card.
+     Its window runs from the Green Revolution to about 1987, and across it the
+     sky climbs from the last of the morning haze to full day — through the
+     luminance where the engine's own ink gives up on cream and crosses to
+     charcoal. A FIXED colour cannot follow that. The board's on-dark green
+     (#7db584) is very nearly isoluminant with the 1974 sky and measures 1.0:1
+     there — invisible — and the on-light green above it only reaches 2.0:1 at
+     the beat itself. The only green that clears 4.5:1 across the whole window is
+     this one — the same hue at two fifths of the on-light variant's lightness,
+     which reads as a dark ink with a green cast rather than as the flag's green.
+     The real fix is not a colour: it is either the engine crossfading the two
+     growth variants the way it already crossfades its own two inks (per-frame
+     work, which this round is not allowed) or a shorter window for this card. */
+  /* …and release day makes it GREENER by the same trick as the famine red
+     above. A dark ink on a daylight sky has its lightness fixed from the other
+     side — it may not get lighter than the 4.55:1 the 1966 sky allows, which is
+     what makes this value dark — but nothing was ever spending the room it had
+     sideways. Swept again on the real frame: C 0.046 → 0.070, hue 151° → 145°,
+     toward the flag's own 142°, at the same measured contrast. It is still a
+     dark ink with a green cast rather than the flag's green, and the note above
+     about what the real fix would be still stands. */
+  .walk-ink-growth-deep {
+    color: #092e0d;
+  }
+
+  /* the line's saffron, on the word "money", and the point of it is that it is
+     the colour of the line the word has just named. */
+  .walk-ink-saffron {
+    color: #a8541a;
+  }
+
+  /* the world's teal, on the world's average, and nowhere else in the piece.
+     WORLD_COLOUR in walk.ts is what the mark and the track are drawn in. */
+  .walk-ink-world {
+    color: #247672;
+  }
+
+  /* midnight — the ending's last line, on the phrase that names the night the
+     reader raised the flag on. The 1947 sky itself (#101423 → #1a1a2c) is too
+     dark and too grey to read as a COLOUR at text size on the ending's paper
+     sky, so this is the same night lifted until the blue declares itself —
+     the dawn-deep trade again, in the other direction: a dark ink with a
+     midnight cast rather than the sky's literal value. The ending frame is the
+     one static sky in the piece (full day, both themes — the film's sky never
+     forks on theme), so one measured value is enough. */
+  .walk-ink-midnight {
+    color: #2a3160;
+  }
+
+  /* The sub-line, and R3 takes its alpha away for the hint's reason. It sat at
+     0.65 of the card's own ink; the card's ink is --walk-text, published at
+     exactly the alpha the bisection needed to clear INK_TARGET against the sky
+     under THIS box, and 0.65 of that is a number nobody resolved anything for.
+     Measured before: 3.1:1 at 1600, 2.9:1 on the Bengal floor. There is no
+     caption-band dim resolution in the file to consume (the stamp's is the only
+     dim ink that is genuinely resolved, and it is resolved against a different
+     sky a fifth of the frame higher), and adding one is a second bisection per
+     frame on a stage with no frame budget left. So the sub-line takes the ink
+     that WAS resolved for its own background, and stays subordinate the way the
+     rest of the piece's small type does: 10px, uppercase, wide tracking, under a
+     16px italic line. */
+  /* The dateline goes up with the sentence it dates. Same one multiplier, so the
+     step between the 16px line and the 10px capitals under it is the ratio it
+     has always been — a dateline that stayed at 10px under a 21px card would
+     read as a footnote to it rather than as part of it. The gap scales too, for
+     the same reason. */
+  .walk-card small {
+    display: block;
+    margin-top: calc(8px * var(--walk-type-k));
+    font-style: normal;
+    font-size: calc(10px * var(--walk-type-k));
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+  }
+
+  /* --------------------------------------------------------- sign-off --- */
+  /* The last thing in the piece, and the only thing on the stage that is a
+     lockup rather than a sentence: the site's masthead device — Playfair
+     wordmark over a saffron rule — with the rule redrawn as the flag. Two 2px
+     hairlines with 2px of nothing between them, and the nothing is the point:
+     at 2026 the sky behind it is TSOI paper, so the white band of the tricolour
+     is the page's own colour showing through.
+
+     Set in the house display face rather than the stage's Georgia, because it is
+     quoting the masthead and a masthead quoted in the wrong face is not a
+     quotation. Not italic, not a caption measure, and centred in the frame.
+
+     R2e flipped the balance inside the lockup a step at a time and R2f inverted
+     it outright, making the greeting the headline and the masthead the
+     sign-under. R2l PUTS IT BACK, on the user's call: the masthead is the larger
+     line again, the tricolour rule sits under it, and the greeting is the small
+     quiet line beneath. The two sizes are simply swapped — 24/30px on the
+     wordmark against 16/18px on the wish — and nothing else about the lockup
+     moves.
+
+     Why back: this is the site's masthead device, and a masthead is the thing
+     that is set large. Read top to bottom the R2f order was a wish signed by a
+     publication, which is a greeting card; this order is a publication saying
+     something, which is what the whole piece has been. The wish is the last line
+     on the last frame of a forty-minute walk and does not need to shout to be
+     the thing the reader leaves with.
+
+     The composition survives either way because it is a lockup and not a stack
+     of type: the tricolour rule between the two lines is the axis, both lines are
+     centred on the same width, and only their weights change places. */
+
+  .walk-card.is-signoff {
+    align-self: center;
+    width: 100%;
+    display: grid;
+    justify-items: center;
+    gap: 12px;
+    font-style: normal;
+  }
+
+  /* ------------------------------------------------------- the end-card --- */
+  /* R2m. The lockup above is untouched; everything here is what joined it.
+     The card is still a .walk-card and is still latched, faded and made visible
+     by the engine exactly like every other card in the deck — so it inherits
+     the deck's whole life cycle for free and there is no second latch to keep
+     honest. What it adds is a box that can be pressed.
+
+     NO PANEL AND NO ELEVATION. It is composed on the film's own sky, the way
+     every other card in the piece is: the only geometry it has is the ✕ in its
+     corner and the row of two actions under the picture. A boxed dialogue at the
+     end of a film that has spent four centuries putting nothing between the
+     reader and the frame would be the one piece of chrome in it. */
+  .walk-endcard {
+    position: relative;
+    pointer-events: none;
+    /* The card is as wide as the widest thing IN it rather than as wide as the
+       slot it sits in. The slot is min(40ch, 88%) of the stage — sized for a
+       caption block — and the lockup is a good deal narrower than that, so a ✕
+       hung on the slot's corner floated out over the finished chart with
+       nothing of the card near it. Shrink-wrapped, the ✕ is the card's own. */
+    width: fit-content;
+    max-width: 100%;
+    /* Release morning tried a hairline box here and the device pass took it
+       off: a rectangle at the centre of the finished chart read as chrome, and
+       the knockout (signBox in walk.ts) already gives the lockup its clearing.
+       The card's edge is the emptiness around it, like every card before it. */
+  }
+
+  .walk-endcard.is-shown {
+    pointer-events: auto;
+    /* …and it arrives rather than appears: the deck's 220ms is a caption's
+       swap, and this is the last thing the film says. Declared on the lit
+       state only, so the ✕ still takes it away at the deck's own pace. */
+    transition:
+      opacity 900ms ease,
+      visibility 0s,
+      color 300ms linear;
+  }
+
+  /* Focus lands here when the card opens, and the ring would be a rectangle
+     around the whole composition. The card is not a control — it is a region
+     that has been brought to the reader — and the things in it that ARE
+     controls carry their own focus rings. */
+  .walk-endcard:focus {
+    outline: none;
+  }
+
+  /* The picture the reader is being offered, at the share card's own 4:5.
+     Sized in px rather than in ch because it is a picture: 76px wide reads as a
+     thumbnail of something at arm's length and still shows the mast, the ridge
+     and the flag at the top of it. The hairline is the only border in the piece
+     and it is doing a specific job — a dark 1947 midnight composited onto a
+     2026 daylight sky has no edge of its own, and a picture with no edge is a
+     smudge. */
+  .walk-endcard-thumb {
+    display: block;
+    width: 76px;
+    height: auto;
+    margin-top: 2px;
+    border: 1px solid var(--walk-text-dim);
+    opacity: 0.92;
+  }
+
+  /* Wrapping, and each label unbreakable. "Share the Independence Day card" and
+     "Start over" do not both fit across a 390px phone; the choice is between
+     two tidy rows and two phrases each broken mid-sentence, and the row that
+     reads is the one that wraps between the controls rather than inside them. */
+  .walk-endcard-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 4px 20px;
+    margin-top: 2px;
+  }
+
+  /* The two actions, in the register the two retired text links had to the
+     letter: 10px tracked capitals in the resolved sky ink, a 44px target, no
+     rule, no box and no icon. They stand on the SKY here rather than on the
+     pulled-back land the old row stood on, so they take --walk-text (the
+     caption's own resolved ink) rather than --walk-land-text. */
+  .walk-share,
+  .walk-restart {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    padding: 0 4px;
+    background: none;
+    border: 0;
+    font-family: var(--walk-serif);
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-indent: 0.2em;
+    text-transform: uppercase;
+    text-align: center;
+    text-decoration: none;
+    white-space: nowrap;
+    color: var(--walk-text);
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition: color 300ms linear;
+  }
+
+  /* Nothing to raise on hover — they are already at the resolved ink — so the
+     hover state is the halo instead, which is the only thing about them that
+     was not already at full. */
+  .walk-share:hover,
+  .walk-restart:hover,
+  .walk-endcard-close:hover {
+    text-shadow:
+      0 0 3px var(--walk-text-halo),
+      0 0 6px var(--walk-text-halo),
+      0 0 12px var(--walk-text-halo);
+  }
+
+  .walk-share:focus-visible,
+  .walk-restart:focus-visible,
+  .walk-endcard-close:focus-visible {
+    outline: 2px solid var(--walk-text);
+    outline-offset: -4px;
+  }
+
+  /* The ✕, and it is the film's own ✕ in a different corner: the same two
+     hairline strokes on the same 44px target in the same dim sky ink. It sits
+     at the top RIGHT of the card rather than of the frame, because the frame's
+     top right is the theatre's exit and two ✕s in one corner would be one
+     control that means two things. */
+  /* Pulled IN from the card's own corner rather than hung off it. The slot is
+     min(40ch, 88%) of the stage and the lockup inside it is narrower than that,
+     so a ✕ at the box's true corner floats out over the finished chart with
+     nothing of the card near it — a stray glyph on the picture rather than this
+     card's control. */
+  .walk-endcard-close {
+    position: absolute;
+    top: -10px;
+    right: 2px;
+    display: grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    background: none;
+    border: 0;
+    /* The caption's own resolved ink rather than the stamp's dim. The theatre's
+       ✕ is dim because it stands in the top-right sky with nothing behind it;
+       this one stands on the FINISHED CHART, over gridlines, an axis and two
+       drawn series, and a dim glyph on a busy ground is a smudge. */
+    color: var(--walk-text);
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .walk-endcard-close svg {
+    width: 15px;
+    height: 15px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.25;
+    stroke-linecap: round;
+  }
+
+  /* Out of the tab order, out of the accessibility tree, out of the picture.
+     It is the download the share button falls back to and is never a control
+     the reader meets — see the note in the markup. */
+  .walk-send {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  @media (min-width: 900px) {
+    .walk-endcard-thumb {
+      width: 92px;
+    }
+
+    /* Column gap only. The card is clamped to the caption slot, and in the
+       Independence window the share label is long enough that the two actions
+       wrap into rows at EVERY width — so the shorthand 28px was landing on the
+       row gap, stacked on two 44px targets, and the pair read as strewn rather
+       than set. Rows keep the phone's 4px; the 28px waits for the short
+       out-of-window label, which does fit beside `Start over` here. */
+    .walk-endcard-actions {
+      gap: 4px 28px;
+    }
+  }
+
+  .signoff-mark {
+    margin: 0;
+    font-family: var(--tsoi-font-headline);
+    font-weight: 900;
+    font-size: 24px;
+    line-height: 1.15;
+    letter-spacing: -0.01em;
+    text-align: center;
+    color: var(--walk-text);
+  }
+
+  /* Saffron over green with the sky between them. A border pair rather than two
+     elements: the gap is the element's own content box, so nothing is painted
+     into the white band at all — which is why box-sizing has to be overridden
+     here. The page's reset is border-box, under which a 2px height would be
+     eaten by the two 2px borders and the tricolour would lose its white. */
+  .signoff-rule {
+    display: block;
+    box-sizing: content-box;
+    width: 92px;
+    height: 2px;
+    border-top: 2px solid #ff9933;
+    border-bottom: 2px solid #138808;
+  }
+
+  .signoff-line {
+    margin: 0;
+    font-family: var(--walk-serif);
+    font-size: 16px;
+    line-height: 1.35;
+    text-align: center;
+    text-wrap: balance;
+    color: var(--walk-text);
+    opacity: 0.85;
+  }
+
+  @media (min-width: 900px) {
+    .signoff-mark {
+      font-size: 30px;
+    }
+
+    .signoff-rule {
+      width: 120px;
+    }
+
+    .signoff-line {
+      font-size: 18px;
+    }
+  }
+
+  /* --------------------------------------------------------- whisper --- */
+  /* The quietest thing on the stage, and since R2d the only instruction left on
+     it: the offer of the rope at the flagpole. (The opening offer was a whisper
+     too until R2d gave the bar its own labels and the film a poster; there is
+     nothing left for it to say.) It retires permanently on the first thing the
+     reader does about it and never comes back. */
+
+  .walk-whisper {
+    position: absolute;
+    bottom: 5%;
+    left: 0;
+    right: 0;
+    margin: 0;
+    text-align: center;
+    font-size: 12px;
+    line-height: 1;
+    letter-spacing: 0.26em;
+    text-indent: 0.26em;
+    text-transform: uppercase;
+    color: var(--walk-land-text);
+    opacity: 0.45;
+    transition:
+      opacity 320ms ease,
+      color 300ms linear;
+  }
+
+  .walk-whisper[hidden] {
+    display: none;
+  }
+
+  /* Offered only at the flagpole, and only to a reader who has been standing
+     there doing nothing. It starts invisible and the engine fades it in a frame
+     after it enters the tree. */
+  .walk-whisper-rope {
+    bottom: 11%;
+    opacity: 0;
+  }
+
+  .walk-whisper-rope.is-shown {
+    opacity: 0.45;
+  }
+
+  /* The ending's tap whisper shares the rope's geometry and fade: it starts
+     invisible and the engine adds .is-shown a frame after unhiding it. It sits
+     at the rope's own height — the two are never on the stage at once. */
+  .walk-whisper-tap {
+    bottom: 11%;
+    opacity: 0;
+  }
+
+  .walk-whisper-tap.is-shown {
+    opacity: 0.45;
+  }
+
+  /* The halyard's hit zone: invisible, sized and placed over the mast by the
+     engine, and in the tree only while the walk is held at the flagpole.
+     touch-action: none is what lets a DOWN-DRAG be a gesture here rather than
+     the browser's scroll — and it is scoped to this element, and to those few
+     seconds, precisely so the page's scroll stays the reader's everywhere
+     else. */
+  .walk-rope {
+    position: absolute;
+    pointer-events: auto;
+    touch-action: none;
+    cursor: grab;
+  }
+
+  .walk-rope[hidden] {
+    display: none;
+  }
+
+  /* Announcements for a reader who is not looking at the stage. Visually hidden
+     rather than display:none, which screen readers skip. */
+  .walk-live {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  /* R2m: the .walk-ending-controls row that used to be styled here — `start
+     over` and `send someone this card`, two runs of tracked capitals along the
+     bottom edge of the pulled-back frame — is gone with the markup. Both
+     controls live inside the end-card now and take their register with them,
+     to the letter (see .walk-share / .walk-restart above). The one thing that
+     changed on the way is the INK: the row stood on the pull-back's lightened
+     land and took --walk-land-text; the card floats in the sky, so they take
+     the caption's own resolved --walk-text. Each is resolved against the thing
+     it is actually drawn over, which is the rule everywhere else on this
+     stage. */
+
+  /* A reader who has asked for less motion gets the captions, the era ribbon,
+     the hints and the whispers without their fades too; walk.ts already cuts the
+     walk to one beat per press, takes the opening bloom as a cut, sends no
+     birds, hides the whisper outright rather than fading it, and spawns no dust.
+
+     The poster's breath is the one thing here that is a KEYFRAME rather than a
+     transition, and it is the only animation on the page — so it is stopped
+     outright rather than shortened. What is left is a word at a steady alpha,
+     which is what the invitation was before R2g gave it a pulse. */
+  @media (prefers-reduced-motion: reduce) {
+    .walk-card,
+    .walk-card.is-shown,
+    /* …and R2l's slow arrival, which is a MORE SPECIFIC selector than the one
+       above it and would otherwise win here and give this reader the one fade in
+       the piece that survived their preference. */
+    .walk-card.is-shown.is-late,
+    .walk-card.is-beat,
+    .walk-line,
+    .walk-cards,
+    .walk-signoff,
+    .walk-era span,
+    .walk-whisper,
+    .walk-year,
+    .walk-poster,
+    .walk-poster-note,
+    .walk-grain,
+    .walk-hint,
+    .walk-exit,
+    .walk-exit svg,
+    .walk-full,
+    .walk-full svg,
+    .walk-restart,
+    .walk-share,
+    .walk-endcard-close,
+    .walk-vignette {
+      transition: none;
+    }
+
+    .walk-poster.is-shown {
+      animation: none;
+    }
+  }
+
+  /* The stamp's old 19px step at 900px viewport is gone: --walk-type-k does
+     that job now, off the STAGE's width rather than the window's, and the two
+     rules together would have compounded. The poster's step stays — it is one
+     word on a frame with nothing else on it and has no cell to grow inside. */
+  @media (min-width: 900px) {
+    .walk-poster {
+      font-size: 24px;
+    }
+  }
+
+  /* --------------------------------------------------------------- end --- */
+
+  /* --------------------------------------------------------- sources --- */
+  /* The read-footer register, lifted from the site's own longform pages
+     (economy/read/price-of-nearly-everything.astro) rather than re-invented: a
+     plain h2 and an ordered list in the byline face at 13.5px, the variant ink,
+     open leading, links in the saffron text token. Same numbers, same measure.
+
+     Held to the article's own column width rather than the stage's, because it
+     is article furniture and the stage is the object it is furniture for. */
+  .end {
+    max-width: 900px;
+    padding-top: calc(var(--tsoi-spacing-unit) * 6);
+    padding-bottom: calc(var(--tsoi-spacing-unit) * 8);
+  }
+
+  .end h2 {
+    margin: 0 0 calc(var(--tsoi-spacing-unit) * 1.5);
+    font: var(--tsoi-text-headline-sm);
+  }
+
+  /* The fold. The summary row is the heading plus a quiet caps word on the
+     same baseline; the word is the whole affordance (no marker, no icon —
+     the piece has none). Inside the open state the heading keeps exactly the
+     margin it had when it stood alone, so opening the fold reflows nothing
+     above it. */
+  .refs-fold summary {
+    display: flex;
+    align-items: baseline;
+    gap: calc(var(--tsoi-spacing-unit) * 1.5);
+    cursor: pointer;
+    list-style: none;
+  }
+
+  .refs-fold summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .refs-fold summary h2 {
+    margin: 0;
+  }
+
+  .refs-fold[open] summary {
+    margin-bottom: calc(var(--tsoi-spacing-unit) * 1.5);
+  }
+
+  .refs-fold-cue::after {
+    content: 'show';
+    font: var(--tsoi-text-label-caps);
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--tsoi-color-primary-text);
+  }
+
+  .refs-fold[open] .refs-fold-cue::after {
+    content: 'hide';
+  }
+
+  .refs {
+    margin: 0;
+    padding-left: 1.2em;
+    font: var(--tsoi-text-byline);
+    font-size: 13.5px;
+    line-height: 1.7;
+    color: var(--tsoi-color-on-surface-variant);
+  }
+
+  .refs li {
+    margin-bottom: 10px;
+    max-width: 68ch;
+  }
+
+  .refs a {
+    color: var(--tsoi-color-primary-text);
+  }
+</style>
+
+<script>
+  import { initWalk } from '../lib/independence/walk';
+
+  // R2b through R2d measured what was above the stage on every resize —
+  // --walk-lead (the masthead's height) and --walk-head (the distance from the
+  // top of the document to the top of the stage) — because the stage was a
+  // full-bleed band sized against the viewport it had to fit inside. R2e's stage
+  // is a framed deck in the page column at a flat 58dvh under a 660px ceiling,
+  // so it needs to know nothing about what is above it and there is nothing left
+  // for a script to measure. Both custom properties, the resize listener and the
+  // fonts.ready re-measure went with the band; the only thing this page's script
+  // does now is mount the walk.
+  const stage = document.querySelector<HTMLElement>('.walk-stage');
+  if (stage) initWalk(stage);
+</script>

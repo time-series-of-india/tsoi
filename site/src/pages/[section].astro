@@ -37,6 +37,10 @@ export function getStaticPaths() {
 }
 
 const { label, blurb } = Astro.props;
+// (A release-day link to "/independence#<section>" led out of here for a few
+// hours — the flagship never grew per-section anchors, so it pointed at
+// nothing and was removed the same day. Economy is the way out again.)
+const { section } = Astro.params;
 ---
 
 {/* noindex: these are wordless stubs — keep thin placeholder pages out of

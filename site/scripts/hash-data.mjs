@@ -31,6 +31,7 @@ const MANIFEST = path.join(SITE, 'src/lib/data-manifest.json');
 //   - src/pages/economy/read/upi-architecture.astro  (flagship read fetch())
 //   - src/components/play/InflationPeaks.astro       (game terrain fetch())
 //   - src/pages/economy/explore/rupee-time-machine.astro  (calculator fetch())
+//   - src/lib/independence/walk.ts                   (the /independence walk)
 //
 // DELIBERATELY NOT LISTED: /data/economy/inflation-items/*. Those shards are
 // hashed by their own generator and written under the hash they earned, so they
@@ -51,6 +52,14 @@ const RUNTIME_FILES = [
   '/data/economy/reads/shops-vs-people.json',
   '/data/economy/play/inflation-peaks.json',
   '/data/meta/traffic.json',
+  // Independence Day flagship. ONE file since R3, and the other four came out of
+  // this list in the same breath as their emission (build-independence.mjs still
+  // BUILDS and validates all five panels — it just stops writing four of them).
+  // Both ends have to move together: the loop below hard-exits on a registered
+  // path with no file behind it, so a list that outlived the generator would
+  // fail the first deploy from a clean tree, and a generator that outlived the
+  // list would ship four datasets nothing fetches.
+  '/data/independence/economy.json',
 ];
 
 const manifest = {};

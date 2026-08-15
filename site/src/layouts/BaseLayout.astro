@@ -10,13 +10,26 @@ interface Props {
   description: string;
   og_type?: 'website' | 'article';
   og_image?: string; // per-content social card; falls back to /og-default.png
+  /** Alt text for the social card. Optional and OMITTED when absent rather than
+   *  defaulted: the fallback card is the wordmark and a tagline, and a generic
+   *  "Time Series of India" alt on every page in the site is noise. Set it on
+   *  pages whose card is a PICTURE — where the image carries something the
+   *  title and description do not. */
+  og_image_alt?: string;
   noindex?: boolean;
   source_agency?: string;
   source_url?: string;
   last_updated?: string;
 }
 
-const { title, description, og_type = 'website', og_image = '/og-default.png', noindex = false } = Astro.props;
+const {
+  title,
+  description,
+  og_type = 'website',
+  og_image = '/og-default.png',
+  og_image_alt,
+  noindex = false,
+} = Astro.props;
 const canonical = new URL(Astro.url.pathname, Astro.site);
 const ogImageUrl = new URL(og_image, Astro.site);
 // Cloudflare Web Analytics (cookieless, no personal data — consistent with the
@@ -44,9 +57,11 @@ const beaconToken = import.meta.env.CF_BEACON_TOKEN || process.env.CF_BEACON_TOK
     <meta property="og:type" content={og_type} />
     <meta property="og:url" content={canonical} />
     <meta property="og:image" content={ogImageUrl} />
+    {og_image_alt && <meta property="og:image:alt" content={og_image_alt} />}
     <meta property="og:site_name" content="Time Series of India" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:image" content={ogImageUrl} />
+    {og_image_alt && <meta name="twitter:image:alt" content={og_image_alt} />}
     <link rel="alternate" type="application/rss+xml" title="Time Series of India" href="/rss.xml" />
     <link
       rel="preload"

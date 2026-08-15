@@ -1,5 +1,7 @@
-// RSS feed of reads and puzzles (the written pieces and the numbered puzzle
-// drops — the decks and dashboards are interactive surfaces, not feed items).
+// RSS feed of reads, puzzles and publication events (the written pieces, the
+// numbered puzzle drops, and the one-off releases — a game, a flagship — that
+// are publications without being a series; the decks and dashboards are
+// interactive surfaces, not feed items).
 // Reads come from the reads registry, the same single source the
 // /economy/read shelf renders from. Puzzles come from the Off by How Much?
 // puzzle data, one item per released puzzle, linked to its numbered permalink.
@@ -46,7 +48,32 @@ export function GET(context: APIContext) {
     },
   ];
 
-  const items = [...readItems, ...puzzleItems, ...gameItems].sort(
+  // The Independence Day flagship. Same shape as the game item above and for
+  // the same reason: it is a publication event, it is an .astro page rather
+  // than a collection entry, and there is no registry that owns it. The date is
+  // the release date, not the build date.
+  //
+  // The description is the page's own standfirst verbatim, which means the feed
+  // keeps the piece's withholding intact — a reader meets it in their reader
+  // the same way they meet it on the site. Nothing here names the series.
+  //
+  // The trailing slash matches every other link in this feed, and the link IS
+  // the guid: it must never churn. See the two warnings above.
+  const flagshipItems = [
+    {
+      // R2m: the piece is named. "The walk" was the working title. See the note
+      // at the head of independence.astro — "Midnight" is Nehru's and gives the
+      // series away no more than "walk" did.
+      title: 'The Walk through Midnight',
+      description:
+        'Four and a quarter centuries of India, on foot. Walk it yourself; the ground will ' +
+        'explain itself at the end.',
+      link: '/independence/',
+      pubDate: new Date('2026-08-15T00:00:00+05:30'),
+    },
+  ];
+
+  const items = [...readItems, ...puzzleItems, ...gameItems, ...flagshipItems].sort(
     (a, b) => b.pubDate.getTime() - a.pubDate.getTime()
   );
 

@@ -7,7 +7,7 @@ RTGS, cards and more) from official RBI and NPCI releases, and India's prices �
 the Consumer Price Index back to 1969 — from MoSPI and Labour Bureau releases.
 Three ways in:
 
-- **Play** — data games and card decks: guess a number, then meet the real chart.
+- **Play** — data games and an interactive film: guess a number, then meet the real chart.
 - **Read** — short pieces and longreads, each anchored to live charts.
 - **Explore** — interactive dashboards for slicing the numbers yourself.
 
@@ -44,13 +44,19 @@ Single maintainer, no SLA — issues are triaged and PRs reviewed when time allo
 The underlying data is sourced from public releases by the **Reserve Bank of
 India (RBI)**, the **National Payments Corporation of India (NPCI)**, the
 **Ministry of Statistics and Programme Implementation (MoSPI)** and the
-**Labour Bureau**.
+**Labour Bureau**. The Independence Day supplement additionally draws on the
+**Maddison Project Database** via **Our World in Data**, with a short estimated
+tail chained from **IMF World Economic Outlook** and **UN World Population
+Prospects** growth rates.
 
 - That data remains the property of the respective publishing agencies. It is
   **not** covered by this repository's code license, and it is governed by the
   source agencies' own terms of use.
-- Raw source files are **not redistributed** in this repository; the code
-  transforms publicly available releases.
+- Raw source files are **not redistributed** in this repository, with one
+  deliberate exception: `data/independence/` carries a small, static, openly
+  licensed CSV (CC BY, via Our World in Data) with its provenance documented in
+  [`data/independence/SOURCES.md`](data/independence/SOURCES.md). Everything
+  else the code transforms from publicly available releases.
 - Charts and figures cite their source. If you reuse them, please preserve the
   attribution to the source agency and to Time Series of India.
 

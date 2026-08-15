@@ -1,142 +1,24 @@
 ---
-// The dispatch front page. TSOI ships in thematic releases; each one is a
-// numbered dispatch (src/lib/dispatches.ts) and this page presents the latest
-// like a Sunday paper's front page: edition line, the read as the lead
-// story, the deck/dashboards as secondary cards, previous dispatches as a
-// compact stack. Every item deep-links straight to content — this page IS the
-// index-with-context, so nothing routes through a format index first.
-// The current dispatch is bound in a frame (saffron accent + hairline) so the
-// muted stack cards below read as smaller instances of the same object.
-// The fold is a motif, not a mechanic: the below-the-fold blocks self-unfold
-// in ~600ms on load (prefers-reduced-motion gets it instantly); never a gate.
-import { existsSync, readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+// The dispatch front page, in its SUPPLEMENT-DAY configuration (15 Aug 2026).
+// TSOI ships in thematic releases; each one is a numbered dispatch
+// (src/lib/dispatches.ts). On an ordinary day this page presents the latest
+// like a Sunday paper's front page — edition line, lead story, secondary
+// cards, previous dispatches as a compact stack. Today the front belongs to
+// the Independence Day supplement: it takes the lead position, and EVERY
+// dispatch — the current one included — compacts to the stack's card, each
+// self-identified by its own edition kicker, no "previous" label needed. The
+// full binding (lead story, boards, the game card) lives in git for the day
+// this configuration is retired.
 import StoryPage from '../layouts/StoryPage.astro';
 import FormatMotif from '../components/editorial/FormatMotif.astro';
-import GameCard from '../components/play/GameCard.astro';
-import DashCard from '../components/explore/DashCard.astro';
-import { DISPATCH_LIST, FORMAT_LABELS, type DispatchFormat } from '../lib/dispatches';
-import { SECTION_LABELS, THEME_LABELS } from '../lib/themes';
-import { readingMinutes } from '../lib/reading-time';
-import { dataThrough } from '../lib/data-through';
-import { readCoverMotif } from '../lib/reads/motif';
-import { lineMotif } from '../lib/lineMotif';
-import {
-  INFLATION_PEAKS_HREF,
-  INFLATION_PEAKS_KICKER,
-} from '../lib/play/inflation-peaks';
-import { coverAuto } from '../lib/play/peaks-cover';
-import PeaksAuto from '../components/play/PeaksAuto.astro';
-import obhm from '../data/play/off-by-how-much.json';
+import { DISPATCH_LIST } from '../lib/dispatches';
+import { THEME_LABELS } from '../lib/themes';
 
-const [latest, ...previous] = DISPATCH_LIST;
-const [lead, ...secondary] = latest.items;
-
-// Every item shows its true face at card scale: the game wears the Play
-// format's own card (the same landscape card the rack shows, and the same
-// proportion as the intro screen it opens), the dashboards wear the Explore
-// format's landscape screenshot card. Shape codes format site-wide — read =
-// wide banner across the top, then the game beside the dashboards below.
-// Decks are retired: their URLs stay alive but nothing lists them any more.
-const gameItems = secondary.filter((it) => it.format === 'game');
-const otherItems = secondary.filter((it) => it.format !== 'game');
-
-// The first board is the dispatch's data centerpiece and takes the wide
-// column ALONE; any further boards stack under the game in the narrow column
-// (dispatch No. 2: India Inflation wide, the Rupee Time Machine under the
-// game). Two boards stacked in the wide column was tried and read wrong: the
-// column twice the game's height left the game's own column mostly empty
-// below it. Without a game there is no narrow column to stack into, so every
-// board goes wide (.no-game).
-const [leadBoard, ...restBoards] = otherItems;
-const mainBoards = gameItems.length > 0 ? (leadBoard ? [leadBoard] : []) : otherItems;
-const sideBoards = gameItems.length > 0 ? restBoards : [];
-
-// The game card's gauge labels + Round 1 peek come from the game's own data,
-// exactly as the Play rack builds them (see economy/play.astro for why the
-// range is not a spoiler and why it travels as absolute counts).
-const currentPuzzle = obhm.puzzles.find((p) => p.n === obhm.current)!;
-const round1 = currentPuzzle.rounds[0] as {
-  q: string;
-  min?: number;
-  max?: number;
-  countScale?: number;
-};
-const gameScale =
-  round1.countScale && round1.min != null && round1.max != null
-    ? { minCount: round1.min * round1.countScale, maxCount: round1.max * round1.countScale }
-    : undefined;
-
-// Cover art from the committed /thumbs captures; absent thumbs degrade to
-// text cards (the rule inside DashCard), so a new item never breaks
-// the front page before its thumbs run.
-const coverOf = (dir: string, href: string) => {
-  const slug = href.split('/').pop()!;
-  return existsSync(resolve(process.cwd(), `public/thumbs/${dir}/${slug}.png`))
-    ? `/thumbs/${dir}/${slug}`
-    : undefined;
-};
-
-// Inflation Peaks' own terrain with the game's own auto standing on it: the
-// game item's cover has to be the game it actually links to, and to SAY game.
-// The full 57-year spine at 58px is a texture, and nothing about a texture
-// says game, so the line is cropped to the stretch the machine arrives loaded
-// with (2020 onward). Same crop and overlay as the Play rack's card
-// (economy/play.astro) so the two read as the same object; the auto's
-// placement is shared between them in lib/play/peaks-cover.
-const peaks = (() => {
-  const all = JSON.parse(
-    readFileSync('public/data/economy/play/inflation-peaks.json', 'utf8'),
-  ).points as { ym: string; yoy: number }[];
-  const stretch = all.filter((p) => p.ym >= '2020-01');
-  const line = lineMotif(stretch.map((p) => p.yoy), { samples: 96 });
-  return { points: line.points, auto: coverAuto(line) };
-})();
-
-// Stand-in covers for any explore product whose screenshot isn't captured
-// yet (both inflation boards have real /thumbs/explore captures now —
-// build-dashboard-thumbs.mjs): a thin line drawn from the same continuous
-// CPI index the time machine runs on, exactly as the explore gateway draws
-// them (economy/explore/index.astro). Kept wired so a new board never breaks
-// the front page before its thumbs run.
-const rtmSeries = (JSON.parse(
-  readFileSync('public/data/economy/rupee-time-machine.json', 'utf8'),
-).idx as number[]);
-// width is 8px narrower than the 300 viewBox, leaving a 4px margin either
-// side (translated in the markup below) so the last point — and the time
-// machine's solid "to" pin sitting on it — never clips against the card edge.
-const boardLine = lineMotif(rtmSeries, { samples: 140, width: 292, top: 14, bottom: 127 });
-const rtmFrom = boardLine.coords[Math.round(boardLine.coords.length * 0.22)];
-const rtmTo = boardLine.coords[boardLine.coords.length - 1];
-
-// The dispatch's manifest — "1 read · 1 deck · 2 dashboards" — so the head
-// declares everything the dispatch contains at zero scroll (on mobile the
-// lead otherwise owns the first screen and the dispatch reads as just a read).
-// Manifest order mirrors the page's own reading order (lead, then the row).
-const FORMAT_ORDER: DispatchFormat[] = ['read', 'beat-deck', 'game', 'dashboard', 'comic'];
-const manifest = FORMAT_ORDER.flatMap((f) => {
-  const n = latest.items.filter((it) => it.format === f).length;
-  return n ? [`${n} ${FORMAT_LABELS[f].toLowerCase()}${n > 1 ? 's' : ''}`] : [];
-}).join(' · ');
+const [latest] = DISPATCH_LIST;
 
 const editionMonth = (iso: string) =>
   new Date(`${iso}T00:00:00`).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
 
-// Lead-story meta (reading time + data freshness) applies when the lead is a read.
-const leadSlug = lead.href.split('/').pop()!;
-// For a read, "N min read" already names the format — no "Read · 16 min read".
-const leadMeta =
-  lead.format === 'read'
-    ? [
-        `${readingMinutes(leadSlug)} min read`,
-        ...(dataThrough(leadSlug) ? [`data through ${dataThrough(leadSlug)}`] : []),
-      ].join(' · ')
-    : FORMAT_LABELS[lead.format];
-
-// A read's own cover is a captured chart screenshot; before that capture
-// exists, a data-drawn line stands in (lib/reads/motif.ts) rather than
-// leaving the lead bare.
-const leadMotif = lead.format === 'read' && !lead.thumb ? readCoverMotif(leadSlug) : null;
 ---
 
 <StoryPage
@@ -144,190 +26,287 @@ const leadMotif = lead.format === 'read' && !lead.thumb ? readCoverMotif(leadSlu
   title="Time Series of India"
   description={`India's official public data, translated into charted reads, swipeable decks and live dashboards — released as numbered dispatches. Latest: ${THEME_LABELS[latest.theme]}.`}
 >
-  <!-- ── the current dispatch, bound as one object ─────────────────────── -->
-  <section class="dispatch">
-    <!-- edition line only — the lead story is the dispatch's pitch; a
-         standfirst here just paraphrased the lead blurb one screen apart -->
-    <header class="edition-head">
-      <p class="edition-line">
-        Dispatch No. {latest.edition} &middot; {editionMonth(latest.date)} &middot; {THEME_LABELS[latest.theme]}
-      </p>
-      <p class="edition-manifest">{manifest}</p>
-    </header>
+  <!-- ── the Independence Day supplement ───────────────────────────────── -->
+  <!-- A newspaper runs a supplement above the day's edition line on the
+       morning it belongs to, and this is that: one card, above the current
+       dispatch, and it is not part of it. It carries no edition number, no
+       format row and no manifest, because it is not a dispatch item — the
+       dispatch below is still Dispatch No. 2 and says so.
 
-    <!-- lead story: the read gets the big slot -->
-    <a class="lead" href={lead.href}>
-      {lead.thumb ? (
-        <span class="cover">
-          <img class="t-light" src={`${lead.thumb}.png`} alt="" loading="eager" />
-          <img class="t-dark" src={`${lead.thumb}-dark.png`} alt="" loading="eager" />
+       IT IS THE ONLY FULL-BLEED IMAGE CARD ON THIS PAGE, and the backdrop is
+       the film's own 1947 midnight: the sky's three stops, the dawn glow low
+       and right of centre, two ridge bands, the landmass, the saffron rim light
+       on top of it, and the walker standing on that line MID-STRIDE — the real
+       figure, drawn by the engine's own drawWalker out of a live frame of the
+       film rather than redrawn as a picture of him (see the note on the asset
+       below). The line under him is the piece's own arc: a long shallow
+       decline, a trough, and a climb at the right edge.
+
+       The type is real DOM over it rather than baked into it — the kicker and
+       the two-line lockup — so it is selectable, translatable, and legible to
+       a reader who never loads the image.
+
+       MYSTERY RULE. Nothing here names the series. The picture is a landscape
+       with a figure on it; "Midnight" is Nehru's; and the standfirst is the
+       page's own, which has been held to this rule since R1.
+
+       Front page only. It is deliberately NOT added to any section index: a
+       supplement runs once, on the front, on the day. -->
+  <section class="supplement-block">
+    <!-- The dateline stands ABOVE the frame, exactly where a dispatch's own
+         edition line stands above its binding: it names the object, and the
+         card below is free to be all picture. (It also puts real height
+         between this card's title and the first dispatch card's, which used
+         to share one glance in the viewport.) -->
+    <p class="supplement-label">
+      Independence Day Supplement &middot; 15 August 2026
+    </p>
+    <a class="supplement" href="/independence">
+      <img class="supplement-bg" src="/independence/supplement.jpg" alt="" loading="eager" />
+      <span class="supplement-ink">
+        <span class="supplement-lockup">
+          <span class="supplement-line1">The Walk</span>
+          <span class="supplement-line2">through Midnight</span>
         </span>
-      ) : leadMotif ? (
-        <span class="cover">
-          <svg class="read-motif" viewBox="0 0 200 120" preserveAspectRatio="none" aria-hidden="true">
-            <line class="baseline" x1="2" y1="112" x2="198" y2="112" stroke-width="1" />
-            <polyline points={leadMotif} />
-          </svg>
-        </span>
-      ) : null}
-      <span class="lead-body">
-        <span class="tag">{SECTION_LABELS[latest.section]} &middot; {THEME_LABELS[latest.theme]} &middot; {leadMeta}</span>
-        <FormatMotif format={lead.format} unlabelled />
-        <h2 class="lead-title">{lead.title}</h2>
-        <span class="lead-deck">{lead.blurb}</span>
-        <span class="lead-cta">Read the story <span aria-hidden="true">&rarr;</span></span>
+        <span class="supplement-deck">Walk four and a quarter centuries of India, from Akbar&rsquo;s court to now.</span>
       </span>
     </a>
-
-    <div class="below-fold">
-      <!-- secondary cards: the rest of the dispatch -->
-      <p class="list-label">Also in this dispatch</p>
-      <div class:list={['item-row', { 'no-game': gameItems.length === 0 }]}>
-        {(gameItems.length > 0 || sideBoards.length > 0) && (
-          <div class="item-col side-col">
-            {gameItems.map((it) => (
-              it.href === INFLATION_PEAKS_HREF ? (
-                <GameCard
-                  href={it.href}
-                  kicker={INFLATION_PEAKS_KICKER}
-                  title={it.title}
-                  body={it.blurb}
-                  peek="Hold to accelerate, release to coast."
-                  peekLabel="Controls"
-                >
-                  <span slot="cover" class="peaks-cover">
-                    <svg
-                      class="peaks-motif"
-                      viewBox="0 0 100 30"
-                      preserveAspectRatio="none"
-                      aria-hidden="true"
-                    >
-                      <polyline points={peaks.points} />
-                    </svg>
-                    <PeaksAuto {...peaks.auto} />
-                  </span>
-                </GameCard>
-              ) : (
-                <GameCard
-                  href={it.href}
-                  kicker={`${FORMAT_LABELS[it.format]} · Puzzle № ${obhm.current}`}
-                  title={it.title}
-                  body={it.blurb}
-                  peek={round1.q}
-                  scale={gameScale}
-                />
-              )
-            ))}
-            {/* the same board render as the wide column below — items move
-                between the two columns by position in the dispatch, so both
-                carry the full cover-or-motif fallback chain */}
-            {sideBoards.map((it) => {
-              const cover = it.format === 'dashboard' ? coverOf('explore', it.href) : undefined;
-              return (
-                <DashCard
-                  href={it.href}
-                  kicker={`${FORMAT_LABELS[it.format]}${it.meta ? ` · ${it.meta}` : ''}`}
-                  title={it.title}
-                  body={it.blurb}
-                  cover={cover}
-                  cta={it.cta ?? (it.format === 'dashboard' ? 'Open the dashboard' : 'Open')}
-                >
-                  {!cover && it.href === '/economy/explore/inflation' && (
-                    <svg slot="motif" class="board-motif" viewBox="0 0 300 141" preserveAspectRatio="none" aria-hidden="true">
-                      <g transform="translate(4, 0)">
-                        <polyline points={boardLine.points} />
-                      </g>
-                    </svg>
-                  )}
-                  {!cover && it.href === '/economy/explore/rupee-time-machine' && (
-                    <svg slot="motif" class="rtm-motif" viewBox="0 0 300 141" preserveAspectRatio="none" aria-hidden="true">
-                      <g transform="translate(4, 0)">
-                        <polyline points={boardLine.points} />
-                        <circle class="pin-from" cx={rtmFrom.x} cy={rtmFrom.y} r="3.25" />
-                        <circle class="pin-to" cx={rtmTo.x} cy={rtmTo.y} r="3.25" />
-                      </g>
-                    </svg>
-                  )}
-                </DashCard>
-              );
-            })}
-          </div>
-        )}
-        {mainBoards.length > 0 && (
-          <div class="item-col">
-            {mainBoards.map((it) => {
-              const cover = it.format === 'dashboard' ? coverOf('explore', it.href) : undefined;
-              return (
-                <DashCard
-                  href={it.href}
-                  kicker={`${FORMAT_LABELS[it.format]}${it.meta ? ` · ${it.meta}` : ''}`}
-                  title={it.title}
-                  body={it.blurb}
-                  cover={cover}
-                  cta={it.cta ?? (it.format === 'dashboard' ? 'Open the dashboard' : 'Open')}
-                >
-                  {!cover && it.href === '/economy/explore/inflation' && (
-                    <svg slot="motif" class="board-motif" viewBox="0 0 300 141" preserveAspectRatio="none" aria-hidden="true">
-                      <g transform="translate(4, 0)">
-                        <polyline points={boardLine.points} />
-                      </g>
-                    </svg>
-                  )}
-                  {!cover && it.href === '/economy/explore/rupee-time-machine' && (
-                    <svg slot="motif" class="rtm-motif" viewBox="0 0 300 141" preserveAspectRatio="none" aria-hidden="true">
-                      <g transform="translate(4, 0)">
-                        <polyline points={boardLine.points} />
-                        <circle class="pin-from" cx={rtmFrom.x} cy={rtmFrom.y} r="3.25" />
-                        <circle class="pin-to" cx={rtmTo.x} cy={rtmTo.y} r="3.25" />
-                      </g>
-                    </svg>
-                  )}
-                </DashCard>
-              );
-            })}
-          </div>
-        )}
-      </div>
-    </div>
   </section>
 
-  <!-- ── the stack: previous dispatches, compact cards ─────────────────── -->
-  {previous.length > 0 && (
-    <section class="stack">
-      <p class="list-label">Previous dispatches</p>
-      {previous.map((d) => {
-        const cover = d.items.find((it) => it.thumb);
-        return (
-        <article class:list={['stack-card', { 'has-cover': !!cover }]}>
-          {cover && (
-            <a class="stack-cover" href={cover.href} aria-label={cover.title}>
-              <img class="t-light" src={`${cover.thumb}.png`} alt="" loading="lazy" />
-              <img class="t-dark" src={`${cover.thumb}-dark.png`} alt="" loading="lazy" />
-            </a>
-          )}
-          <div class="stack-head">
-            <span class="stack-kicker">Dispatch No. {d.edition} &middot; {editionMonth(d.date)}</span>
-            <span class="stack-theme">{THEME_LABELS[d.theme]}</span>
-          </div>
-          <ul class="stack-items">
-            {d.items.map((it) => (
-              <li>
-                <a href={it.href}>
-                  <FormatMotif format={it.format} meta={it.meta} />
-                  <span class="stack-title">{it.title}</span>
-                  <span class="stack-arrow" aria-hidden="true">&rarr;</span>
-                </a>
-              </li>
-            ))}
-          </ul>
-        </article>
-        );
-      })}
-    </section>
-  )}
+  <!-- ── the dispatches, every one the same compact card ───────────────── -->
+  <!-- Supplement-day configuration: the current dispatch folds into the same
+       stack card the previous ones wear, each self-named by its edition
+       kicker, so no "Previous dispatches" label is needed and nothing below
+       the supplement competes with it for the lead. Format is carried by each
+       item's motif — the house's wordless format language — never by a text
+       badge. The full current-dispatch binding is in git, pre-supplement. -->
+  <section class="stack">
+    {DISPATCH_LIST.map((d) => {
+      const cover = d.items.find((it) => it.thumb);
+      return (
+      <article class:list={['stack-card', { 'has-cover': !!cover }]}>
+        {cover && (
+          <a class="stack-cover" href={cover.href} aria-label={cover.title}>
+            <img class="t-light" src={`${cover.thumb}.png`} alt="" loading="lazy" />
+            <img class="t-dark" src={`${cover.thumb}-dark.png`} alt="" loading="lazy" />
+          </a>
+        )}
+        <div class="stack-head">
+          <span class="stack-kicker">Dispatch No. {d.edition} &middot; {editionMonth(d.date)}</span>
+          <span class="stack-theme">{THEME_LABELS[d.theme]}</span>
+        </div>
+        <ul class="stack-items">
+          {d.items.map((it) => (
+            <li>
+              <a href={it.href}>
+                <FormatMotif format={it.format} variant={it.motif} meta={it.meta} />
+                <span class="stack-title">{it.title}</span>
+                <span class="stack-arrow" aria-hidden="true">&rarr;</span>
+              </a>
+            </li>
+          ))}
+        </ul>
+      </article>
+      );
+    })}
+  </section>
 </StoryPage>
 
 <style>
+  /* ── the Independence Day supplement ──────────────────────────────────── */
+  /* The front page's card grammar, kept: the same hairline in the outline
+     token, the same 4px saffron rule down the left edge that marks the current
+     dispatch below it, no icon, and no elevation — the card sits ON the page
+     rather than over it. What it does not share is the paper: this one is a
+     picture, and the picture is the film.
+
+     The BACKDROP is a baked still (public/independence/supplement.jpg,
+     generated from a live frame of the film — the sky, the ridges, the rim
+     line and the engine's own walker) and everything readable on it is DOM
+     text laid over the top. It is not a background-image: an <img> is what
+     `object-fit: cover` is for, it is what a browser preloads, and it is the
+     one element on this card that has an intrinsic size to reason about.
+
+     RESPONSIVE, and the picture is composed for it: the walker stands at the
+     exact centre of the still and the ground line runs its full width, so a
+     `cover` crop at ANY column width keeps both — the crop eats sky and the
+     ends of the line, which is what the composition has spare. The card's
+     aspect ratio opens up as the column narrows, so the two authored lines of
+     the title never have to share a row with him. */
+  .supplement-block {
+    margin-bottom: calc(var(--tsoi-spacing-unit) * 4);
+  }
+
+  /* The supplement's dateline, standing above the frame the way a dispatch's
+     edition line stands above its binding: same caps voice, same saffron-as-
+     text ink, centred. On the paper, not on the picture — which is also what
+     frees the picture's own type to be nothing but the title. */
+  .supplement-label {
+    margin: 0 0 calc(var(--tsoi-spacing-unit) * 1.25);
+    text-align: center;
+    font: var(--tsoi-text-label-caps);
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--tsoi-color-primary-text);
+  }
+
+  .supplement {
+    position: relative;
+    display: block;
+    border: var(--tsoi-rule-column) solid var(--tsoi-color-outline);
+    border-left: 4px solid var(--tsoi-color-primary);
+    /* Under the ink, so the card is the right colour for the half-second
+       before the still decodes and for the reader who never gets it. */
+    background: #12151f;
+    /* The still is 1600x800 — exactly 2:1 — and the card is a hair wider than
+       that, so `cover` takes a shallow slice off the top and bottom and leaves
+       the walker and the whole of the ground line in frame at very close to the
+       scale they were composed at. (16/11 was tried first and is the mistake
+       this replaces: a 1.45 box cropping a 2.0 picture has to scale it up by
+       half again to fill, which blew the figure up to twice his composed size
+       and made the card 847px tall on the front page.) */
+    aspect-ratio: 12 / 5;
+    overflow: hidden;
+    text-decoration: none;
+    color: inherit;
+  }
+
+  .supplement-bg {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    /* The still's own subject is dead centre and its ground line runs edge to
+       edge, so a centred crop is the composed one at every width. */
+    object-position: 50% 50%;
+  }
+
+  /* The type is CENTRED over the sky, which is the part of the frame the
+     zoomed-out composition keeps clear: the walker is small and low, the
+     ground line runs the lower third, and the dawn glow is on the horizon.
+     Nothing overlaps him at any width. (The dateline that used to open this
+     block now stands above the card's border — see .supplement-label.) */
+  .supplement-ink {
+    position: relative;
+    display: block;
+    padding: calc(var(--tsoi-spacing-unit) * 2.75) calc(var(--tsoi-spacing-unit) * 2);
+    text-align: center;
+  }
+
+  /* The lockup, and it is MIXED VOICE on purpose. "The Walk" is the masthead's
+     own face — Playfair Display 900, upright — because it is the name of the
+     thing and names are set in the publication's face. "through Midnight" is
+     the film's serif italic, which is the face every word inside the film is
+     set in, so the second line is spoken in the piece's own voice rather than
+     in the paper's. One title, two registers, and the break between them is
+     where the reader crosses from the front page into the film. */
+  .supplement-lockup {
+    display: block;
+    margin-top: calc(var(--tsoi-spacing-unit) * 1.5);
+    /* Cream rather than white, and the glow is the film's own text halo: a
+       warm bloom rather than a drop shadow, because the sky behind it is lit
+       from below and a grey shadow would read as a sticker on the picture. */
+    color: #f4ece0;
+    text-shadow:
+      0 0 12px rgba(255, 170, 110, 0.28),
+      0 0 34px rgba(255, 150, 70, 0.18);
+  }
+
+  .supplement-line1,
+  .supplement-line2 {
+    display: block;
+    /* Two authored lines and never three: the measure is set by the longer of
+       them, and nothing in it is allowed to wrap. Release-day device pass:
+       a little more air between the two lines than a display face's usual
+       set-solid. */
+    white-space: nowrap;
+    line-height: 1.16;
+  }
+
+  .supplement-line1 {
+    font-family: var(--tsoi-font-headline);
+    font-weight: 900;
+    font-size: clamp(30px, 5.6vw, 54px);
+    letter-spacing: -0.015em;
+  }
+
+  .supplement-line2 {
+    /* The film declares --walk-serif on its own wrapper; this card is nowhere
+       near it, so the stack is repeated here rather than reached for. */
+    font-family: Georgia, 'Times New Roman', 'Noto Serif', serif;
+    font-style: italic;
+    font-weight: 400;
+    /* A step further below line1 than the film's own poster ratio: at card
+       size the two lines read as one title, and the italic riding nearly as
+       large as the roman above it made them compete. */
+    font-size: clamp(21px, 3.8vw, 37px);
+    letter-spacing: 0.005em;
+  }
+
+  /* The film's serif rather than the site's byline face, which is mono: this
+     line stands under a Playfair/Georgia lockup on the film's own sky, and a
+     monospaced deck there reads as a caption that wandered in from a chart. */
+  .supplement-deck {
+    display: block;
+    margin-top: calc(var(--tsoi-spacing-unit) * 1.25);
+    font-family: Georgia, 'Times New Roman', 'Noto Serif', serif;
+    font-size: clamp(12px, 1vw, 13.5px);
+    line-height: 1.5;
+    color: rgba(244, 236, 224, 0.8);
+    /* Wide enough for the sentence to sit on one line where there is room, and
+       balanced where there is not, so it never breaks one word onto a row of
+       its own under the lockup. Auto margins keep the measure on the centre
+       axis the whole block now sits on. */
+    max-width: 48ch;
+    margin-inline: auto;
+    text-wrap: balance;
+  }
+
+  /* Same hover grammar as the cards below it — a change of state, not a lift.
+     The card has no elevation to raise. */
+  .supplement:hover .supplement-bg {
+    transform: scale(1.012);
+  }
+
+  .supplement-bg {
+    transition: transform 0.4s ease;
+  }
+
+  .supplement:focus-visible {
+    outline: 2px solid var(--tsoi-color-primary);
+    outline-offset: 2px;
+  }
+
+  /* A narrow column gets a taller card, so the lockup keeps its own room and
+     the walker stays in frame under it rather than behind the words. */
+  @media (max-width: 640px) {
+    .supplement {
+      aspect-ratio: 5 / 6;
+    }
+
+    .supplement-ink {
+      padding: calc(var(--tsoi-spacing-unit) * 1.75) calc(var(--tsoi-spacing-unit) * 1.75);
+    }
+
+    .supplement-bg {
+      /* Pull the crop DOWN as the frame gets tall: the sky above his head is
+         the part the type is standing on, and the line under him is the part
+         that must not be cropped away. */
+      object-position: 50% 78%;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .supplement-bg {
+      transition: none;
+    }
+
+    .supplement:hover .supplement-bg {
+      transform: none;
+    }
+  }
+
   /* ── the dispatch frame: same anatomy as a stack card, rendered large ──── */
   .dispatch {
     padding: calc(var(--tsoi-spacing-unit) * 3) calc(var(--tsoi-spacing-unit) * 3.5)

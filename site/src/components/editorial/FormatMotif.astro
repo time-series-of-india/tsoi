@@ -16,22 +16,47 @@
 // (saffron by default, muted where the context sets it). The mark is
 // decorative — the format name travels with it for screen readers unless the
 // caller already shows it as visible text (`unlabelled`).
+import { readFileSync } from 'node:fs';
 import { FORMAT_LABELS, type DispatchFormat } from '../../lib/dispatches';
+import { lineMotif } from '../../lib/lineMotif';
 
 interface Props {
   format: DispatchFormat;
+  /** game only: 'peaks' swaps the gauge — which is Off by How Much's reveal
+   *  mechanic drawn small — for Inflation Peaks' own terrain. See the field's
+   *  note on DispatchItem. */
+  variant?: 'peaks';
   /** beat-deck only: the "N cards" kicker meta — one mini-card per card */
   meta?: string;
   /** set when visible text next to the mark already names the format */
   unlabelled?: boolean;
 }
 
-const { format, meta, unlabelled = false } = Astro.props;
+const { format, variant, meta, unlabelled = false } = Astro.props;
 
 const cardCount = (() => {
   const n = parseInt(meta ?? '', 10);
   return Number.isFinite(n) && n > 0 && n <= 6 ? n : 5; // 6 × 11px + 7 fits the slot
 })();
+
+// The peaks mark is the game's REAL terrain, not an authored zigzag: the same
+// generated spine the play rack's motif reads, the same 2020-onward crop
+// (see the `peaks` block in pages/economy/play.astro for why that crop),
+// downsampled harder because this slot is 74px, and mapped straight into the
+// slot's own 74×14 box by lineMotif's width/top/bottom knobs.
+const peaksPoints =
+  format === 'game' && variant === 'peaks'
+    ? lineMotif(
+        (
+          JSON.parse(
+            readFileSync('public/data/economy/play/inflation-peaks.json', 'utf8'),
+          ).points as { ym: string; yoy: number }[]
+        )
+          .filter((p) => p.ym >= '2020-01')
+          .map((p) => p.yoy),
+        { samples: 40, width: 72, top: 1.5, bottom: 12.5 },
+      ).points
+    : null;
 ---
 
 {format === 'read' && (
@@ -62,12 +87,23 @@ const cardCount = (() => {
     <rect class="pane" x="40" y="6" width="33" height="7" rx="1" />
   </svg>
 )}
-{format === 'game' && (
+{format === 'game' && !peaksPoints && (
   <svg class="motif" viewBox="0 0 74 14" width="74" height="14" aria-hidden="true">
     <line x1="1" y1="7" x2="21.5" y2="7" stroke-width="1.5" stroke-linecap="round" />
     <line x1="30.5" y1="7" x2="73" y2="7" stroke-width="1.5" stroke-linecap="round" />
     <circle class="pin-guess" cx="26" cy="7" r="3.25" />
     <circle class="pin-actual" cx="48" cy="7" r="3.25" />
+  </svg>
+)}
+{peaksPoints && (
+  <svg class="motif" viewBox="0 0 74 14" width="74" height="14" aria-hidden="true">
+    <polyline
+      class="terrain"
+      points={peaksPoints}
+      transform="translate(1 0)"
+      stroke-width="1.5"
+      stroke-linecap="round"
+    />
   </svg>
 )}
 {!unlabelled && <span class="sr-only">{FORMAT_LABELS[format]}</span>}
@@ -86,6 +122,8 @@ const cardCount = (() => {
      solid pin is the actual — same bead-weight as the deck's mini-cards */
   .motif .pin-guess { fill: none; stroke: currentColor; stroke-width: 1.5; }
   .motif .pin-actual { fill: currentColor; stroke: none; }
+  /* the peaks terrain: the series line, nothing filled */
+  .motif .terrain { fill: none; stroke: currentColor; stroke-linejoin: round; }
   .sr-only {
     position: absolute; width: 1px; height: 1px;
     padding: 0; margin: -1px; overflow: hidden;

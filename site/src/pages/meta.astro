@@ -366,7 +366,7 @@ import SectionHeader from '../components/editorial/SectionHeader.astro';
   }
 
   /* Desks are flush — no margin between .desk elements — so the JS-driven
-     stacking below (see the <script>) can compute a clean handoff: bar N-1
+     stacking below (see the script block) can compute a clean handoff: bar N-1
      holds at the page-bar offset until desk N's true top arrives to touch
      it, then they move together. The resting gap before the next bar is a
      trailing `::after` spacer, deliberately NOT padding-bottom: a sticky
@@ -1534,11 +1534,15 @@ import SectionHeader from '../components/editorial/SectionHeader.astro';
     };
     // A dashed vertical marker at the bucket currently filling — this replaces
     // the halo ring the hero uses. Everything to its right is "not yet".
+    // The label sits INSIDE the grid (below the line's top end), not at
+    // position 'end' above it — 'end' shares the band the formats panel's
+    // legend lives in, and late in the UTC day the line reaches the right
+    // edge and "now" lands on the last legend entry.
     const nowMarkLine = (t: Tokens, label: string) => ({
       silent: true, symbol: 'none',
       lineStyle: { color: t.primary, width: 1, type: 'dashed' as const, opacity: 0.9 },
-      label: { show: true, formatter: 'now', position: 'end' as const,
-        color: t.primary, fontFamily: t.mono, fontSize: 10 },
+      label: { show: true, formatter: 'now', position: 'insideEndTop' as const,
+        distance: 4, color: t.primary, fontFamily: t.mono, fontSize: 10 },
       data: [{ xAxis: label }],
     });
     // The "live feed offline" placeholder both current-day panels fall back to
