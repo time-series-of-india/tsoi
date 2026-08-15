@@ -1057,6 +1057,13 @@ const HOIST_TAP_STEP = 0.25;
  *  Long enough for the Nehru card to have started arriving, short enough that a
  *  reader still holding forward does not think it has jammed. */
 const HOIST_OPEN_MS = 400;
+/** …and the CARRY's own longer version of that beat (release weekend): the
+ *  engine stands at the masthead until the midnight quotation has fully
+ *  faded in, plus a breath, before it walks on — an engine that strides off
+ *  while the words are still arriving is an engine reading over the film's
+ *  one quotation. A thumb keeps the short beat: walking off early is the
+ *  reader's own to do. */
+const HOIST_OPEN_CARRY_MS = NEHRU_RISE_MS + 900;
 /** How long a reader may stand at the pole making no progress before the second
  *  whisper offers the rope. */
 const HOIST_HINT_MS = 3000;
@@ -9262,8 +9269,13 @@ export function initWalk(stage: HTMLElement): void {
       const gating = hoist < 1;
       const limit = gating ? Math.min(endYear, GATE_YEAR) : endYear;
       // …and a beat after the flag lands before the ground moves again, so the
-      // frame the reader earned is not immediately walked out of.
-      const opening = !gating && hoistDoneAt > 0 && now - hoistDoneAt < HOIST_OPEN_MS;
+      // frame the reader earned is not immediately walked out of — a longer
+      // one under the carry, which waits out the midnight quotation's own
+      // arrival (see HOIST_OPEN_CARRY_MS).
+      const opening =
+        !gating &&
+        hoistDoneAt > 0 &&
+        now - hoistDoneAt < (playing ? HOIST_OPEN_CARRY_MS : HOIST_OPEN_MS);
       const pxPerYear = pxPerYearDrive;
       const speed = WALK_SPEED_PX_S * widthScale(size.w) * speedK * capK;
       const step = ((speed / pxPerYear) * dt) / 1000;
