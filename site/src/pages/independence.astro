@@ -132,9 +132,17 @@ const STANDFIRST =
 // piece's own 1947 midnight with the flag at the top of the mast: true to the
 // piece, and giving nothing away.
 //
-// Both PNGs live in public/independence/ as static assets. og.png is the
+// Both cards live in public/independence/ as static assets. og.jpg is the
 // 1200x630 landscape; card.png is the 1080x1350 portrait the reader can send on
 // from the ending.
+//
+// Release day: the landscape is served as JPEG, and the reason is WhatsApp.
+// The baked og.png weighed 1.2MB and WhatsApp silently drops any og:image over
+// its size ceiling, so the first real shares unfurled with no picture at all.
+// The JPEG is the same bake at 137KB (the grain hides what compression costs a
+// dark gradient), and the changed URL doubles as a cache-bust for every
+// scraper that already stored the pictureless preview. og.png stays on disk as
+// the lossless master the JPEG is derived from; nothing links to it.
 //
 // R2l REGENERATES BOTH FROM THE FILM ITSELF. R3 drew them in a standalone HTML
 // compositor — its own sky, its own hills, its own flag — which is a second
@@ -146,7 +154,7 @@ const STANDFIRST =
 // off so the frame is the film and nothing else. The greeting lockup is composed
 // over it in the sign-off's own type. The flag cannot be flag-code-wrong on
 // these cards by construction, because it is the engine's own drawMast.
-const OG_IMAGE = '/independence/og.png';
+const OG_IMAGE = '/independence/og.jpg';
 // The alt is held to the same rule as everything else on this page: it
 // describes the PICTURE and names no series.
 const OG_IMAGE_ALT =
@@ -169,6 +177,16 @@ const OG_IMAGE_ALT =
          own measure rather than a full-bleed band. The wrapper survives for one
          reason — it is where --walk-serif is declared. -->
     <div class="walk-frame">
+      <!-- Release day: the folio the film launched without. Same convention as
+           the games and the reads — it states where the piece LIVES (the play
+           shelf that lists it), never where the reader came from. The address
+           is top-level because the piece is a flagship, but its shelf is the
+           rack's. -->
+      <nav class="folio tsoi-container" aria-label="Section">
+        <a href="/economy">Economy</a><span class="dot" aria-hidden="true">&middot;</span><a
+          href="/economy/play">Play</a
+        >
+      </nav>
       <header class="tsoi-container title-block">
         <!-- Share on the kicker line's right edge — the exact placement the
              Inflation Peaks masthead taught (see .mast-top in
@@ -444,8 +462,13 @@ const OG_IMAGE_ALT =
                218 adventurers, so the number is what the document says. Its
                actual scope stays in the audit comment below and out of the
                card. -->
+          <!-- Release day: the full stop between the two cities becomes a
+               semicolon, on the device pass's finding that the sentences read
+               as two unrelated facts. The semicolon is the card's whole
+               argument made punctuation — one moment, two cities — and it
+               costs nothing the R2m trim bought. Every word is unchanged. -->
           <p class="walk-card is-beat">
-            In Agra, Akbar rules a hundred million people. In London, a few hundred merchants are
+            In Agra, Akbar rules a hundred million people; in London, a few hundred merchants are
             granted a royal charter to trade. They call themselves the East India Company.<small
               >31 DECEMBER 1600</small
             >
@@ -476,7 +499,7 @@ const OG_IMAGE_ALT =
                or a fort as readily as a river. Naming the thing costs a word
                and makes the bank a riverbank. -->
           <p class="walk-card is-beat">
-            In Bengal, the company raises a trading post on the bank of the river Hooghly. The
+            In Bengal, the Company raises a trading post on the bank of the river Hooghly. The
             village around it will grow into Calcutta.<small>BENGAL · 1690</small>
           </p>
 
@@ -490,7 +513,7 @@ const OG_IMAGE_ALT =
                revenue. "Revenue" is one of the deck's two approved money words
                (see the working note above). -->
           <p class="walk-card is-beat">
-            At Plassey, the company’s army meets the Nawab of Bengal, and the battle is decided
+            At Plassey, the Company’s army meets the Nawab of Bengal, and the battle is decided
             before it begins: his own commander has been bought. Merchants now rule Bengal, and
             collect its revenue.<small>BATTLE OF PLASSEY · 23 JUNE 1757</small>
           </p>
@@ -1134,6 +1157,29 @@ const OG_IMAGE_ALT =
      that column any more, so the compression has no job and the piece gets its
      proper masthead back. */
 
+  /* The folio, verbatim from the games and the reads: byline face, uppercase,
+     a hairline of navigation above the masthead. */
+  .folio {
+    font: var(--tsoi-text-byline);
+    font-weight: 500;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    padding: 4px 0;
+    margin-bottom: calc(var(--tsoi-spacing-unit) * 2);
+  }
+  .folio a {
+    color: var(--tsoi-color-primary-text);
+    text-decoration: none;
+  }
+  .folio a:hover {
+    text-decoration: underline;
+  }
+  .folio .dot {
+    color: var(--tsoi-color-on-surface-variant);
+    padding-inline: 5px;
+  }
+
   .title-block {
     max-width: 900px;
     margin-bottom: calc(var(--tsoi-spacing-unit) * 2);
@@ -1388,6 +1434,30 @@ const OG_IMAGE_ALT =
     display: block;
     width: 100%;
     height: 100%;
+  }
+
+  /* Release day: while the greeting holds the stage on a narrow screen, the
+     settled chart under it steps back. At a phone's size the end-card's lockup,
+     wish, thumbnail and actions land on top of the whole revealed picture —
+     axes, both lines and their labels — and the frame reads as commotion. The
+     veil is a wash of the ending's own paper sky (the 2022 palette's skyMid)
+     laid over the picture, so the chart recedes into the daylight it is
+     already standing in — fading the canvas itself was tried first and let the
+     stage's near-black backing bleed through, which read as mud. The DOM card
+     stays at full ink above it; the ✕ or a backward press hands the picture
+     back. It began as a phone rule and the desktop pass kept it: the frame is
+     larger there but the greeting still reads better on a quieted ground. */
+  .walk-canvas::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: #eee2c8;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 600ms ease;
+  }
+  .walk-stage.has-sign .walk-canvas::after {
+    opacity: 0.55;
   }
 
   /* Film grain: one 96px tile of deterministic noise, repeated, overlay-blended.
@@ -2024,11 +2094,17 @@ const OG_IMAGE_ALT =
       color 300ms linear;
   }
 
+  /* Release day: the incoming card waits for the outgoing one. The delay used
+     to be 140ms against a 220ms fade-out, so on every press through the ending
+     the two sentences were printed over each other for 80ms in the same cell —
+     reported as a flicker of commotion at the swap. The sky goes clean first
+     (220ms), takes a short breath, and only then does the next sentence rise,
+     which is the same one-voice rule the beat deck already keeps. */
   .walk-card.is-shown {
     opacity: 1;
     visibility: visible;
     transition:
-      opacity 300ms ease 140ms,
+      opacity 300ms ease 280ms,
       visibility 0s,
       color 300ms linear;
   }
@@ -2382,9 +2458,13 @@ const OG_IMAGE_ALT =
     pointer-events: auto;
     /* …and it arrives rather than appears: the deck's 220ms is a caption's
        swap, and this is the last thing the film says. Declared on the lit
-       state only, so the ✕ still takes it away at the deck's own pace. */
+       state only, so the ✕ still takes it away at the deck's own pace.
+       Release day: it also WAITS for the ending screen's last sentence to
+       finish leaving (220ms and a breath), same as every other incoming card —
+       without the delay the greeting was rising while the sentence was still
+       dissolving a band above it. */
     transition:
-      opacity 900ms ease,
+      opacity 900ms ease 280ms,
       visibility 0s,
       color 300ms linear;
   }

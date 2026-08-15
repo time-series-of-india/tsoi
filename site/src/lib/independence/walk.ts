@@ -6367,6 +6367,12 @@ export function initWalk(stage: HTMLElement): void {
       stage.focus({ preventScroll: true });
     }
     latch = i;
+    // Release day: the stage knows when the greeting is up, so narrow screens
+    // can put a veil over the settled chart under it — at a phone's size the
+    // lockup, the thumbnail, two actions and the whole revealed picture in one
+    // small frame read as commotion. Toggled here rather than in the open/close
+    // pair because every path that changes the latch runs through this call.
+    stage.classList.toggle('has-sign', i === SIGNOFF_CARD);
     for (let k = 0; k < cards.length; k++) cards[k].classList.toggle('is-shown', k === i);
     // R2f took the two block-level classes off this function, and that is the
     // FLICKER FIX rather than a tidy-up. They were set on the same call that
@@ -6631,6 +6637,32 @@ export function initWalk(stage: HTMLElement): void {
   let speaker = -1;
   let speakerAt = 0;
   let speakerFullAt = 0;
+  /**
+   * Release day: whether the speaker's own GROUND has finished arriving — the
+   * walker is at or past the end of the beat's rise — since it took the sky.
+   * The floor's ease may not begin before this is true. (Measured off the
+   * walker's position rather than off the fade touching 1, because a card the
+   * queue releases late is already past its plateau and its fade will never
+   * touch 1 again — a guard waiting on the value would keep that card on the
+   * sky for good.)
+   *
+   * The bug it closes is the read-pause's other end. A reader stops inside a
+   * led card's rise, reads, and walks on; the resume below credits the pause
+   * against the floor (correctly — the sentence was read), which parks the
+   * card at the top of its ease. But the walker is still inside the beat's own
+   * two-year rise, so the composite's other term — the distance fade — is low,
+   * and the ease dives the sentence from full to wherever the half-risen
+   * ground happens to be before the ground climbs it back up. On the stage:
+   * the text a reader just finished goes out under them and comes straight
+   * back. Traced at 1615: alpha 1.00 → 0.34 → 0.95 inside a second.
+   *
+   * The rule was always meant to be "the ease hands over to the ground": the
+   * monotone note on speakerAlpha assumes the rise ends at 1 before the floor
+   * lets go. This makes that assumption a fact — the wall clock's term holds
+   * at full until the ground is actually there to take the card, and the
+   * handover happens at 1 exactly, whatever the two clocks did in between.
+   */
+  let speakerGroundFull = false;
   let skyClearAt = 0;
   /** When the gate started taking the sky off a card that is not Nehru's, and 0
    *  when it is not — see GATE_FADE_MS. */
@@ -6736,9 +6768,14 @@ export function initWalk(stage: HTMLElement): void {
       // See OPENING_RISE_MULT.
       base = smoothstep(clamp((now - speakerAt) / CARD_RISE_AT[speaker], 0, 1));
     } else {
+      // `speakerGroundFull` holds the wall-clock term at full until the ground
+      // has arrived to take the handover — see its note above. For a card that
+      // arrived on time it flips exactly as d touches 1, so nothing steps; for
+      // a late-released card it is true from the first frame and this guard is
+      // inert, which is R2c's behaviour unchanged.
       base = Math.max(
         d,
-        now - speakerFullAt <= CARD_FLOOR_MS
+        now - speakerFullAt <= CARD_FLOOR_MS || !speakerGroundFull
           ? 1
           : 1 -
             smoothstep(clamp((now - speakerFullAt - CARD_FLOOR_MS) / CARD_FLOOR_EASE_MS, 0, 1)),
@@ -6815,9 +6852,20 @@ export function initWalk(stage: HTMLElement): void {
         cardSpoken[i] = false;
         if (speaker === i) {
           speaker = -1;
+          speakerGroundFull = false;
           skyClearAt = 0;
         }
       } else if ((raw[i] > 0 || !speaking) && !cardSpoken[i] && i !== speaker) cardDue[i] = true;
+      // The ground's arrival for the SPEAKER, read off this card's own `at`:
+      // once the walker is at or past the end of the beat's rise, the ground
+      // has finished arriving — it is at full, or already into its tail for a
+      // card the queue released late — and the floor's ease is free to hand
+      // over to it. Deliberately the rise's END rather than "the fade touched
+      // 1": a late-released card past its own plateau would never touch 1
+      // again, and a guard waiting for it would hold that card on the sky for
+      // good. One-way until the sky changes hands.
+      if (i === speaker && at - CAPTION_YEARS[i] >= Math.min(CARD_IN_YEARS, CARD_GONE[i] * 0.5))
+        speakerGroundFull = true;
       // `raw[i] > 0 || !speaking` is the lead written out: a card is due either
       // because its ground is live under the walker (the R2g rule) or because he
       // is inside its lead and has not reached the beat yet (`claim` without
@@ -6914,6 +6962,7 @@ export function initWalk(stage: HTMLElement): void {
       cardDue[speaker] = false;
       skyClearAt = now;
       speaker = -1;
+      speakerGroundFull = false;
       cardHoldAt = 0;
     }
     // …and if it does not, who is next. The queue in table order first; failing
@@ -6943,6 +6992,7 @@ export function initWalk(stage: HTMLElement): void {
       }
       if (pick >= 0) {
         speaker = pick;
+        speakerGroundFull = false;
         cardDue[pick] = false;
         // A queued card carries the wall clock; a re-lit one does not. Reduced
         // motion never carries it: that reader's press is a cut and the next cut
@@ -7098,8 +7148,25 @@ export function initWalk(stage: HTMLElement): void {
    *  puts them down (see exitTheatre). Never reset — a reader who reaches the
    *  end and then walks back into the 1800s has still finished it. */
   let seenSignoff = false;
+  /**
+   * Release day: when the greeting was summoned, for the ghost-click guard.
+   *
+   * The ninth press is a tap on the stage, and the card it summons renders its
+   * controls under the exact point the finger just left — the share control is
+   * in the middle of the frame, which is where thumbs press. A mobile browser
+   * then dispatches its synthesized click a few hundred milliseconds after the
+   * tap, at that same point, and the click lands on a control that did not
+   * exist when the reader pressed. Reported from the field as the card image
+   * downloading itself on arrival (the share's no-files fallback is the
+   * download anchor); the same ghost on `Start over` would restart the film.
+   * So for the first beat of the card's life its clicks are swallowed — a
+   * capture-phase listener, so nothing inside the card sees them.
+   */
+  let endOpenedAt = 0;
+  const END_GHOST_MS = 500;
 
   function openEndCard(): void {
+    endOpenedAt = performance.now();
     showCard(SIGNOFF_CARD);
     seenSignoff = true;
     // The piece is complete, so the walk that was banked against a locked
@@ -8231,6 +8298,7 @@ export function initWalk(stage: HTMLElement): void {
     speaker = -1;
     speakerAt = 0;
     speakerFullAt = 0;
+    speakerGroundFull = false;
     skyClearAt = 0;
     gateFadeAt = 0;
     cardsBusy = false;
@@ -9805,20 +9873,25 @@ export function initWalk(stage: HTMLElement): void {
    * September is a page that has not noticed the date. The window reverts on its
    * own with no redeploy, which is the whole point of it being a client check.
    *
-   * The LINK IS INSIDE THE TEXT as well as in `url`, and that is a fact about
-   * share targets rather than belt and braces: several of them silently drop the
-   * url field when a file is attached, and a card arriving with no way back to
-   * the piece is the one outcome worth spending a few characters on.
+   * THE LINK LIVES IN THE TEXT AND ONLY THERE. It used to be in both — a
+   * readable bare domain inside the text and the https URL in `url`, because
+   * several targets silently drop the url field when a file is attached. What
+   * that produced on the targets that keep BOTH (WhatsApp on Android, first
+   * real-world share) was the same address printed twice back to back, each
+   * half auto-linked. So the text carries the one canonical https link — the
+   * scheme kept so every target auto-links it — and `url` is not passed at
+   * all: a field some targets drop and others duplicate is a field the share
+   * is better off without.
    */
   const IDAY = (): boolean => {
     const d = new Date();
     return d.getFullYear() === 2026 && d.getMonth() === 7 && d.getDate() >= 14 && d.getDate() <= 17;
   };
-  const SHARE_URL = 'timeseriesofindia.com/independence';
+  const SHARE_URL = 'https://timeseriesofindia.com/independence';
   const shareCopy = () =>
     IDAY()
-      ? { label: 'Share the Independence Day card', text: `Happy Independence Day — ${SHARE_URL}` }
-      : { label: 'Share the midnight card', text: `The Walk through Midnight — ${SHARE_URL}` };
+      ? { label: 'Share the Independence Day card', text: `Happy Independence Day\n${SHARE_URL}` }
+      : { label: 'Share the midnight card', text: `The Walk through Midnight\n${SHARE_URL}` };
 
   const shareCard = (): void => {
     if (!sendLink) return;
@@ -9847,7 +9920,7 @@ export function initWalk(stage: HTMLElement): void {
           type: 'image/png',
         });
         if (!nav.canShare!({ files: [file] })) throw new Error('files refused');
-        await nav.share!({ files: [file], text: copy.text, url: `https://${SHARE_URL}` });
+        await nav.share!({ files: [file], text: copy.text });
       } catch (err) {
         // An AbortError is the reader closing the sheet, and re-triggering a
         // download after they said no is the one wrong answer. Everything else
@@ -9857,6 +9930,20 @@ export function initWalk(stage: HTMLElement): void {
       }
     })();
   };
+  // The ghost-click guard — see endOpenedAt. Capture phase, so the swallowed
+  // click reaches neither the share, the download anchor, `Start over` nor
+  // the ✕; a deliberate press half a second after arrival is untouched.
+  endCardEl?.addEventListener(
+    'click',
+    (e) => {
+      if (performance.now() - endOpenedAt < END_GHOST_MS) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    },
+    true,
+  );
+
   shareBtn?.addEventListener('pointerdown', (e) => e.stopPropagation());
   shareBtn?.addEventListener('click', (e) => {
     e.stopPropagation();
@@ -9904,6 +9991,7 @@ export function initWalk(stage: HTMLElement): void {
     e.stopPropagation();
     enterTheatre();
   });
+
 
   // Enter and Space on the focused stage are the poster's press, for a reader
   // who arrived by keyboard. Esc is the way out, and it is listened for on the
