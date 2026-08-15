@@ -708,15 +708,25 @@ const READ_EASE = 1;
  * it themselves, standing still with the words up, and for them the same
  * caps are a walker who stops them when they have already read.
  *
- * So the two READING brakes — readingCap and the dwell — earn their depth
- * from the thumb they serve, and the default is the AUTHORED one: a reader
- * who has never released gets full depth from their first press, so the
- * film's first read is exactly the film. It is the first real release that
- * marks a self-pacer, and from then on a fresh press gets BRAKE_SHALLOW of
- * the depth, easing back to full over BRAKE_RAMP_MS of continuous holding —
- * so the resting thumb re-earns the full brake and there is never a mode's
+ * So the READING brake — readingCap — earns its depth from the thumb it
+ * serves, and the default is the AUTHORED one: a reader who has never
+ * released gets full depth from their first press, so the film's first read
+ * is exactly the film. It is the first real release that marks a
+ * self-pacer, and from then on a fresh press gets BRAKE_SHALLOW of the
+ * depth, easing back to full over BRAKE_RAMP_MS of continuous holding — so
+ * the resting thumb re-earns the full brake and there is never a mode's
  * edge to feel. A release shorter than BRAKE_GRACE_MS is a thumb
  * repositioning, not a reader reading, and does not mark anything.
+ *
+ * THE DWELL IS DELIBERATELY NOT SCALED, and the field is why. It looks like
+ * a reading brake and it is actually the SYNC between narrative time and
+ * ground — a card's wall-clock life mapped onto the years it is about (see
+ * the dwell) — and the first cut of this scaled it: a reader who released
+ * on the 1600 card and re-pressed sprinted the ground the queue was still
+ * speaking over, and Jahangir's court landed in the 1650s. The self-pacer
+ * already pays the dwell's debt only when they re-press INSIDE a card's
+ * life; a reader who stood until the sentence finished owes nothing and is
+ * charged nothing.
  *
  * What is deliberately NOT scaled: the checkpoint bell (arrival
  * choreography, brief and shallow), the famine trudge (an authored beat —
@@ -9218,7 +9228,7 @@ export function initWalk(stage: HTMLElement): void {
     const fullPerS =
       pxPerYearDrive > 0 ? (WALK_SPEED_PX_S * widthScale(size.w)) / pxPerYearDrive : 0;
     const dwellTo = dwelling
-      ? 1 - (1 - dwellCap(speaker, fullPerS)) * braked
+      ? dwellCap(speaker, fullPerS)
       : wordsUp
         ? 1 - (1 - READ_CAP) * braked
         : 1;
@@ -10242,6 +10252,10 @@ export function initWalk(stage: HTMLElement): void {
   /** R2m: where the press that may open the film landed, and which pointer made
    *  it. Null whenever there is no candidate. See the poster's note below. */
   let posterDown: { id: number; x: number; y: number } | null = null;
+  /** The gate's banked back-zone press (see the pointerdown below): a tap in
+   *  waiting that becomes a hoist-tap on release or a back-hold when its
+   *  window closes. */
+  let gateBack: { id: number; timer: number } | null = null;
   /** How far a finger may travel and still be a tap. A scroll flick covers
    *  hundreds of px; a thumb resting on glass wanders two or three. */
   const POSTER_TAP_PX = 10;
@@ -10281,11 +10295,45 @@ export function initWalk(stage: HTMLElement): void {
     const rect = stage.getBoundingClientRect();
     const id = `p${e.pointerId}`;
     const dir = e.clientX - rect.left >= rect.width * ZONE_SPLIT ? 1 : -1;
+    // At the pole, a press on the BACK zone is not allowed to become a
+    // back-step yet: the whisper says "tap to raise the flag", and a tap has
+    // to mean that WHEREVER it lands (device-reported: a left-zone tap at
+    // the gate walked the reader away from the flag they were answering).
+    // So the press is BANKED for TAP_MS — released inside the window it is
+    // a hoist-tap (see zoneRelease), still down when the window closes it
+    // becomes the ordinary back-hold it always was, so walking back out of
+    // the gate stays exactly one held press away.
+    if (dir < 0 && gated() && !reduceMotion.matches) {
+      const pid = e.pointerId;
+      const timer = window.setTimeout(() => {
+        if (gateBack && gateBack.id === pid) {
+          gateBack = null;
+          zoneDir.set(pid, -1);
+          downAt.set(`p${pid}`, performance.now());
+          pressInput(`p${pid}`, -1);
+        }
+      }, TAP_MS);
+      gateBack = { id: pid, timer };
+      return;
+    }
     zoneDir.set(e.pointerId, dir);
     downAt.set(id, performance.now());
     pressInput(id, dir);
   });
   const zoneRelease = (e: PointerEvent) => {
+    // A banked back-zone press at the pole, resolved: released inside its
+    // window it is the tap the whisper asked for, and the flag takes its
+    // quarter. (One that outlived the window was already converted to a
+    // back-hold by its own timer and is not here.)
+    if (gateBack && e.pointerId === gateBack.id) {
+      window.clearTimeout(gateBack.timer);
+      gateBack = null;
+      if (e.type === 'pointerup' && gated()) {
+        tapHoistTo = Math.min(1, Math.max(tapHoistTo, hoist) + HOIST_TAP_STEP);
+        wake();
+      }
+      return;
+    }
     // The poster's candidate press, resolved. A tap opens the film; anything
     // that moved was a scroll and the page has already had it.
     if (posterDown && e.pointerId === posterDown.id) {
@@ -10713,6 +10761,10 @@ export function initWalk(stage: HTMLElement): void {
     hoistKey = false;
     dragId = -1;
     posterDown = null;
+    if (gateBack) {
+      window.clearTimeout(gateBack.timer);
+      gateBack = null;
+    }
     syncHolding();
   }
   window.addEventListener('blur', releaseAll);
