@@ -89,9 +89,11 @@ against already-generated data.
   the long half of the monthly inflation record (Aug 1968 onward)
 - **`site/`** — the Astro site, organized as three formats (Play, Read,
   Explore): native, spec-driven ECharts dashboards (`site/src/lib/dashboards/`),
-  longform reads, and two games ("Off by How Much?" and "Inflation Peaks"),
-  plus `site/scripts/build-*.mjs` generators that emit the static JSON the
-  browser fetches
+  longform reads, two games ("Off by How Much?" and "Inflation Peaks") and an
+  interactive film ("The Walk through Midnight" at `/independence`, built from
+  a committed CSV in `data/independence/` — the one DB-free dataset), plus
+  `site/scripts/build-*.mjs` generators that emit the static JSON the browser
+  fetches
 - **`infra/workers/`** — two small scheduled Cloudflare Workers outside the
   static build: `meta-live` (refreshes `/meta`'s live traffic snapshot) and
   `play-score` (anonymous score ingest for both games: the puzzle game's

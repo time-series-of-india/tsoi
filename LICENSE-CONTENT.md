@@ -54,15 +54,21 @@ below for the identical split applied there.
 Short quotation with attribution and a link, for review or commentary, is fine
 under ordinary fair-dealing/fair-use norms and needs no permission at all.
 
-## 3. Underlying data — government open data, no ownership claimed
+## 3. Underlying data — public data, no ownership claimed
 
-The numbers come from public releases by the **Reserve Bank of India (RBI)** and
-the **National Payments Corporation of India (NPCI)**. Facts are not
-copyrightable, and **Time Series of India claims no ownership** over the
-underlying data. It remains the property of the publishing agencies and is
-governed by their own terms of use. Raw source files are not redistributed here;
-the code transforms publicly available releases. The restrictions on the prose
-(line 2) are **not** an attempt to enclose this public data.
+The numbers come from public releases by the **Reserve Bank of India (RBI)**,
+the **National Payments Corporation of India (NPCI)**, the **Ministry of
+Statistics and Programme Implementation (MoSPI)** and the **Labour Bureau**,
+plus — for the Independence Day supplement — the **Maddison Project Database**
+via **Our World in Data**. Facts are not copyrightable, and **Time Series of
+India claims no ownership** over the underlying data. It remains the property
+of the publishing agencies and researchers and is governed by their own terms
+of use. Raw source files are not redistributed here, with one exception:
+`data/independence/` carries a small, openly licensed CSV (CC BY, via Our World
+in Data) whose provenance and attribution are documented in
+[`data/independence/SOURCES.md`](data/independence/SOURCES.md). Everything else
+the code transforms from publicly available releases. The restrictions on the
+prose (line 2) are **not** an attempt to enclose this public data.
 
 ---
 

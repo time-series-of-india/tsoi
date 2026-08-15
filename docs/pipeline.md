@@ -61,6 +61,7 @@ Which source feeds each surface:
 | Rupee time machine (explore) | MoSPI CPI + Labour Bureau CPI-IW | both ETLs → `build-rupee-time-machine-data.mjs` → `rupee-time-machine.json` |
 | Off by How Much (game) | RBI and NPCI figures | hand-authored puzzle JSON, figures taken from the releases at write time |
 | Inflation Peaks (game) | MoSPI CPI + Labour Bureau CPI-IW, spliced with the Bureau's published linking factors | both ETLs → `build-inflation-peaks.mjs` → `play/inflation-peaks.json` |
+| The Walk through Midnight (interactive film) | Maddison Project Database via Our World in Data; 2023–26 tail chained from IMF WEO + UN WPP growth rates | committed CSV in `data/independence/` → `build-independence.mjs` → `independence/economy.json` (DB-free — the one surface `tsoi trace` does not cover; see `data/independence/SOURCES.md`) |
 | /meta | Cloudflare analytics for this site | baked `traffic.json` snapshot, refreshed live (see below) |
 
 ### Explore (the dashboard desks)

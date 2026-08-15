@@ -69,6 +69,7 @@ Data JSON under `site/public/data/` is **gitignored** and regenerated at build:
 | `build-inflation-board-data.mjs` | CPI explore board + item shards | TimescaleDB (CPI tables) |
 | `build-rupee-time-machine-data.mjs` | rupee time machine dataset | TimescaleDB (CPI + CPI-IW) |
 | `build-inflation-peaks.mjs` | game terrain + the worker's weight table | TimescaleDB (CPI + CPI-IW) |
+| `build-independence.mjs` | The Walk through Midnight dataset | committed CSV in `data/independence/` (DB-free; see its `SOURCES.md`) |
 | `build-series.mjs` | time-series slices | TimescaleDB |
 | `build-india-map.mjs` | statewise map data | — |
 | `build-og-cards.mjs` / `build-og-default.mjs` | social cards | reads/dashboards registries |

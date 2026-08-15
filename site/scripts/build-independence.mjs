@@ -1,19 +1,22 @@
-// Independence Day flagship — five panel datasets (economy, demographics,
-// environment, infrastructure, governance) built directly from the static
-// CSVs in data/independence/. Deliberately DB-free: see data/independence/
-// SOURCES.md for why these sources bypass the usual
-// ETL -> TimescaleDB -> generator pipeline (small, static, externally
-// sourced, never refreshed by a cron). Consequence accepted there:
+// The Walk through Midnight (Independence Day 2026 supplement) — the walked
+// dataset, built directly from the one static CSV in data/independence/.
+// Deliberately DB-free: see data/independence/SOURCES.md for why this source
+// bypasses the usual ETL -> TimescaleDB -> generator pipeline (small, static,
+// externally sourced, never refreshed by a cron). Consequence accepted there:
 // `tsoi trace` lineage does not cover these series.
+//
+// This began as a five-panel generator (economy, demographics, environment,
+// infrastructure, governance — git: ca6fdd0). The piece became a single walked
+// line, and at release the four dead panels and the eight CSVs feeding them
+// left the public repo entirely rather than riding along as validated freight;
+// the snapshots live on internally for the piece that will actually draw them.
 //
 // Usage: node site/scripts/build-independence.mjs   (from the repo root, or
 // any cwd — paths below are resolved off this file's own location).
 //
 // Output: site/public/data/independence/economy.json — { panel, updated,
 // series[] }, series[].points is [year, value] pairs, years ascending, no null
-// points. The other four panels are still built and still validated here; since
-// R3 they are no longer WRITTEN, because the page walks one line and reads one
-// file. See the write section at the foot for why they stay built.
+// points.
 //
 // Manifest/hashing: the one logical path is registered in hash-data.mjs's
 // RUNTIME_FILES, because /independence fetches it in the browser. Run
@@ -27,14 +30,14 @@ import { writeData } from './lib/db.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const DATA_DIR = resolve(HERE, '../../data/independence');
-// SOURCES.md: "Retrieved 2026-08-11." All nine CSVs came down together.
+// SOURCES.md: "Retrieved 2026-08-11."
 const UPDATED = '2026-08-11';
 
 // ---- tiny CSV reader -------------------------------------------------------
 // Handles RFC4180 quoting (some Entity names embed commas, e.g. "Middle
 // East, North Africa, Afghanistan and Pakistan (WB)"), which a naive
-// String.split(',') would mis-parse. No external dependency for nine small
-// files.
+// String.split(',') would mis-parse. No external dependency for one small
+// file.
 function parseCsv(text) {
   const rows = [];
   let row = [], field = '', inQuotes = false;
@@ -207,136 +210,6 @@ const economy = {
   series: gdpSeries,
 };
 
-// ---- demographics.json --------------------------------------------------
-// Header is "Under-five mortality rate (selected)"; the CSV already reports
-// it as percent of live births (1911 = 33.34, not 334), matching the check
-// values directly — no per-1000 -> percent conversion needed for this file.
-const cmRaw = readCsv('child-mortality.csv');
-const cmInd = seriesFor(cmRaw, 'IND', 'Under-five mortality rate (selected)');
-const cmChn = seriesFor(cmRaw, 'CHN', 'Under-five mortality rate (selected)');
-const demographics = {
-  panel: 'demographics',
-  updated: UPDATED,
-  series: [
-    {
-      id: 'child_mortality', entity: 'India', label: 'Child mortality',
-      unit: '% of live births dying before age five',
-      points: points(cmInd),
-    },
-    {
-      id: 'child_mortality', entity: 'China', label: 'Child mortality',
-      unit: '% of live births dying before age five',
-      points: points(cmChn),
-    },
-  ],
-};
-
-// ---- environment.json -----------------------------------------------------
-// World's Code in these OWID files is "OWID_WRL" (confirmed by reading the
-// CSVs directly), not a bare "World" string.
-const CO2_ENTITIES = [
-  ['IND', 'India'],
-  ['OWID_WRL', 'World'],
-  ['USA', 'United States'],
-  ['CHN', 'China'],
-];
-const co2Raw = readCsv('co-emissions-per-capita.csv');
-const co2Series = CO2_ENTITIES.map(([code, entity]) => ({
-  id: 'co2_pc', entity, label: 'CO₂ emissions per capita',
-  unit: 'tonnes CO₂ per person',
-  points: points(seriesFor(co2Raw, code, 'CO₂ emissions per capita')),
-}));
-
-// Temperature anomaly baseline: fetched live from OWID's metadata endpoint
-// rather than hand-copied, so the figure's caption always matches what OWID
-// itself currently states as the reference period.
-let tempBaseline = 'VERIFY-ME';
-try {
-  const metaResp = await fetch('https://ourworldindata.org/grapher/annual-temperature-anomalies.metadata.json');
-  if (!metaResp.ok) throw new Error(`HTTP ${metaResp.status}`);
-  const meta = await metaResp.json();
-  const col = meta?.columns?.['Temperature anomaly'];
-  const haystack = `${col?.subtitle ?? ''} ${col?.descriptionShort ?? ''} ${meta?.chart?.subtitle ?? ''}`;
-  const m = haystack.match(/(\d{4}-\d{4})\s+mean/);
-  if (m) tempBaseline = m[1];
-  else console.warn('  ! temp_anomaly: metadata fetched but no "<YYYY-YYYY> mean" pattern found in it');
-} catch (err) {
-  console.warn(`  ! temp_anomaly: metadata fetch failed (${err.message}) — baseline set to VERIFY-ME`);
-}
-
-const tempRaw = readCsv('annual-temperature-anomalies.csv');
-const tempInd = seriesFor(tempRaw, 'IND', 'Temperature anomaly');
-const tempSeries = {
-  id: 'temp_anomaly', entity: 'India', label: 'Temperature anomaly',
-  unit: '°C', baseline: tempBaseline,
-  points: points(tempInd),
-};
-
-// spei4_sep: the September value of the 4-month SPEI, i.e. the June-September
-// monsoon window, one value per year. The 12-month index integrates backward
-// across calendar years (the failed 1918 monsoon only registers in 1919), and
-// a calendar-year mean of it smears events further; September SPEI-4 is the
-// season itself. Under this metric the five deepest years are 1918, 1965,
-// 1972, 1987 and 2002 — the canonical Indian drought years.
-const droughtRows = readCsv('drought-spei-india.csv');
-const speiPoints = droughtRows
-  .filter((r) => r.month === '9' && r.spei_4month !== 'NaN' && Number.isFinite(+r.spei_4month))
-  .map((r) => [+r.year, Math.round(+r.spei_4month * 1000) / 1000])
-  .sort((a, b) => a[0] - b[0]);
-const speiSeries = {
-  id: 'spei4_sep', entity: 'India',
-  unit: 'SPEI-4 z-score in September (June-September monsoon window)',
-  points: speiPoints,
-};
-
-const environment = {
-  panel: 'environment',
-  updated: UPDATED,
-  series: [...co2Series, tempSeries, speiSeries],
-};
-
-// ---- infrastructure.json -------------------------------------------------
-const ENERGY_ENTITIES = [
-  ['IND', 'India'],
-  ['OWID_WRL', 'World'],
-  ['USA', 'United States'],
-];
-const energyRaw = readCsv('per-capita-energy-use.csv');
-const energySeries = ENERGY_ENTITIES.map(([code, entity]) => ({
-  id: 'energy_pc', entity, label: 'Energy use per capita',
-  unit: 'kWh per person per year',
-  points: points(seriesFor(energyRaw, code, 'Total energy supply')),
-}));
-
-const elecRaw = readCsv('share-of-the-population-with-access-to-electricity.csv');
-const elecInd = seriesFor(elecRaw, 'IND', 'Share of the population with access to electricity');
-const elecSeries = {
-  id: 'electricity_access', entity: 'India', label: 'Electricity access',
-  unit: '% of population',
-  points: points(elecInd),
-};
-
-const infrastructure = {
-  panel: 'infrastructure',
-  updated: UPDATED,
-  series: [...energySeries, elecSeries],
-};
-
-// ---- governance.json ------------------------------------------------------
-const wpRaw = readCsv('share-of-women-in-parliament.csv');
-const wpInd = seriesFor(wpRaw, 'IND', 'Lower chamber female legislators');
-const governance = {
-  panel: 'governance',
-  updated: UPDATED,
-  series: [
-    {
-      id: 'women_parliament', entity: 'India', label: 'Women in parliament',
-      unit: '% of lower-house seats',
-      points: points(wpInd),
-    },
-  ],
-};
-
 // ---- validation gates -------------------------------------------------
 // Run at build time against the ACTUAL generated data, not quoted from a
 // doc. Tolerance +/-0.5% relative, per the build contract.
@@ -400,112 +273,22 @@ for (const s of [gdpGbr, gdpChn]) {
   }
 }
 
-const cmS = demographics.series.find((s) => s.id === 'child_mortality');
-checkClose('demographics child_mortality India 1911', findPoint(cmS, 1911), 33.34);
-checkClose('demographics child_mortality India 2024', findPoint(cmS, 2024), 2.66);
-
-const co2Ind = environment.series.find((s) => s.id === 'co2_pc' && s.entity === 'India');
-const co2Wrl = environment.series.find((s) => s.id === 'co2_pc' && s.entity === 'World');
-const co2Usa = environment.series.find((s) => s.id === 'co2_pc' && s.entity === 'United States');
-const co2Chn = environment.series.find((s) => s.id === 'co2_pc' && s.entity === 'China');
-// NOTE (deviation, flagged loudly): the build brief's check list gives
-// "co2_pc India 1950 = 0.18", but the source CSV has India 1950 = 0.176
-// (2.2% off — outside the 0.5% tolerance). 1951 = 0.1803, which matches the
-// brief's "0.18" to within 0.17%. This looks like an off-by-one-year
-// transcription slip in the brief. Validated against 1951 instead of 1950
-// so the gate tests a real, correct fact rather than being loosened to
-// paper over a mismatch; the 1950 discrepancy is reported to the caller.
-checkClose('environment co2_pc India 1951 (see NOTE above re: brief said 1950)', findPoint(co2Ind, 1951), 0.18);
-checkClose('environment co2_pc India 2024', findPoint(co2Ind, 2024), 2.20);
-checkClose('environment co2_pc World 2024', findPoint(co2Wrl, 2024), 4.73);
-checkClose('environment co2_pc USA 2024', findPoint(co2Usa, 2024), 14.20);
-checkClose('environment co2_pc China 2024', findPoint(co2Chn, 2024), 8.66);
-
-checkClose('environment temp_anomaly India 1940', findPoint(tempSeries, 1940), -0.922);
-checkClose('environment temp_anomaly India 2025', findPoint(tempSeries, 2025), 0.068);
-
-{
-  const years = speiSeries.points.map((p) => p[0]);
-  const first = years[0], last = years.at(-1);
-  if (first !== 1901 || last !== 2025 || years.length !== 125) {
-    throw new Error(`VALIDATION FAILED: spei4_sep spans ${first}..${last} (${years.length} pts), expected 1901..2025 (125)`);
-  }
-  const worst = Math.max(...speiSeries.points.map((p) => Math.abs(p[1])));
-  if (worst >= 3) {
-    throw new Error(`VALIDATION FAILED: spei4_sep has |value| >= 3 (worst ${worst})`);
-  }
-  // The five deepest monsoon failures under this metric must be the canonical
-  // drought years — the copy names them, so the gate holds the copy honest.
-  const deepest = [...speiSeries.points].sort((a, b) => a[1] - b[1]).slice(0, 5).map((p) => p[0]).sort();
-  const expected = [1918, 1965, 1972, 1987, 2002];
-  if (JSON.stringify(deepest) !== JSON.stringify(expected)) {
-    throw new Error(`VALIDATION FAILED: spei4_sep five deepest are ${deepest}, expected ${expected}`);
-  }
-}
-checkClose('environment spei4_sep 1918', findPoint(speiSeries, 1918), -2.244);
-checkClose('environment spei4_sep 2002', findPoint(speiSeries, 2002), -2.535);
-
-const cmChnS = demographics.series.find((s) => s.id === 'child_mortality' && s.entity === 'China');
-checkClose('demographics child_mortality China 1950', findPoint(cmChnS, 1950), 31.71);
-checkClose('demographics child_mortality China 2024', findPoint(cmChnS, 2024), 0.57);
-
-const energyInd = infrastructure.series.find((s) => s.id === 'energy_pc' && s.entity === 'India');
-const energyWrl = infrastructure.series.find((s) => s.id === 'energy_pc' && s.entity === 'World');
-const energyUsa = infrastructure.series.find((s) => s.id === 'energy_pc' && s.entity === 'United States');
-checkClose('infrastructure energy_pc India 1965', findPoint(energyInd, 1965), 1187);
-checkClose('infrastructure energy_pc India 2025', findPoint(energyInd, 2025), 7419);
-checkClose('infrastructure energy_pc World 2025', findPoint(energyWrl, 2025), 20258);
-checkClose('infrastructure energy_pc USA 2025', findPoint(energyUsa, 2025), 75051);
-
-checkClose('infrastructure electricity_access India 1993', findPoint(elecSeries, 1993), 50.9);
-checkClose('infrastructure electricity_access India 2024', findPoint(elecSeries, 2024), 99.9);
-
-const wpS = governance.series.find((s) => s.id === 'women_parliament');
-checkClose('governance women_parliament India 1952', findPoint(wpS, 1952), 4.0);
-checkClose('governance women_parliament India 2019', findPoint(wpS, 2019), 14.4);
-checkClose('governance women_parliament India 2024', findPoint(wpS, 2024), 13.7);
-checkClose('governance women_parliament India 2025', findPoint(wpS, 2025), 13.8);
-
 console.log('All validations passed.\n');
 
 // ---- write ------------------------------------------------------------
-// ONE FILE, since R3. The five-panel build (git: ca6fdd0) fetched all five in
-// the browser and this generator emitted all five; the piece is a single walked
-// line now and economy.json is the only one anything reads. The other four were
-// still being written, still being hashed into data-manifest.json, and still
-// being uploaded to the edge on every deploy, for nothing.
-//
-// The four panels above are DELIBERATELY still built and still validated. They
-// cost nothing at build time, their validation gates are the only standing check
-// that the nine source CSVs still parse and still hold the values SOURCES.md
-// says they do, and a later stage that wants demographics or environment back
-// wants them derived rather than re-derived. What is gone is only the emission.
-//
-// economy.json's path and its hashing are untouched — the same logical path in
-// hash-data.mjs's RUNTIME_FILES, hashed the same way. The four retired paths had
-// to come OUT of that list in the same change, and this is not a tidy-up: the
-// hashing loop hard-exits on a registered path with no file behind it, so
-// dropping the emission while leaving the registration would fail the first
-// deploy that ran from a clean public/data. Already-generated files on disk are
-// left exactly where they are; nothing here deletes anything.
+// ONE FILE, since R3 — the page walks one line and reads one file. The path
+// and its hashing are as they have always been: the same logical path in
+// hash-data.mjs's RUNTIME_FILES, hashed the same way.
 const written = [writeData('independence/economy.json', economy)];
 for (const path of written) console.log(`wrote ${path}`);
-console.log(
-  'not written (built and validated, but unread by the page since R3): ' +
-    'demographics, environment, infrastructure, governance',
-);
 
 // ---- report: first 2 / last 2 points of every series ---------------------
 console.log();
-for (const panel of [economy, demographics, environment, infrastructure, governance]) {
-  console.log(`== ${panel.panel} ==`);
-  for (const s of panel.series) {
-    const p = s.points;
-    const head = p.slice(0, 2).map(([y, v]) => `${y}=${v}`).join(', ');
-    const tail = p.slice(-2).map(([y, v]) => `${y}=${v}`).join(', ');
-    const extra =
-      (s.baseline ? ` baseline=${s.baseline}` : '') +
-      (s.estimated_from ? ` estimated_from=${s.estimated_from}` : '');
-    console.log(`  ${s.id} [${s.entity}] (${p.length} pts)${extra}: first [${head}] last [${tail}]`);
-  }
+console.log(`== ${economy.panel} ==`);
+for (const s of economy.series) {
+  const p = s.points;
+  const head = p.slice(0, 2).map(([y, v]) => `${y}=${v}`).join(', ');
+  const tail = p.slice(-2).map(([y, v]) => `${y}=${v}`).join(', ');
+  const extra = s.estimated_from ? ` estimated_from=${s.estimated_from}` : '';
+  console.log(`  ${s.id} [${s.entity}] (${p.length} pts)${extra}: first [${head}] last [${tail}]`);
 }
