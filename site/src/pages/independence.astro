@@ -1048,16 +1048,19 @@ const OG_IMAGE_ALT =
              centuries to earn the asking. Bottom-centre, on the ground the
              walker walks, in the LAND ink the retired foot-row controls used
              to take (the sky ink is the one ink chosen to be wrong down
-             here). Same hairline contract as the ✕ and the ⛶ otherwise: two
-             glyphs in one svg, and the engine's .is-playing on the button
-             decides whether the offer (▷) or the standing carry (the pause
-             pair) is the one showing. Up only while the walk itself is —
-             never on the poster, never in the ending, never under reduced
-             motion (see syncControls in walk.ts). Any press on the film takes
-             the walk back from it; the third hint below is what names the
-             offer at the opening. -->
-        <p class="walk-hint walk-hint-play" aria-hidden="true">or watch him walk</p>
+             here).
+
+             THE WORD IS THE CONTROL, with the round's own name for the mode
+             ("watch him walk") sitting inside the button over a hairline ▷,
+             so the label and the target are one thing to press rather than a
+             hint pointing at a glyph. While the carry runs the word goes down
+             and the pause pair takes the glyph's place (.is-playing, engine-
+             written); pausing is also what any press on the film does. Up
+             only while the walk itself is — never on the poster, never in
+             the ending, never under reduced motion (see syncControls in
+             walk.ts). -->
         <button type="button" class="walk-play" aria-label="watch him walk" hidden>
+          <span class="walk-play-word">watch him walk</span>
           <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
             <path class="walk-play-go" d="M9 6.5 L17.5 12 L9 17.5 Z" />
             <path class="walk-play-stop" d="M8.5 7 V17 M15.5 7 V17" />
@@ -2006,21 +2009,72 @@ const OG_IMAGE_ALT =
 
   /* The carry's overrides. The place: bottom-centre, on the ground, with the
      safe area carried — the whole bottom edge has been empty since R2m folded
-     the foot-row controls into the end-card. The ink: the land's, at the dim
-     alpha with the full ink on hover, exactly the pair the ✕ takes from the
-     stamp's box up in the sky — and no halo, because the halo is a sky
-     treatment and the ground behind this is its own dark mass. The face: one
-     svg, two glyphs, and the engine's .is-playing picks — the ▷ while the
-     carry is on offer, the pause pair while it is standing. Display rather
-     than opacity, because a translucent second glyph under a hairline first
-     one reads as a smudge. */
+     the foot-row controls into the end-card — and higher on a coarse pointer,
+     clear of the reach of browser chrome and resting thumbs (device-
+     reported). The ink: the land's — the word at the full alpha, the glyph
+     at the dim with the full on hover — and no halo, because the halo is a
+     sky treatment and the ground behind this is its own dark mass. The face:
+     the word over one svg of two glyphs, and the engine's .is-playing picks —
+     the word and the ▷ while the carry is on offer, the pause pair alone
+     while it is standing. Display rather than opacity, because a translucent
+     second glyph under a hairline first one reads as a smudge. The glyph
+     row is the anchored one, so the word coming and going never moves it. */
   .walk-play {
     top: auto;
     right: auto;
     bottom: calc(env(safe-area-inset-bottom, 0px) + 10px);
     left: 50%;
     transform: translateX(-50%);
+    width: auto;
+    height: auto;
+    min-width: 44px;
+    min-height: 44px;
+    padding: 8px 14px;
+    grid-template-rows: auto auto;
+    justify-items: center;
+    row-gap: 6px;
+    align-content: end;
     color: var(--walk-land-text-dim);
+    text-shadow: none;
+  }
+
+  .walk-stage.is-coarse .walk-play {
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 30px);
+  }
+
+  .walk-play-word {
+    font-family: var(--walk-serif);
+    font-size: 10px;
+    line-height: 1;
+    letter-spacing: 0.26em;
+    text-indent: 0.26em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    color: var(--walk-land-text);
+  }
+
+  .walk-play.is-playing .walk-play-word {
+    display: none;
+  }
+
+  /* The tired thumb's beckon (see BECKON_MS in walk.ts): three slow breaths
+     on the poster's own cadence, then still again. The engine puts the class
+     on once and animationend takes it off; a reader who asked for less
+     motion is never beckoned (the engine gates it too — this is the belt). */
+  @media (prefers-reduced-motion: no-preference) {
+    .walk-play.is-beckoning {
+      animation: walk-play-beckon 3200ms ease-in-out 3;
+    }
+  }
+
+  @keyframes walk-play-beckon {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.4;
+    }
   }
 
   .walk-play:hover {
@@ -2042,24 +2096,6 @@ const OG_IMAGE_ALT =
 
   .walk-play.is-playing .walk-play-stop {
     display: block;
-  }
-
-  /* …and the third hint, which is the offer's one sentence ("watch him
-     walk", the round's own name for the mode). It sits directly over the ▷
-     it names, in the land's full ink for the same reason the button is in
-     the land's dim one, and lives and dies with the other two hints (same
-     class, same engine show/retire — see hintEls in walk.ts). */
-  .walk-hint-play {
-    top: auto;
-    bottom: calc(env(safe-area-inset-bottom, 0px) + 58px);
-    left: 50%;
-    color: var(--walk-land-text);
-    /* The .walk-ui halo is a sky treatment; on the ground it read as a glow
-       (device-reported). Same call as the button's filter: none. */
-    text-shadow: none;
-    /* Its two siblings inherit this from the .walk-hints block; this one
-       stands alone next to the button it names. */
-    pointer-events: none;
   }
 
   /* ---------------------------------------------------------- caption --- */
