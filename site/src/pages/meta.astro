@@ -7,10 +7,11 @@
 //
 // Chrome-wise this page borrows the "desk" grammar from DesksView.astro (the
 // payments dashboard's multi-desk shell): a sticky saffron .page-bar holding
-// the page-global All/Humans toggle, and four .desk sections ("Overview" /
-// "Traffic" / "Formats" / "Audience") each with their own sticky .desk-bar.
-// RANGE is per-desk (Traffic, Formats and Audience each own a rangeState
-// instance; Overview has none — its tiles are all-time/now by definition).
+// the page-global All/Humans toggle, and five .desk sections ("Overview" /
+// "Traffic" / "Formats" / "Content" / "Audience") each with their own sticky
+// .desk-bar. RANGE is per-desk (Traffic, Formats and Audience each own a
+// rangeState instance; Overview and Content have none — their tiles and rows
+// are all-time by definition).
 // Traffic and Formats each also hold a "today so far" panel whose window is
 // always the current UTC day, so it ignores the range. It is NOT routed through DesksView or
 // the spec-driven runtime — this file keeps its own markup + a bespoke script
@@ -50,8 +51,8 @@ import SectionHeader from '../components/editorial/SectionHeader.astro';
       <div class="ctl">
         <span class="ctl-label" data-info="Sessions that started on the site. Scopes the Overview and Traffic panels.">Visits</span>
         <div class="seg" id="traffic-toggle">
-          <button type="button" data-value="all" data-info="Every visit the server records, bots included.">All</button>
-          <button type="button" data-value="humans" class="active" data-info="Visits from a real browser — the human floor.">Human</button>
+          <button type="button" data-value="all" class="active" data-info="Every visit the server records, bots included.">All</button>
+          <button type="button" data-value="humans" data-info="Visits from a real browser — the human floor.">Human</button>
         </div>
       </div>
     </div>
@@ -67,6 +68,10 @@ import SectionHeader from '../components/editorial/SectionHeader.astro';
 
       <div class="desk-body" id="overview-body">
         <div class="stat-strip meta-stats" hidden>
+          <div class="stat">
+            <span class="stat-value" id="stat-total">—</span>
+            <span class="stat-label" data-info="Every visit since the site went public, the day in progress included.">Total visits</span>
+          </div>
           <div class="stat">
             <span class="stat-value" id="stat-inprogress">—</span>
             <span class="stat-compare" id="stat-inprogress-compare" hidden></span>
@@ -155,9 +160,9 @@ import SectionHeader from '../components/editorial/SectionHeader.astro';
               </button>
               <div class="seg" id="range-toggle-formats"
                    data-info="Time window shown. Drag to select; double-click to reset.">
-                <button type="button" data-value="7d">7D</button>
+                <button type="button" data-value="7d" class="active">7D</button>
                 <button type="button" data-value="14d">14D</button>
-                <button type="button" data-value="all" class="active">ALL</button>
+                <button type="button" data-value="all">ALL</button>
               </div>
               <button type="button" class="panel-max" aria-label="Maximize panel">⤢</button>
             </div>
@@ -191,6 +196,32 @@ import SectionHeader from '../components/editorial/SectionHeader.astro';
       </div>
     </section>
 
+    {/* Pieces, not formats: the desk above splits page views three ways, this
+        one names the things that were read, played and explored. All-time by
+        definition, so it carries no range control — the only desk without
+        one. */}
+    <section class="desk" id="content">
+      <div class="desk-bar">
+        <button type="button" class="desk-collapse-btn" aria-expanded="true" aria-controls="content-body" aria-label="Collapse Content desk">▾</button>
+        <span class="desk-title" data-info="Each piece's all-time visits, best day first." tabindex="0">Content</span>
+        <button type="button" class="desk-max" aria-label="Maximize Content desk">⤢</button>
+      </div>
+
+      <div class="desk-body" id="content-body">
+      <div class="panels">
+        <section class="panel wide">
+          <div class="panel-bar">
+            <span class="dot" aria-hidden="true"></span>
+            <span class="panel-title" data-info="Visits to each piece since it went up. Renamed and folded-in URLs are summed into the piece they belong to.">Visits by piece</span>
+            <span class="tz-suffix">(all time)</span>
+            <div class="panel-right"><button type="button" class="panel-max" aria-label="Maximize panel">⤢</button></div>
+          </div>
+          <div class="comp-wrap" id="table-content"></div>
+        </section>
+      </div>
+      </div>
+    </section>
+
     <section class="desk" id="audience">
       <div class="desk-bar">
         <button type="button" class="desk-collapse-btn" aria-expanded="true" aria-controls="audience-body" aria-label="Collapse Audience desk">▾</button>
@@ -200,10 +231,10 @@ import SectionHeader from '../components/editorial/SectionHeader.astro';
           <div class="ctl">
             <span class="ctl-label" data-info="Time window for both tables. TODAY is the day still forming.">Range</span>
             <div class="seg" id="range-toggle-audience">
-              <button type="button" data-value="today">TODAY</button>
+              <button type="button" data-value="today" class="active">TODAY</button>
               <button type="button" data-value="7d">7D</button>
               <button type="button" data-value="14d">14D</button>
-              <button type="button" data-value="all" class="active">ALL</button>
+              <button type="button" data-value="all">ALL</button>
             </div>
           </div>
         </div>
@@ -1043,6 +1074,17 @@ import SectionHeader from '../components/editorial/SectionHeader.astro';
     const todayCountriesHuman = data.today_countries_human ?? [];
     const todayReferrers = data.today_referrers ?? [];
     const todayFormats = data.today_formats ?? [];
+    // Per-piece all-time visits (the Content desk), already canonicalised by
+    // the seeder: old and new URL forms summed, sub-routes folded into their
+    // piece, hubs left out — see build-meta.mjs. Each entry is
+    // { slug, title, format, daily: [{ day, visits, rum_visits }] }.
+    //
+    // Build-time only, and the live worker rebuilds its payload from
+    // Cloudflare's API rather than carrying this array across, so a live load
+    // arrives without it. Rather than ship an empty desk whenever the feed is
+    // up, fall back to the baked snapshot for this one array — asynchronously,
+    // so nothing else on the page waits on a second fetch.
+    let content: any[] = data.content ?? [];
     // Sealed complete days plus the day still forming. Defined up here rather
     // than beside the tables because the Countries reached tile needs it too:
     // it read the sealed arrays alone, so it undercounted every country first
@@ -1128,9 +1170,13 @@ import SectionHeader from '../components/editorial/SectionHeader.astro';
     let todayPoint: any = data.today ?? null;
     const isTodayLive = (t: any): boolean => !!t && t.day === new Date().toISOString().slice(0, 10);
 
-    // Human is the default view: it is the honest human floor, and the All side
-    // is heavily inflated by crawlers (most sharply on "countries reached").
-    let humansOnly = true;
+    // All is the default view: it is the measurement the rest of this page's
+    // series are taken at (every visit the edge records), and it is the figure
+    // the site's own traffic claims are stated in, so the page opens on the
+    // number a reader has come to check. Human — the beacon's bot-free but
+    // ad-block-undercounted floor — is one click away, and is the honest read
+    // on "countries reached", where the All side is mostly crawler geography.
+    let humansOnly = false;
     // Stat strip re-renders on the TRAFFIC toggle and on every live tick.
     // Totals are complete days PLUS the last-known in-progress bucket (the
     // tick re-sums from its fresh payload, so at UTC rollover the sealed day
@@ -1182,6 +1228,24 @@ import SectionHeader from '../components/editorial/SectionHeader.astro';
         inprogressCompareEl.hidden = true;
         inprogressLabelEl.textContent = 'Visits so far';
       }
+      // Lifetime total: every sealed day plus whatever the in-progress bucket
+      // last read. Same instrument on both sides as the tiles around it (edge
+      // visits for All, beacon visits for Human), and the same freeze
+      // convention as the tile beside it — when the feed is off or stale the
+      // last-known in-progress reading stays in the sum rather than dropping
+      // out of it, because it is a real (if no longer advancing) count of
+      // visits that happened. `today` is never also present in `daily` within
+      // one payload (both the seeder and the worker publish the current day
+      // apart from the sealed array), so nothing is counted twice.
+      // Written out in full rather than through fmtCount: this is the one
+      // figure on the page that has crossed a lakh, and fmtCount would round
+      // 1,17,610 to "1.2 L" — a number nobody can check against a claim stated
+      // in thousands, on the one tile whose whole job is to be checkable.
+      // Every other tile is still under the threshold and prints its digits
+      // too, so this reads as the same treatment, not an exception.
+      const sealedTotal = (rows: any[]) => rows.reduce((s: number, r: any) => s + (r.visits ?? 0), 0);
+      document.getElementById('stat-total')!.textContent =
+        nf.format(sealedTotal(humansOnly ? beaconDaily : daily) + (curVal ?? 0));
       // Peak day counts finished days only, so a record forming today does not
       // move it until the UTC day rolls over and that day is sealed.
       document.getElementById('stat-peak')!.textContent = peakRow ? fmtCount(peakRow.visits) : '—';
@@ -1640,6 +1704,17 @@ import SectionHeader from '../components/editorial/SectionHeader.astro';
     const trafficRange = makeRangeState(nowAnchor);
     const formatsRange = makeRangeState(nowAnchor);
     const audienceRange = makeRangeState(nowAnchor);
+    // Opening windows, set through the same setQuick every button press goes
+    // through (so the markup's `active` class, the reset chip's "back to"
+    // target and the state can't drift apart). Traffic keeps ALL — its hero is
+    // the page's headline series and the whole record belongs on it. Formats
+    // opens on 7D: the format split is a "what is being read lately" question,
+    // and 43 columns of stacked bar answers it worse than seven do. Audience
+    // opens on TODAY, the window that matches the clock in the page bar and
+    // the day-in-progress tiles above. No subscribers exist yet, so these are
+    // silent — the first render below picks the state up.
+    formatsRange.setQuick('7d');
+    audienceRange.setQuick('today');
     let currentHeroDays = heroDays;
 
     const computeWindowDays = (win: Win): string[] => {
@@ -1811,6 +1886,7 @@ import SectionHeader from '../components/editorial/SectionHeader.astro';
         renderStats();
         renderFormatsDesk();
         renderTables();       // and so does the countries leaderboard
+        renderContent();      // and the per-piece table, which carries both metrics
       }));
 
     // --- comparison tables ---
@@ -1819,9 +1895,12 @@ import SectionHeader from '../components/editorial/SectionHeader.astro';
       catch { return (c: string) => c; }
     })();
     const TOP_N = 10;
-    function renderCompTable(containerId: string, rows: DayRow[], entityKey: string, valueKey: string, nameOf: (k: string) => string) {
+    // `win` is passed in rather than read off audienceRange here: the Content
+    // desk uses the same renderer on an all-time window (null), and the two
+    // Audience tables must not start answering to a range that isn't theirs.
+    function renderCompTable(containerId: string, rows: DayRow[], entityKey: string, valueKey: string, nameOf: (k: string) => string, win: Win) {
       const t = tokens();
-      const { top, rest } = topRows(aggregateByEntity(rows, entityKey, valueKey, audienceRange.get().win), TOP_N);
+      const { top, rest } = topRows(aggregateByEntity(rows, entityKey, valueKey, win), TOP_N);
       const restTotal = rest.reduce((s, r) => s + r.total, 0);
       const maxVal = Math.max(1, ...top.map((r) => r.total), restTotal);
       const barCell = (total: number) =>
@@ -2034,19 +2113,42 @@ import SectionHeader from '../components/editorial/SectionHeader.astro';
     // actually reaches them, so "24H" finally means the last 24 hours rather
     // than "the most recent complete day".
     const renderTables = () => {
+      const win = audienceRange.get().win;
       // Ranked by visits, not page views: a referrer attributes an ARRIVAL, and
       // an arrival is a session start. Summing visits across referrers also
       // reconciles exactly with the hero's Human line (verified against eight
       // consecutive production days), which page views never did.
       renderCompTable('table-referrers', liveRows(referrersDaily, todayReferrers),
-        'host', 'visits', (h) => (h === '(direct)' ? 'Direct / none' : h));
+        'host', 'visits', (h) => (h === '(direct)' ? 'Direct / none' : h), win);
       // The only audience panel that answers the toggle: both datasets carry a
       // country dimension, so All and Human are the same question asked twice.
       renderCompTable('table-countries',
         humansOnly ? liveRows(countriesHumanDaily, todayCountriesHuman)
                    : liveRows(countriesDaily, todayCountries),
-        'country', 'visits', regionName);
+        'country', 'visits', regionName, win);
     };
+
+    // --- content: what was actually read, played and explored -------------
+    // Same renderer as the two audience tables, on a null (all-time) window —
+    // the desk has no range control, so there is nothing to scope it to. Both
+    // metrics ride on every row, so the All/Human toggle is a column swap
+    // rather than a second dataset: edge visits, or the beacon's.
+    const renderContent = () => {
+      const titles = new Map<string, string>(content.map((c: any) => [c.slug, c.title]));
+      const rows: DayRow[] = content.flatMap((c: any) =>
+        c.daily.map((d: any) => ({ slug: c.slug, ...d })));
+      renderCompTable('table-content', rows, 'slug',
+        humansOnly ? 'rum_visits' : 'visits', (k) => titles.get(k) ?? k, null);
+    };
+    // The snapshot fallback for a live load (see `content` above). Fired and
+    // forgotten: the desk renders empty for as long as this takes, and fills
+    // itself in when it lands.
+    if (!content.length && liveOk) {
+      void fetch(dataUrl('/data/meta/traffic.json'))
+        .then((r) => r.json())
+        .then((j) => { content = j.content ?? []; renderContent(); })
+        .catch(() => { /* snapshot unreachable too — the desk stays empty */ });
+    }
 
     // --- range UI: quick-range seg + custom-window text, one wiring per desk ---
     function wireRangeUI(range: ReturnType<typeof makeRangeState>, buttons: NodeListOf<HTMLButtonElement>, windowEl: HTMLElement) {
@@ -2095,7 +2197,11 @@ import SectionHeader from '../components/editorial/SectionHeader.astro';
     renderTrafficDesk();
     renderFormatsDesk();
     renderAudienceDesk();
-    const renderAll = () => { renderTrafficDesk(); renderFormatsDesk(); renderAudienceDesk(); };
+    renderContent();
+    // The Content desk has no range of its own to subscribe to, but its
+    // sparklines are drawn in a theme token, so it repaints with everything
+    // else on a theme or units flip.
+    const renderAll = () => { renderTrafficDesk(); renderFormatsDesk(); renderAudienceDesk(); renderContent(); };
 
     // --- current-day grain + previous-day toggles (traffic and formats) ---
     const wireGrain = (sel: string, set: (g: '1h' | '15m') => void, render: () => void) =>
@@ -2238,9 +2344,9 @@ import SectionHeader from '../components/editorial/SectionHeader.astro';
     initInfoTooltips();
 
     // --- whole-desk maximize (ported from DesksView.astro) ---
-    // 4 desks here; Traffic and Formats have ECharts instances to resize —
-    // Overview is a stat strip and Audience's comp tables are plain HTML/SVG,
-    // both reflow via CSS alone.
+    // 5 desks here; Traffic and Formats have ECharts instances to resize —
+    // Overview is a stat strip and the Content / Audience comp tables are
+    // plain HTML/SVG, all of which reflow via CSS alone.
     const deskEls = Array.from(document.querySelectorAll<HTMLElement>('.desk'));
     const backdrop = document.createElement('div');
     backdrop.className = 'tsoi-desk-backdrop';
@@ -2391,7 +2497,8 @@ import SectionHeader from '../components/editorial/SectionHeader.astro';
     // Mobile "Filters" toggle: collapses/expands a desk's control block.
     // Desk maximize stays visible regardless of viewport. Traffic, Formats and
     // Audience each carry a RANGE in .desk-controls (it scopes that desk's day
-    // chart / both tables), so each gets the drawer; Overview has no controls.
+    // chart / both tables), so each gets the drawer; Overview and Content have
+    // no controls.
     deskEls.forEach((deskEl) => {
       const btn = deskEl.querySelector<HTMLButtonElement>('.desk-filters-btn');
       const controls = deskEl.querySelector<HTMLElement>('.desk-controls');
