@@ -7,12 +7,13 @@
 //
 // Chrome-wise this page borrows the "desk" grammar from DesksView.astro (the
 // payments dashboard's multi-desk shell): a sticky saffron .page-bar holding
-// the page-global All/Humans toggle, and five .desk sections ("Overview" /
-// "Traffic" / "Formats" / "Content" / "Audience") each with their own sticky
-// .desk-bar. RANGE is per-desk (Traffic, Formats and Audience each own a
-// rangeState instance; Overview and Content have none — their tiles and rows
-// are all-time by definition).
-// Traffic and Formats each also hold a "today so far" panel whose window is
+// the page-global All/Humans toggle, and four .desk sections ("Overview" /
+// "Traffic" / "Content" / "Audience", plus a "Scoring" one that ships hidden)
+// each with their own sticky .desk-bar. RANGE is per-PANEL, not per-desk:
+// four independent rangeState instances (the daily hero, the format split,
+// the pieces table, and Audience's pair of tables). Overview's tiles and the
+// accumulated-visits panel have none — both are all-time by definition.
+// Traffic and Content each also hold a "today so far" panel whose window is
 // always the current UTC day, so it ignores the range. It is NOT routed through DesksView or
 // the spec-driven runtime — this file keeps its own markup + a bespoke script
 // renderer; only the chrome (page-bar CSS/markup, desk-bar CSS/markup,
@@ -69,16 +70,22 @@ import SectionHeader from '../components/editorial/SectionHeader.astro';
       <div class="desk-body" id="overview-body">
         <div class="stat-strip meta-stats" hidden>
           <div class="stat">
-            <span class="stat-value" id="stat-total">—</span>
-            <span class="stat-label" data-info="Every visit since the site went public, the day in progress included.">Total visits</span>
-          </div>
-          <div class="stat">
             <span class="stat-value" id="stat-inprogress">—</span>
             <span class="stat-compare" id="stat-inprogress-compare" hidden></span>
             <span class="stat-label" id="stat-inprogress-label" data-info="Visits on the UTC day still forming; freezes when the feed is off.">Visits so far</span>
           </div>
           <div class="stat"><span class="stat-value" id="stat-peak">—</span><span class="stat-label" id="stat-peak-label" data-info="Busiest finished day, by visits.">Peak day visits</span></div>
-          <div class="stat"><span class="stat-value" id="stat-countries">—</span><span class="stat-label" id="stat-countries-label" data-info="Distinct countries with a visit, all time. All includes bot-only ones.">Countries reached</span></div>
+          {/* Third, not first: the two tiles before it are the live pair a
+              returning reader checks, and the lifetime total is the figure
+              they are read against. */}
+          <div class="stat">
+            <span class="stat-value" id="stat-total">—</span>
+            <span class="stat-label" data-info="Every visit since the site went public, the day in progress included.">Total visits</span>
+          </div>
+          {/* No countries tile: geography is the Audience desk's subject, and
+              a single distinct-country count on the All side is mostly crawler
+              geography — a big number that means less the closer you look. The
+              table down there answers it properly, both ways. */}
           <div class="stat"><span class="stat-value" id="stat-days">—</span><span class="stat-label" data-info="Days since this site went public.">Days public</span></div>
         </div>
       </div>
@@ -136,19 +143,58 @@ import SectionHeader from '../components/editorial/SectionHeader.astro';
           </div>
           <div class="chart chart-hourly" id="chart-today"></div>
         </section>
+
+        {/* The daily line above, added up. No range control on purpose: a
+            running total that starts wherever a window happens to open is not
+            a running total, and the arc is the whole point. */}
+        <section class="panel wide">
+          <div class="panel-bar">
+            <span class="dot" aria-hidden="true"></span>
+            <span class="panel-title" data-info="The running total of the daily chart above: every visit to date, added day by day. Each riser is a dispatch finding readers.">Visits, accumulated</span>
+            <span class="tz-suffix">(UTC days)</span>
+            <div class="panel-right">
+              <button type="button" class="panel-max" aria-label="Maximize panel">⤢</button>
+            </div>
+          </div>
+          <div class="chart chart-hourly" id="chart-cumulative"></div>
+        </section>
       </div>
       </div>
     </section>
 
-    <section class="desk" id="formats">
+    {/* One desk, three panels, narrowing as it goes: which pieces were read,
+        which of the three formats those readings landed in, and how the day
+        still forming is splitting between them. The pieces come first — a
+        reader wants to know what was read before how it was shelved. */}
+    <section class="desk" id="content">
       <div class="desk-bar">
-        <button type="button" class="desk-collapse-btn" aria-expanded="true" aria-controls="formats-body" aria-label="Collapse Formats desk">▾</button>
-        <span class="desk-title" data-info="Page views split across play, read and explore." tabindex="0">Formats</span>
-        <button type="button" class="desk-max" aria-label="Maximize Formats desk">⤢</button>
+        <button type="button" class="desk-collapse-btn" aria-expanded="true" aria-controls="content-body" aria-label="Collapse Content desk">▾</button>
+        <span class="desk-title" data-info="What was read, played and explored — by piece, and by format." tabindex="0">Content</span>
+        <button type="button" class="desk-max" aria-label="Maximize Content desk">⤢</button>
       </div>
 
-      <div class="desk-body" id="formats-body">
+      <div class="desk-body" id="content-body">
       <div class="panels">
+        <section class="panel wide">
+          <div class="panel-bar">
+            <span class="dot" aria-hidden="true"></span>
+            <span class="panel-title" data-info="Visits to each piece since it went up. Renamed and folded-in URLs are summed into the piece they belong to.">Visits by piece</span>
+            <span class="tz-suffix">(visits)</span>
+            <div class="panel-right">
+              <button type="button" class="range-reset" id="range-window-pieces" hidden>
+                <span class="range-reset-win mono"></span><span class="range-reset-x" aria-hidden="true">×</span>
+              </button>
+              <div class="seg" id="range-toggle-pieces" data-info="Time window shown.">
+                <button type="button" data-value="7d">7D</button>
+                <button type="button" data-value="14d">14D</button>
+                <button type="button" data-value="all" class="active">ALL</button>
+              </div>
+              <button type="button" class="panel-max" aria-label="Maximize panel">⤢</button>
+            </div>
+          </div>
+          <div class="comp-wrap" id="table-content"></div>
+        </section>
+
         <section class="panel wide">
           <div class="panel-bar">
             <span class="dot" aria-hidden="true"></span>
@@ -191,32 +237,6 @@ import SectionHeader from '../components/editorial/SectionHeader.astro';
             </div>
           </div>
           <div class="chart chart-hourly" id="chart-today-formats"></div>
-        </section>
-      </div>
-      </div>
-    </section>
-
-    {/* Pieces, not formats: the desk above splits page views three ways, this
-        one names the things that were read, played and explored. All-time by
-        definition, so it carries no range control — the only desk without
-        one. */}
-    <section class="desk" id="content">
-      <div class="desk-bar">
-        <button type="button" class="desk-collapse-btn" aria-expanded="true" aria-controls="content-body" aria-label="Collapse Content desk">▾</button>
-        <span class="desk-title" data-info="Each piece's all-time visits, best day first." tabindex="0">Content</span>
-        <button type="button" class="desk-max" aria-label="Maximize Content desk">⤢</button>
-      </div>
-
-      <div class="desk-body" id="content-body">
-      <div class="panels">
-        <section class="panel wide">
-          <div class="panel-bar">
-            <span class="dot" aria-hidden="true"></span>
-            <span class="panel-title" data-info="Visits to each piece since it went up. Renamed and folded-in URLs are summed into the piece they belong to.">Visits by piece</span>
-            <span class="tz-suffix">(all time)</span>
-            <div class="panel-right"><button type="button" class="panel-max" aria-label="Maximize panel">⤢</button></div>
-          </div>
-          <div class="comp-wrap" id="table-content"></div>
         </section>
       </div>
       </div>
@@ -468,10 +488,10 @@ import SectionHeader from '../components/editorial/SectionHeader.astro';
   /* The dragged-range chip doubles as its own reset. It is the only affordance
      for undoing a drag on touch (double-click is desktop-only and undiscoverable),
      so it sits beside the range control it undoes and never inside a collapsible
-     drawer — that is no place for the exit. Traffic, Formats and Audience each
-     carry their range (and this reset chip) in their own desk bar; the chip
-     renders only while a custom window is active, so the default bar is
-     unchanged. */
+     drawer — that is no place for the exit. Four ranges carry one each: the
+     daily hero, the format split and the pieces table in their own panel
+     bars, Audience in its desk bar. The chip renders only while a custom
+     window is active, so the default bar is unchanged. */
   .range-reset {
     display: inline-flex; align-items: center; gap: 8px;
     font: var(--tsoi-text-byline); font-family: var(--tsoi-font-mono); letter-spacing: 0;
@@ -782,9 +802,10 @@ import SectionHeader from '../components/editorial/SectionHeader.astro';
   // dashboards.
   const DAY = 86_400_000, HOUR = 3_600_000;
   type Win = { from: number; to: number } | null;
-  // Traffic and Formats offer 7D/14D/ALL (daily grain; days-public is small
-  // enough that 30D would just equal ALL) and answer "right now" with their own
-  // "today so far" panel. Audience has one control for both jobs, so it adds
+  // The hero, the format split and the pieces table offer 7D/14D/ALL (daily
+  // grain; days-public is small enough that 30D would just equal ALL), and the
+  // two desks holding them answer "right now" with their own "today so far"
+  // panel. Audience has one control for both its tables' jobs, so it adds
   // TODAY. Deliberately TODAY and not a trailing 24H: every other window on this
   // page is UTC-day aligned, and a rolling 24h was the only thing straddling two
   // days — TODAY instead reconciles with the current-day tile above.
@@ -949,11 +970,13 @@ import SectionHeader from '../components/editorial/SectionHeader.astro';
   // restored-collapsed desk never flashes open first. The full state machine
   // (toggle wiring, resize-on-expand) lives in the IIFE and reads the same key.
   const COLLAPSE_KEY = 'tsoi:meta:desks:collapsed';
-  // First-visit default: Formats and Audience start folded (Overview + Traffic
-  // are the headline desks). Applied only when NOTHING is stored yet — the
-  // moment the reader toggles anything, saveCollapsed writes the key and their
-  // choice wins from then on, even if that choice is "all expanded" (stored []).
-  const DEFAULT_COLLAPSED = ['formats', 'audience', 'scoring'];
+  // First-visit default: Audience starts folded, and Scoring is hidden until
+  // its worker answers. Overview, Traffic and Content are the three a reader
+  // came for — how much, when, and what of. Applied only when NOTHING is
+  // stored yet: the moment the reader toggles anything, saveCollapsed writes
+  // the key and their choice wins from then on, even if that choice is "all
+  // expanded" (stored []).
+  const DEFAULT_COLLAPSED = ['audience', 'scoring'];
   const loadCollapsedIds = (): Set<string> => {
     try {
       const raw = sessionStorage.getItem(COLLAPSE_KEY);
@@ -1012,7 +1035,7 @@ import SectionHeader from '../components/editorial/SectionHeader.astro';
       // (stylesheet `top: base`) already holds it, and a JS `top` written each
       // frame only lands one frame behind the compositor and wobbles, worst on
       // momentum / rubber-band scroll (this was the bottom-of-page bounce with
-      // Formats + Audience folded, where every remaining bar rests at `base`).
+      // the lower desks folded, where every remaining bar rests at `base`).
       // `< base`, not `<= base`: at rest `top` clamps to exactly `base`, which
       // must go to native — only a strictly smaller value is a live push.
       if (top < base) bar.style.top = `${top}px`;
@@ -1251,16 +1274,6 @@ import SectionHeader from '../components/editorial/SectionHeader.astro';
       document.getElementById('stat-peak')!.textContent = peakRow ? fmtCount(peakRow.visits) : '—';
       document.getElementById('stat-peak-label')!.textContent = peakRow
         ? `Peak day visits (${dayLabel(peakRow.day)})` : 'Peak day visits';
-      // Distinct countries, all time. A set union, not a sum, so it never adds
-      // across days. The All side is mostly crawler geography. Includes the day
-      // still forming (see liveRows): a country first seen today counts today,
-      // which is what "all time" has to mean for a live tile, and what the
-      // countries table beside it already did.
-      const countryRows = humansOnly
-        ? liveRows(countriesHumanDaily, todayCountriesHuman)
-        : liveRows(countriesDaily, todayCountries);
-      document.getElementById('stat-countries')!.textContent = countryRows.length
-        ? fmtCount(new Set(countryRows.map((r: any) => r.country)).size) : '—';
       // Inclusive count of UTC days: launch day itself is day 1, and the number
       // increments at 00:00Z like every other boundary on this page. Math.round
       // put the change at 12:00Z instead, so the tile spent every morning a day
@@ -1356,6 +1369,7 @@ import SectionHeader from '../components/editorial/SectionHeader.astro';
     const mk = (id: string) => { const c = echarts.init(el(id)); charts.push(c); return c; };
     const hero = mk('chart-hero');
     const todayChart = mk('chart-today');
+    const cumChart = mk('chart-cumulative');
     const fmtChart = mk('chart-formats');
     const tfmtChart = mk('chart-today-formats');
 
@@ -1366,7 +1380,7 @@ import SectionHeader from '../components/editorial/SectionHeader.astro';
     // rather than bound to the element. Capture phase, so it wins before
     // ECharts' own zr click handler re-opens a tooltip at the same spot.
     if (COARSE) {
-      ([[hero, 'chart-hero'], [todayChart, 'chart-today'],
+      ([[hero, 'chart-hero'], [todayChart, 'chart-today'], [cumChart, 'chart-cumulative'],
         [fmtChart, 'chart-formats'], [tfmtChart, 'chart-today-formats']] as const)
         .forEach(([c, id]) => {
           initTouchTipToggle(c);
@@ -1685,12 +1699,76 @@ import SectionHeader from '../components/editorial/SectionHeader.astro';
     };
     const renderToday = (t: Tokens) => { todayChart.setOption(todayOption(t), true); };
 
-    // --- per-desk range: state + drag-select wiring ---
-    // Three independent instances — Traffic (its hero + drag-select), Formats
-    // (its stacked-day chart + drag-select) and Audience (both comparison
-    // tables). No cross-desk coupling: changing one never touches another's
-    // subscribers. The current-day panels sit inside Traffic/Formats but ignore
-    // the range (their window is always the current UTC day).
+    // --- visits, accumulated: the daily line above, added up ---------------
+    // Same series, same toggle, same in-progress convention as the hero — this
+    // is that chart integrated, so the hero's height is this line's slope and
+    // the two reconcile by construction. Three deliberate absences:
+    //
+    //   no smoothing   — a spline through a cumulative series draws risers on
+    //                    days that delivered nothing and dips that would mean
+    //                    visits were taken back. The steps are the data.
+    //   no range       — a running total that starts wherever a window opens
+    //                    is not a running total. The arc is the point.
+    //   no ripple      — the last point is the in-progress day, but a total
+    //                    that only ever rises does not need a pulsing ring to
+    //                    say it is not finished.
+    //
+    // A missing day contributes 0 rather than breaking the line: on the Human
+    // side the beacon has days the edge does not, and a null there means "not
+    // measured", which adds nothing to a total but must not reset it either.
+    const cumulativeOption = (t: Tokens) => {
+      let run = 0;
+      const daily_: (number | null)[] = heroDays.map(heroValue);
+      const vals = daily_.map((v) => (run += v ?? 0));
+      const yFmt = axisFmt(run);
+      return {
+        grid: { left: 56, right: 20, top: 30, bottom: 34 },
+        tooltip: {
+          trigger: 'axis', ...touchTip, axisPointer: { type: 'line', lineStyle: { color: t.subtle } },
+          formatter: (ps: any[]) => {
+            const i = ps[0].dataIndex;
+            const day = heroDays[i];
+            const add = daily_[i];
+            return withClose(
+              `${dayLabel(day)}<br/>${ps[0].marker} total to date&nbsp;&nbsp;<b>${nf.format(vals[i])}</b>` +
+              (add == null ? '' : `<br/><span style="opacity:.7">that day: ${nf.format(add)}</span>`));
+          },
+        },
+        xAxis: { type: 'category', data: heroDays, boundaryGap: false, ...axis(t), splitLine: { show: false },
+          axisLabel: { color: t.subtle, fontFamily: t.mono, fontSize: 11, hideOverlap: true, formatter: dayLabel } },
+        yAxis: { type: 'value', ...axis(t), axisLine: { show: false },
+          axisLabel: { color: t.subtle, fontFamily: t.mono, fontSize: 11, formatter: yFmt } },
+        series: [{
+          name: metricLabel(), type: 'line', smooth: false, showSymbol: false, data: vals,
+          lineStyle: { width: 2, color: t.c1 }, itemStyle: { color: t.c1 },
+          areaStyle: { opacity: 0.06, color: t.c1 },
+          // The same dashed dispatch markers the hero carries, on the same
+          // dates, so a riser can be read off against the release that caused
+          // it. All of them, never a windowed subset — this panel has no
+          // window. Edge labels hang inward for the same reason they do above.
+          markLine: {
+            silent: false, symbol: 'none',
+            lineStyle: { color: t.primary, width: 1, type: 'dashed' },
+            label: { color: t.primary, fontFamily: t.mono, fontSize: 10, formatter: (p: any) => p.name },
+            data: dispatches.map((d: any) => ({
+              xAxis: d.date, name: d.id,
+              ...(d.date === heroDays[heroDays.length - 1] ? { label: { align: 'right' } } : {}),
+              ...(d.date === heroDays[0] ? { label: { align: 'left' } } : {}),
+            })),
+          },
+        }],
+      };
+    };
+    const renderCumulative = (t: Tokens) => { cumChart.setOption(cumulativeOption(t), true); };
+
+    // --- per-panel range: state + drag-select wiring ---
+    // Four independent instances — the daily hero (+ drag-select), the format
+    // split (+ drag-select), the pieces table (buttons only: it is an HTML
+    // table, and drag-select is a gesture on a canvas), and Audience's pair of
+    // comparison tables. No coupling: changing one never touches another's
+    // subscribers, including the two that share the Content desk. The
+    // current-day panels and the accumulated-visits panel ignore all of it —
+    // their windows are the current UTC day and the whole record.
     const lastHourlyMs = hourly.length ? Date.parse(hourly[hourly.length - 1].ts) : Date.now();
     // Snapshot loads have no live tick, so quick ranges anchor to the data's
     // own last timestamp (wall-clock "now" would show empty windows on an
@@ -1703,16 +1781,20 @@ import SectionHeader from '../components/editorial/SectionHeader.astro';
     const nowAnchor = () => (liveOk ? Date.now() : lastHourlyMs);
     const trafficRange = makeRangeState(nowAnchor);
     const formatsRange = makeRangeState(nowAnchor);
+    const piecesRange = makeRangeState(nowAnchor);
     const audienceRange = makeRangeState(nowAnchor);
     // Opening windows, set through the same setQuick every button press goes
     // through (so the markup's `active` class, the reset chip's "back to"
     // target and the state can't drift apart). Traffic keeps ALL — its hero is
-    // the page's headline series and the whole record belongs on it. Formats
-    // opens on 7D: the format split is a "what is being read lately" question,
-    // and 43 columns of stacked bar answers it worse than seven do. Audience
-    // opens on TODAY, the window that matches the clock in the page bar and
-    // the day-in-progress tiles above. No subscribers exist yet, so these are
-    // silent — the first render below picks the state up.
+    // the page's headline series and the whole record belongs on it. Visits by
+    // piece keeps ALL for the same reason: a piece's whole life is the thing
+    // being asked after, and one Hacker News morning is most of this site's
+    // record. The format split beneath it opens on 7D instead: that one is a
+    // "what is being read lately" question, and 43 columns of stacked bar
+    // answers it worse than seven do. Audience opens on TODAY, the window that
+    // matches the clock in the page bar and the day-in-progress tiles above.
+    // No subscribers exist yet, so these are silent — the first render below
+    // picks the state up.
     formatsRange.setQuick('7d');
     audienceRange.setQuick('today');
     let currentHeroDays = heroDays;
@@ -1883,6 +1965,7 @@ import SectionHeader from '../components/editorial/SectionHeader.astro';
         const t = tokens();
         renderHero(t);
         renderToday(t);
+        renderCumulative(t);
         renderStats();
         renderFormatsDesk();
         renderTables();       // and so does the countries leaderboard
@@ -1895,12 +1978,22 @@ import SectionHeader from '../components/editorial/SectionHeader.astro';
       catch { return (c: string) => c; }
     })();
     const TOP_N = 10;
-    // `win` is passed in rather than read off audienceRange here: the Content
-    // desk uses the same renderer on an all-time window (null), and the two
-    // Audience tables must not start answering to a range that isn't theirs.
-    function renderCompTable(containerId: string, rows: DayRow[], entityKey: string, valueKey: string, nameOf: (k: string) => string, win: Win) {
+    // `win` is passed in rather than read off audienceRange here: the pieces
+    // table on the Content desk owns its own range, and the two Audience
+    // tables must not start answering to one that isn't theirs.
+    //
+    // `demote` names entities that are never a ranked row however well they
+    // did — the retired short reads, which are off the site's navigation and
+    // would otherwise take up half the table on the strength of a traffic
+    // history nobody can follow a link to any more. Their visits are not
+    // dropped, they land in "Rest" with everything else outside the top ten.
+    function renderCompTable(containerId: string, rows: DayRow[], entityKey: string, valueKey: string, nameOf: (k: string) => string, win: Win, demote?: (key: string) => boolean) {
       const t = tokens();
-      const { top, rest } = topRows(aggregateByEntity(rows, entityKey, valueKey, win), TOP_N);
+      const agg = aggregateByEntity(rows, entityKey, valueKey, win);
+      const demoted: EntityAgg[] = [];
+      if (demote) for (const [k, v] of [...agg]) if (demote(k)) { demoted.push(v); agg.delete(k); }
+      const { top, rest: ranked } = topRows(agg, TOP_N);
+      const rest = ranked.concat(demoted);
       const restTotal = rest.reduce((s, r) => s + r.total, 0);
       const maxVal = Math.max(1, ...top.map((r) => r.total), restTotal);
       const barCell = (total: number) =>
@@ -2128,17 +2221,24 @@ import SectionHeader from '../components/editorial/SectionHeader.astro';
         'country', 'visits', regionName, win);
     };
 
-    // --- content: what was actually read, played and explored -------------
-    // Same renderer as the two audience tables, on a null (all-time) window —
-    // the desk has no range control, so there is nothing to scope it to. Both
-    // metrics ride on every row, so the All/Human toggle is a column swap
+    // --- visits by piece: what was actually read, played and explored ------
+    // Same renderer as the two audience tables, on this panel's own range.
+    // Both metrics ride on every row, so the All/Human toggle is a column swap
     // rather than a second dataset: edge visits, or the beacon's.
+    //
+    // `minor` comes from the seeder and marks the dispatch-1 payment shorts,
+    // which no longer appear anywhere in the site's navigation. They are still
+    // counted, and they keep their identity in the payload — they are only
+    // barred from ranking as named rows, so the table lists things a reader
+    // can still go and open.
     const renderContent = () => {
       const titles = new Map<string, string>(content.map((c: any) => [c.slug, c.title]));
+      const minor = new Set<string>(content.filter((c: any) => c.minor).map((c: any) => c.slug));
       const rows: DayRow[] = content.flatMap((c: any) =>
         c.daily.map((d: any) => ({ slug: c.slug, ...d })));
       renderCompTable('table-content', rows, 'slug',
-        humansOnly ? 'rum_visits' : 'visits', (k) => titles.get(k) ?? k, null);
+        humansOnly ? 'rum_visits' : 'visits', (k) => titles.get(k) ?? k,
+        piecesRange.get().win, (k) => minor.has(k));
     };
     // The snapshot fallback for a live load (see `content` above). Fired and
     // forgotten: the desk renders empty for as long as this takes, and fills
@@ -2175,32 +2275,40 @@ import SectionHeader from '../components/editorial/SectionHeader.astro';
     const syncFormatsRangeUI = wireRangeUI(formatsRange,
       document.querySelectorAll<HTMLButtonElement>('#range-toggle-formats button'),
       document.getElementById('range-window-formats')!);
+    // The pieces table shares a desk with the format panels but not their
+    // range: one asks which pieces were opened, the other how a day's reading
+    // split three ways, and a reader narrowing one has not asked anything
+    // about the other. Same wiring, its own state — which is the whole reason
+    // the range is a factory and not a singleton.
+    const syncPiecesRangeUI = wireRangeUI(piecesRange,
+      document.querySelectorAll<HTMLButtonElement>('#range-toggle-pieces button'),
+      document.getElementById('range-window-pieces')!);
     const syncAudienceRangeUI = wireRangeUI(audienceRange,
       document.querySelectorAll<HTMLButtonElement>('#range-toggle-audience button'),
       document.getElementById('range-window-audience')!);
 
-    // Each desk renders on its OWN range only — subscribing a range to another
-    // desk's render fn is exactly the coupling decision the range factory rules
-    // out. renderAll (below) is the one place they legitimately run together: a
-    // theme flip repaints every chart regardless of which range is active. The
-    // range scopes the day chart in each desk; each desk's current-day panel is
-    // always the current UTC day, so it ignores the window but repaints anyway
-    // (cheap, and it keeps the All/Human side in step).
-    const renderTrafficDesk = () => { const t = tokens(); renderHero(t); renderToday(t); };
+    // Each panel renders on its OWN range only — subscribing a range to
+    // another's render fn is exactly the coupling decision the range factory
+    // rules out. renderAll (below) is the one place they legitimately run
+    // together: a theme flip repaints every chart regardless of which range is
+    // active. The range scopes the day chart in each desk; each desk's
+    // current-day panel is always the current UTC day, so it ignores the
+    // window but repaints anyway (cheap, and it keeps the All/Human side in
+    // step).
+    const renderTrafficDesk = () => { const t = tokens(); renderHero(t); renderToday(t); renderCumulative(t); };
     const renderAudienceDesk = () => { renderTables(); };
     trafficRange.subscribe(() => { syncTrafficRangeUI(); renderTrafficDesk(); });
     formatsRange.subscribe(() => { syncFormatsRangeUI(); renderFormatsDesk(); });
+    piecesRange.subscribe(() => { syncPiecesRangeUI(); renderContent(); });
     audienceRange.subscribe(() => { syncAudienceRangeUI(); renderAudienceDesk(); });
     syncTrafficRangeUI();
     syncFormatsRangeUI();
+    syncPiecesRangeUI();
     syncAudienceRangeUI();
     renderTrafficDesk();
     renderFormatsDesk();
     renderAudienceDesk();
     renderContent();
-    // The Content desk has no range of its own to subscribe to, but its
-    // sparklines are drawn in a theme token, so it repaints with everything
-    // else on a theme or units flip.
     const renderAll = () => { renderTrafficDesk(); renderFormatsDesk(); renderAudienceDesk(); renderContent(); };
 
     // --- current-day grain + previous-day toggles (traffic and formats) ---
@@ -2285,6 +2393,10 @@ import SectionHeader from '../components/editorial/SectionHeader.astro';
           renderStats();
           renderTables();
           renderToday(tokens());
+          // Full re-render, never a merge: this line's every point past the
+          // changed day shifts by the same amount, so there is no partial
+          // update to express. It also carries no brush state to preserve.
+          renderCumulative(tokens());
           renderFormatsDesk();
           // A UTC rollover (or a day the feed has newly sealed) changes the
           // axis itself, which the merge update below cannot express — it only
@@ -2320,7 +2432,7 @@ import SectionHeader from '../components/editorial/SectionHeader.astro';
     }
 
     const ro = new ResizeObserver(() => charts.forEach((c) => c.resize()));
-    ['chart-hero', 'chart-today', 'chart-formats', 'chart-today-formats']
+    ['chart-hero', 'chart-today', 'chart-cumulative', 'chart-formats', 'chart-today-formats']
       .forEach((id) => ro.observe(el(id)));
     // data-units joins data-theme: both restyle every number on the page.
     // renderAll covers charts and tables; the stat tiles need their own call.
@@ -2335,6 +2447,7 @@ import SectionHeader from '../components/editorial/SectionHeader.astro';
         const chartId = panel.querySelector<HTMLElement>('.chart')?.id;
         if (chartId === 'chart-hero') hero.resize();
         else if (chartId === 'chart-today') todayChart.resize();
+        else if (chartId === 'chart-cumulative') cumChart.resize();
         else if (chartId === 'chart-formats') fmtChart.resize();
         else if (chartId === 'chart-today-formats') tfmtChart.resize();
       },
@@ -2344,9 +2457,10 @@ import SectionHeader from '../components/editorial/SectionHeader.astro';
     initInfoTooltips();
 
     // --- whole-desk maximize (ported from DesksView.astro) ---
-    // 5 desks here; Traffic and Formats have ECharts instances to resize —
-    // Overview is a stat strip and the Content / Audience comp tables are
-    // plain HTML/SVG, all of which reflow via CSS alone.
+    // 4 visible desks here (Scoring makes 5 when its worker answers); Traffic
+    // and Content hold the ECharts instances to resize — Overview is a stat
+    // strip and the pieces / audience comp tables are plain HTML/SVG, all of
+    // which reflow via CSS alone.
     const deskEls = Array.from(document.querySelectorAll<HTMLElement>('.desk'));
     const backdrop = document.createElement('div');
     backdrop.className = 'tsoi-desk-backdrop';
@@ -2355,8 +2469,8 @@ import SectionHeader from '../components/editorial/SectionHeader.astro';
     let currentMax = -1;
     let deskSeq = 0;
     const resizeDesk = (i: number) => {
-      if (deskEls[i]?.id === 'traffic') { hero.resize(); todayChart.resize(); }
-      else if (deskEls[i]?.id === 'formats') { fmtChart.resize(); tfmtChart.resize(); }
+      if (deskEls[i]?.id === 'traffic') { hero.resize(); todayChart.resize(); cumChart.resize(); }
+      else if (deskEls[i]?.id === 'content') { fmtChart.resize(); tfmtChart.resize(); }
     };
 
     // --- desk collapse / expand (ported from DesksView.astro) ---
@@ -2495,10 +2609,10 @@ import SectionHeader from '../components/editorial/SectionHeader.astro';
     });
 
     // Mobile "Filters" toggle: collapses/expands a desk's control block.
-    // Desk maximize stays visible regardless of viewport. Traffic, Formats and
-    // Audience each carry a RANGE in .desk-controls (it scopes that desk's day
-    // chart / both tables), so each gets the drawer; Overview and Content have
-    // no controls.
+    // Desk maximize stays visible regardless of viewport. Audience is the one
+    // desk carrying a RANGE in .desk-controls (it scopes both its tables at
+    // once), so it is the one that gets the drawer; every other range on the
+    // page lives in its own panel bar, which wraps on its own.
     deskEls.forEach((deskEl) => {
       const btn = deskEl.querySelector<HTMLButtonElement>('.desk-filters-btn');
       const controls = deskEl.querySelector<HTMLElement>('.desk-controls');

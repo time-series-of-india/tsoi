@@ -195,8 +195,14 @@ const today_referrers = (await client.query(`
 // Hubs are not pieces: '/', the section indexes, the read shelf, the play
 // rack, the explore gateway, /meta and /about are all left out. Someone who
 // landed on a shelf has not read anything yet.
-const read = (slug, title) => ({
-  slug, title, format: 'read',
+// `minor` marks the dispatch-1 payment shorts — lineage.mjs kind 'short', the
+// eight one-chart pieces that were written to sit under the flagship read and
+// are no longer linked from anywhere a reader can reach. Their traffic still
+// counts and they keep their names here; the page bars them from ranking as
+// rows so the table lists things that are still openable. Nothing else about
+// them is special-cased, so un-marking one puts it straight back on the board.
+const read = (slug, title, minor = false) => ({
+  slug, title, format: 'read', minor,
   paths: [`/economy/read/${slug}/`, `/economy/reads/${slug}/`],
 });
 // Sub-route enumerations, written out rather than pattern-matched (rule 3).
@@ -213,14 +219,14 @@ const FOLDED = ['overview', 'product-view', 'bank-performance', 'upi-ecosystem',
 const CONTENT = [
   read('upi-architecture', 'UPI: Anatomy of a Transaction'),
   read('price-of-nearly-everything', 'Inflation: The Price of Nearly Everything'),
-  read('credit-vs-debit', 'The debit card faded as UPI rose, the credit card didn’t'),
-  read('duel', 'Two apps run four-fifths of UPI'),
-  read('where-india-pays', 'Half of India’s UPI comes from five states'),
-  read('how-india-moves', 'India runs on UPI, but its money moves on RTGS'),
-  read('where-money-lands', 'India pays from SBI, and into Yes Bank'),
-  read('what-india-buys', 'Most of what India buys on UPI is food'),
-  read('shops-vs-people', 'India pays shops more often than people'),
-  read('bank-reliability', 'The banks’ own UPI failures are rare, and falling'),
+  read('credit-vs-debit', 'The debit card faded as UPI rose, the credit card didn’t', true),
+  read('duel', 'Two apps run four-fifths of UPI', true),
+  read('where-india-pays', 'Half of India’s UPI comes from five states', true),
+  read('how-india-moves', 'India runs on UPI, but its money moves on RTGS', true),
+  read('where-money-lands', 'India pays from SBI, and into Yes Bank', true),
+  read('what-india-buys', 'Most of what India buys on UPI is food', true),
+  read('shops-vs-people', 'India pays shops more often than people', true),
+  read('bank-reliability', 'The banks’ own UPI failures are rare, and falling', true),
   { slug: 'independence', title: 'The Walk through Midnight', format: 'film',
     paths: ['/independence/'] },
   { slug: 'inflation-peaks', title: 'Inflation Peaks', format: 'play',
@@ -268,7 +274,11 @@ for (const r of contentRows) {
 // as a zero and the "Rest (n)" tally would count it as a piece with traffic.
 const content = CONTENT
   .filter((c) => contentBySlug.has(c.slug))
-  .map((c) => ({ slug: c.slug, title: c.title, format: c.format, daily: contentBySlug.get(c.slug) }));
+  .map((c) => ({
+    slug: c.slug, title: c.title, format: c.format,
+    ...(c.minor ? { minor: true } : {}),
+    daily: contentBySlug.get(c.slug),
+  }));
 
 // Dispatch markers from git tags — each release event traceable to a commit.
 const dispatches = execSync("git tag -l 'dispatch-*'", { cwd: SITE, encoding: 'utf8' })
