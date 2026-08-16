@@ -195,11 +195,11 @@ const today_referrers = (await client.query(`
 // Hubs are not pieces: '/', the section indexes, the read shelf, the play
 // rack, the explore gateway, /meta and /about are all left out. Someone who
 // landed on a shelf has not read anything yet.
-// `minor` marks the dispatch-1 payment shorts — lineage.mjs kind 'short', the
-// eight one-chart pieces that were written to sit under the flagship read and
-// are no longer linked from anywhere a reader can reach. Their traffic still
+// `minor` marks what the site no longer sends anyone to: the eight dispatch-1
+// payment shorts (lineage.mjs kind 'short', the one-chart pieces written to
+// sit under the flagship read) and the payments play deck. Their traffic still
 // counts and they keep their names here; the page bars them from ranking as
-// rows so the table lists things that are still openable. Nothing else about
+// rows so the table lists things a reader can still open. Nothing else about
 // them is special-cased, so un-marking one puts it straight back on the board.
 const read = (slug, title, minor = false) => ({
   slug, title, format: 'read', minor,
@@ -235,7 +235,10 @@ const CONTENT = [
     paths: ['/economy/play/off-by-how-much/', '/economy/beats/off-by-how-much/',
       ...span(1, 60).flatMap((n) => [
         `/economy/play/off-by-how-much/${n}/`, `/economy/beats/off-by-how-much/${n}/`])] },
-  { slug: 'payments-deck', title: 'Six things India’s payment data knows', format: 'play',
+  // Minor for the same reason as the shorts: the payments deck is the one
+  // card left on a rack the dispatch-2 games have taken over, and it is not
+  // somewhere the site sends anyone any more.
+  { slug: 'payments-deck', title: 'Six things India’s payment data knows', format: 'play', minor: true,
     paths: ['/economy/play/payments/', '/economy/beats/payments/'] },
   { slug: 'explore-payments', title: 'India Payments', format: 'explore',
     paths: ['/economy/explore/payments/',
@@ -270,12 +273,23 @@ for (const r of contentRows) {
   const list = contentBySlug.get(r.slug) ?? contentBySlug.set(r.slug, []).get(r.slug);
   list.push({ day: r.day, visits: r.visits, rum_visits: r.rum_visits });
 }
+// Every entry lists its CURRENT-grammar path first and the retired forms
+// after, so paths[0] is the piece's canonical URL and the page can link its
+// title straight there. Guarded rather than trusted: reordering a paths list
+// so it leads with an old form would silently start sending readers through a
+// redirect, and a table of links is exactly the wrong place to find that out.
+const RETIRED = /\/(reads|beats|dashboards)\//;
+for (const c of CONTENT) {
+  if (RETIRED.test(c.paths[0])) {
+    throw new Error(`content ${c.slug}: paths[0] must be the current URL, got ${c.paths[0]}`);
+  }
+}
 // A piece nobody has opened yet ships no empty row — the table would show it
 // as a zero and the "Rest (n)" tally would count it as a piece with traffic.
 const content = CONTENT
   .filter((c) => contentBySlug.has(c.slug))
   .map((c) => ({
-    slug: c.slug, title: c.title, format: c.format,
+    slug: c.slug, title: c.title, format: c.format, url: c.paths[0],
     ...(c.minor ? { minor: true } : {}),
     daily: contentBySlug.get(c.slug),
   }));

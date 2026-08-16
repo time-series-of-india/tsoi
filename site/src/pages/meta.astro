@@ -13,8 +13,8 @@
 // four independent rangeState instances (the daily hero, the format split,
 // the pieces table, and Audience's pair of tables). Overview's tiles and the
 // accumulated-visits panel have none — both are all-time by definition.
-// Traffic and Content each also hold a "today so far" panel whose window is
-// always the current UTC day, so it ignores the range. It is NOT routed through DesksView or
+// Traffic also holds a "today so far" panel whose window is always the
+// current UTC day, so it ignores the range. It is NOT routed through DesksView or
 // the spec-driven runtime — this file keeps its own markup + a bespoke script
 // renderer; only the chrome (page-bar CSS/markup, desk-bar CSS/markup,
 // --tsoi-page-bar-h measurement, relocatePageBar, whole-desk maximize) is
@@ -184,7 +184,8 @@ import SectionHeader from '../components/editorial/SectionHeader.astro';
               <button type="button" class="range-reset" id="range-window-pieces" hidden>
                 <span class="range-reset-win mono"></span><span class="range-reset-x" aria-hidden="true">×</span>
               </button>
-              <div class="seg" id="range-toggle-pieces" data-info="Time window shown.">
+              <div class="seg" id="range-toggle-pieces" data-info="Time window shown. TODAY is the day still forming, as of the last snapshot.">
+                <button type="button" data-value="today">TODAY</button>
                 <button type="button" data-value="7d">7D</button>
                 <button type="button" data-value="14d">14D</button>
                 <button type="button" data-value="all" class="active">ALL</button>
@@ -214,29 +215,6 @@ import SectionHeader from '../components/editorial/SectionHeader.astro';
             </div>
           </div>
           <div class="chart chart-hourly" id="chart-formats"></div>
-        </section>
-
-        <section class="panel wide">
-          <div class="panel-bar">
-            <span class="dot" aria-hidden="true"></span>
-            <span class="panel-title" data-info="Page views by format on the UTC day still forming, by hour or 15 min. Dashed marker = now; live only.">Today so far, by format</span>
-            <span class="tz-suffix" id="tformats-tz">(UTC)</span>
-            <div class="panel-right">
-              <div class="seg" id="tformats-grain">
-                <button type="button" data-value="1h" class="active">1H</button>
-                <button type="button" data-value="15m">15M</button>
-              </div>
-              <div class="seg" id="tformats-prev">
-                <button type="button" data-value="prev" aria-pressed="false">Previous day</button>
-              </div>
-              <div class="seg" id="tformats-local">
-                <button type="button" data-value="local" aria-pressed="false"
-                  data-info="Relabel the axis in your device's local time.">Local</button>
-              </div>
-              <button type="button" class="panel-max" aria-label="Maximize panel">⤢</button>
-            </div>
-          </div>
-          <div class="chart chart-hourly" id="chart-today-formats"></div>
         </section>
       </div>
       </div>
@@ -650,10 +628,40 @@ import SectionHeader from '../components/editorial/SectionHeader.astro';
   :global(.comp-value) { font: var(--tsoi-text-metric-sm); font-family: var(--tsoi-font-mono); text-align: right; color: var(--tsoi-color-on-surface-variant); white-space: nowrap; width: 74px; }
   :global(.comp-spark) { width: 60px; }
   :global(.comp-spark svg) { display: block; width: 100%; height: 20px; overflow: visible; }
+  /* Piece titles are links; referrer hosts and country names stay plain text,
+     because there is nowhere on this site to send those. Treated exactly like
+     a link in the page's own prose — inherited colour, a plain underline, no
+     icon and no external-link marker — with the site's standard saffron on
+     hover. The Rest row is a tally, not a piece, so it is never a link. */
+  :global(.comp-name a) { color: inherit; text-decoration: underline; }
+  :global(.comp-name a:hover) { color: var(--tsoi-color-primary-text); }
+  /* The pieces table says a row's format twice — in the colour of its bar and
+     sparkline, and in a muted word after the title — so the mapping never
+     rests on hue alone. Laid out as a flex row rather than one run of text
+     because the cell truncates: the title is the part that gives way (it is
+     still readable half-said, and it is a link to the whole thing), the
+     format word is the part that must not, so it never shrinks. Scoped to
+     this table; the referrer and country tables stay one-hue plain text.
+
+     The flex lives on an inner wrapper, never on the <td> itself: display:flex
+     takes a cell out of the table's column algorithm entirely, and the name
+     column promptly collapsed to 12px when it was tried there. */
+  :global(.comp-name-inner) { display: flex; align-items: baseline; gap: 6px; min-width: 0; }
+  :global(.comp-title) { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+  :global(.comp-suffix) { flex-shrink: 0; font: var(--tsoi-text-byline); color: var(--tsoi-color-on-surface-variant); }
   /* Sparkline column is the first thing to go on phones — the bar + count
      already carry the comparison; the trend is a nice-to-have here (each
      panel's own dedicated trend lives in the daily/hourly charts above). */
-  @media (max-width: 480px) { :global(.comp-spark) { display: none; } }
+  @media (max-width: 480px) {
+    :global(.comp-spark) { display: none; }
+    /* The width the sparkline column gives up goes to the names, and the
+       pieces table needs it most: each of its names now carries a format word
+       as well, which was costing a third of a 129px column. Long titles still
+       truncate on a phone — they are links to the whole thing — but they get
+       enough to be recognised by. */
+    :global(#table-content .comp-name) { width: 52%; }
+    :global(#table-content .comp-bar-cell) { width: 20%; }
+  }
 
   .prose { max-width: 70ch; }
   .prose h3 { margin: calc(var(--tsoi-spacing-unit) * 3) 0 0; font: var(--tsoi-text-headline-md); letter-spacing: var(--tsoi-text-headline-md-tracking); }
@@ -1080,17 +1088,20 @@ import SectionHeader from '../components/editorial/SectionHeader.astro';
     // Page views per format (play / read / explore), already grouped by the
     // seeder so the client never sees raw paths.
     const formatsDaily = data.formats_daily ?? [];
-    // The two "today so far" panels' intraday buckets: 15-minute grain, worker
+    // The "today so far" panel's intraday buckets: 15-minute grain, worker
     // only. The baked snapshot seeds them empty (the telemetry DB has no
-    // 15-minute grain), which is exactly what puts those panels into their
-    // "live feed offline" state. rolling15/prevDay15 are site-wide visits (the
-    // traffic current-day panel); the formats* pair is the same buckets split
-    // by format (the formats current-day panel). Each row is
-    // { t, all, human } (and + format for the format arrays).
+    // 15-minute grain), which is exactly what puts that panel into its "live
+    // feed offline" state. Each row is { t, all, human }.
+    //
+    // The worker also publishes formats_rolling15 / formats_prev_day15, the
+    // same buckets split by format. Nothing reads them any more: the panel
+    // they were added for is gone (its question is answered better by the
+    // pieces table's TODAY, in visits rather than page views). They are left
+    // arriving rather than removed from the worker — a payload key costs
+    // nothing to ignore, and pulling it would be a deploy on a service this
+    // page is not allowed to depend on.
     const rolling15 = data.rolling15 ?? [];
     const prevDay15 = data.prev_day15 ?? [];
-    const formatsRolling15 = data.formats_rolling15 ?? [];
-    const formatsPrevDay15 = data.formats_prev_day15 ?? [];
     // Today's partial leaderboard rows, published apart from the sealed
     // complete-day arrays. Merged in only when the range reaches today.
     const todayCountries = data.today_countries ?? [];
@@ -1371,7 +1382,6 @@ import SectionHeader from '../components/editorial/SectionHeader.astro';
     const todayChart = mk('chart-today');
     const cumChart = mk('chart-cumulative');
     const fmtChart = mk('chart-formats');
-    const tfmtChart = mk('chart-today-formats');
 
     // Tap-again-to-dismiss is the site's touch convention (used by the other
     // dashboards); /meta had simply never wired it. Keep it, and add the
@@ -1381,7 +1391,7 @@ import SectionHeader from '../components/editorial/SectionHeader.astro';
     // ECharts' own zr click handler re-opens a tooltip at the same spot.
     if (COARSE) {
       ([[hero, 'chart-hero'], [todayChart, 'chart-today'], [cumChart, 'chart-cumulative'],
-        [fmtChart, 'chart-formats'], [tfmtChart, 'chart-today-formats']] as const)
+        [fmtChart, 'chart-formats']] as const)
         .forEach(([c, id]) => {
           initTouchTipToggle(c);
           el(id).addEventListener('click', (ev: Event) => {
@@ -1414,7 +1424,7 @@ import SectionHeader from '../components/editorial/SectionHeader.astro';
       });
     });
     // Only the daily hero carries an in-progress ripple ring; the formats stacked
-    // bar uses a faint glow and the current-day panels a dashed marker instead.
+    // bar uses a faint glow and the current-day panel a dashed marker instead.
     thickenRipples(hero);
 
     const axis = (t: Tokens) => ({
@@ -1623,7 +1633,7 @@ import SectionHeader from '../components/editorial/SectionHeader.astro';
         distance: 4, color: t.primary, fontFamily: t.mono, fontSize: 10 },
       data: [{ xAxis: label }],
     });
-    // The "live feed offline" placeholder both current-day panels fall back to
+    // The "live feed offline" placeholder the current-day panel falls back to
     // in snapshot mode (no 15-minute grain in the baked file).
     const offlineOption = (t: Tokens) => ({
       grid: { left: 56, right: 20, top: 20, bottom: 34 },
@@ -1959,7 +1969,7 @@ import SectionHeader from '../components/editorial/SectionHeader.astro';
         renderToday(t);
         renderCumulative(t);
         renderStats();
-        renderFormatsDesk();
+        renderFormats(tokens());
         renderTables();       // and so does the countries leaderboard
         renderContent();      // and the per-piece table, which carries both metrics
       }));
@@ -1975,11 +1985,18 @@ import SectionHeader from '../components/editorial/SectionHeader.astro';
     // tables must not start answering to one that isn't theirs.
     //
     // `demote` names entities that are never a ranked row however well they
-    // did — the retired short reads, which are off the site's navigation and
-    // would otherwise take up half the table on the strength of a traffic
-    // history nobody can follow a link to any more. Their visits are not
-    // dropped, they land in "Rest" with everything else outside the top ten.
-    function renderCompTable(containerId: string, rows: DayRow[], entityKey: string, valueKey: string, nameOf: (k: string) => string, win: Win, demote?: (key: string) => boolean) {
+    // did — the retired short reads and the payments deck, which are off the
+    // site's navigation and would otherwise take up half the table on the
+    // strength of a traffic history nobody can follow a link to any more.
+    // Their visits are not dropped, they land in "Rest" with everything else
+    // outside the top ten.
+    //
+    // `colorOf` inks a row's bar and sparkline per entity, which only the
+    // pieces table asks for (its rows carry a format, the other two tables'
+    // rows are all one kind of thing). Absent, every mark stays the single
+    // saffron the CSS already gives it — including the Rest row, which is a
+    // tally across formats and so has no format of its own to wear.
+    function renderCompTable(containerId: string, rows: DayRow[], entityKey: string, valueKey: string, nameOf: (k: string) => string, win: Win, demote?: (key: string) => boolean, colorOf?: (key: string) => string) {
       const t = tokens();
       const agg = aggregateByEntity(rows, entityKey, valueKey, win);
       const demoted: EntityAgg[] = [];
@@ -1988,14 +2005,15 @@ import SectionHeader from '../components/editorial/SectionHeader.astro';
       const rest = ranked.concat(demoted);
       const restTotal = rest.reduce((s, r) => s + r.total, 0);
       const maxVal = Math.max(1, ...top.map((r) => r.total), restTotal);
-      const barCell = (total: number) =>
-        `<div class="comp-bar-track"><div class="comp-bar" style="width:${Math.max(2, Math.round((total / maxVal) * 100))}%"></div></div>`;
+      const barCell = (total: number, ink?: string) =>
+        `<div class="comp-bar-track"><div class="comp-bar" style="width:${Math.max(2, Math.round((total / maxVal) * 100))}%${ink ? `;background:${ink}` : ''}"></div></div>`;
       const sortedVals = (byDay: Map<string, number>) =>
         [...byDay.entries()].sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)).map(([, v]) => v);
-      const rowsHtml = top.map((r) =>
-        `<tr><td class="comp-name">${nameOf(r.key)}</td><td class="comp-bar-cell">${barCell(r.total)}</td>` +
-        `<td class="comp-value">${fmtCount(r.total)}</td><td class="comp-spark">${sparkSvg(sortedVals(r.byDay), t.primary)}</td></tr>`
-      ).join('');
+      const rowsHtml = top.map((r) => {
+        const ink = colorOf?.(r.key);
+        return `<tr><td class="comp-name">${nameOf(r.key)}</td><td class="comp-bar-cell">${barCell(r.total, ink)}</td>` +
+          `<td class="comp-value">${fmtCount(r.total)}</td><td class="comp-spark">${sparkSvg(sortedVals(r.byDay), ink ?? t.primary)}</td></tr>`;
+      }).join('');
       const restHtml = rest.length
         ? `<tr class="comp-rest"><td class="comp-name">Rest (${rest.length})</td><td class="comp-bar-cell">${barCell(restTotal)}</td>` +
           `<td class="comp-value">${fmtCount(restTotal)}</td><td class="comp-spark"></td></tr>`
@@ -2008,8 +2026,10 @@ import SectionHeader from '../components/editorial/SectionHeader.astro';
     // a visit is credited to the page it LANDED on, so with the front page as
     // the dispatch hub a visits-by-format chart would flatten every format that
     // people reach by clicking through. These do not sum to the hero, and the
-    // panel says so. Two panels: a stacked bar per UTC day (below) and the day
-    // still forming opened out into three lines (further below).
+    // panel says so. One panel: a stacked bar per UTC day, whose newest column
+    // is the day still forming. (An intraday three-line version of it used to
+    // sit below; the pieces table's TODAY answers that question better, and in
+    // visits rather than page views, so it was retired.)
     const FORMATS: Array<{ key: string; label: string; color: (t: Tokens) => string }> = [
       { key: 'read', label: 'Read', color: (t) => t.c1 },
       { key: 'play', label: 'Play', color: (t) => t.c2 },
@@ -2097,99 +2117,6 @@ import SectionHeader from '../components/editorial/SectionHeader.astro';
       rearmFormats();   // notMerge rebuilds the brush component every render
     };
 
-    // --- formats current day: the stacked column above opened out, as three
-    // intraday lines with the same dashed "now" marker as the traffic panel.
-    // Source is `formatsRolling15` (per-format 15-minute buckets, trailing
-    // ~24h); `formatsPrevDay15` supplies the optional previous-day overlay. ---
-    let tformatsGrain: '1h' | '15m' = '1h';
-    let showPrevDayFmt = false;
-    let localTFmt = false;
-    // The reader's legend selection, preserved across re-renders (every render is
-    // notMerge, which would otherwise reset the legend to all-visible on the next
-    // live tick or toggle). Updated from legendselectchanged below.
-    let tfmtLegendSel: Record<string, boolean> | null = null;
-    const buildTodayFormats = (grain: string, local: boolean) => {
-      const slots = grain === '1h' ? 24 : 96;
-      const side = humansOnly ? 'human' : 'all';
-      const todayKey = new Date().toISOString().slice(0, 10);
-      const nowSlot = slotOf(new Date(), grain);
-      const cur: Record<string, (number | null)[]> = {};
-      for (const f of FORMATS) cur[f.key] = Array.from({ length: slots }, (_, i) => (i <= nowSlot ? 0 : null));
-      for (const r of formatsRolling15) {
-        if (!r.t.startsWith(todayKey)) continue;
-        const arr = cur[r.format]; if (!arr) continue;
-        const s = slotOf(new Date(r.t), grain); arr[s] = (arr[s] ?? 0) + (r[side] ?? 0);
-      }
-      const prev: Record<string, (number | null)[]> = {};
-      if (showPrevDayFmt) {
-        for (const f of FORMATS) prev[f.key] = Array.from({ length: slots }, () => 0);
-        for (const r of formatsPrevDay15) {
-          const arr = prev[r.format]; if (!arr) continue;
-          const s = slotOf(new Date(r.t), grain); arr[s] = (arr[s] ?? 0) + (r[side] ?? 0);
-        }
-      }
-      return { labels: slotLabels(grain, local), cur, prev, nowSlot };
-    };
-    const todayFormatsOption = (t: Tokens) => {
-      if (!formatsRolling15.length) return offlineOption(t);
-      const { labels, cur, prev, nowSlot } = buildTodayFormats(tformatsGrain, localTFmt);
-      const sideLabel = humansOnly ? 'human' : 'all';
-      const tz = localTFmt ? utcOffsetLabel() : 'UTC';
-      const smooth = tformatsGrain === '1h';
-      const lonePoint = !FORMATS.some((f) => cur[f.key].filter((v) => v != null).length > 1);
-      // A format's today line and its previous-day line share the legend NAME
-      // (f.label), so toggling one legend entry hides/shows both together — the
-      // prev line follows its format's selection instead of lingering. Today is
-      // pushed first so the legend swatch takes the solid style; z keeps it drawn
-      // over the faint dashed prev line regardless of array order. The two are
-      // told apart in the tooltip by seriesId (t- vs p-).
-      const series: any[] = [];
-      FORMATS.forEach((f, idx) => series.push({
-        type: 'line', id: `t-${f.key}`, name: f.label, smooth, showSymbol: lonePoint, symbolSize: 6,
-        data: cur[f.key], z: 2, connectNulls: false,
-        lineStyle: { width: 2, color: f.color(t) }, itemStyle: { color: f.color(t) },
-        ...(idx === 0 ? { markLine: nowMarkLine(t, labels[nowSlot]) } : {}),
-      }));
-      if (showPrevDayFmt) for (const f of FORMATS) series.push({
-        type: 'line', id: `p-${f.key}`, name: f.label, smooth, showSymbol: false, data: prev[f.key], z: 1,
-        lineStyle: { width: 1.5, color: f.color(t), opacity: 0.38, type: 'dashed' }, itemStyle: { color: f.color(t) },
-      });
-      const yFmt = axisFmt(peakOf(
-        ...FORMATS.map((f) => cur[f.key]),
-        ...(showPrevDayFmt ? FORMATS.map((f) => prev[f.key]) : []),
-      ));
-      return {
-        grid: { left: 56, right: 20, top: 24, bottom: 34 },
-        legend: { show: true, top: 0, right: 8, icon: 'roundRect', itemWidth: 10, itemHeight: 2,
-          data: FORMATS.map((f) => f.label),
-          ...(tfmtLegendSel ? { selected: tfmtLegendSel } : {}),
-          textStyle: { color: t.subtle, fontFamily: t.mono, fontSize: 11 } },
-        tooltip: { trigger: 'axis', ...touchTip, axisPointer: { type: 'line', lineStyle: { color: t.subtle } },
-          formatter: (ps: any[]) => {
-            const i = ps[0].dataIndex;
-            const rows = ps.filter((p: any) => p.value != null).map((p: any) => {
-              const isPrev = String(p.seriesId).startsWith('p-');
-              return `${p.marker}${p.seriesName}${isPrev ? ' · prev' : ''}: ${nf.format(p.value)}`;
-            }).join('<br/>');
-            const ahead = i > nowSlot ? ' (not yet)' : i === nowSlot ? ' (still filling)' : '';
-            return withClose(`${labels[i]} ${tz}${ahead}<br/>${rows || '—'}<br/><span style="opacity:.7">${sideLabel} page views</span>`);
-          },
-        },
-        xAxis: { type: 'category', data: labels, boundaryGap: false, ...axis(t), splitLine: { show: false },
-          axisLabel: { color: t.subtle, fontFamily: t.mono, fontSize: 11,
-            hideOverlap: true, ...(tformatsGrain === '15m' ? { interval: 3 } : {}) } },
-        yAxis: { type: 'value', ...axis(t), axisLine: { show: false }, minInterval: 1,
-          axisLabel: { color: t.subtle, fontFamily: t.mono, fontSize: 11, formatter: yFmt } },
-        series,
-      };
-    };
-    const renderTodayFormats = (t: Tokens) => { tfmtChart.setOption(todayFormatsOption(t), true); };
-    // Remember the reader's legend selection so it survives the next notMerge
-    // render. Shared series names mean a format's today and previous-day lines
-    // toggle together (same legend entry), which is the linkage we want.
-    tfmtChart.on('legendselectchanged', (p: any) => { tfmtLegendSel = p.selected; });
-
-    const renderFormatsDesk = () => { const t = tokens(); renderFormats(t); renderTodayFormats(t); };
 
     // Sealed complete days plus today's partial rows, but only when the payload's
     // today is genuinely the current UTC day — the same guard the hero's
@@ -2223,14 +2150,45 @@ import SectionHeader from '../components/editorial/SectionHeader.astro';
     // counted, and they keep their identity in the payload — they are only
     // barred from ranking as named rows, so the table lists things a reader
     // can still go and open.
+    // A piece's format decides the colour of its bar and sparkline, and the
+    // mapping is READ OFF the FORMATS table the stacked chart below is drawn
+    // from — same three tokens, so that chart's legend, two panels down in
+    // this same desk, is this table's legend too and no second key is needed.
+    // The film is outside that ternary (it is not play, read or explore), so
+    // it takes the subtle ink rather than a fourth hue, which would be a
+    // colour the legend cannot explain, or saffron, which on this page means
+    // "a dispatch happened here".
+    const formatInk = (t: Tokens, format: string) =>
+      (FORMATS.find((f) => f.key === format)?.color ?? ((tk: Tokens) => tk.subtle))(t);
     const renderContent = () => {
+      const t = tokens();
       const titles = new Map<string, string>(content.map((c: any) => [c.slug, c.title]));
+      // The canonical current-grammar path, from the seeder (which guards that
+      // it is never a retired form). A title with no url would still render,
+      // as plain text — the table is about the numbers first.
+      const urls = new Map<string, string>(content.map((c: any) => [c.slug, c.url]));
+      const formats = new Map<string, string>(content.map((c: any) => [c.slug, c.format]));
       const minor = new Set<string>(content.filter((c: any) => c.minor).map((c: any) => c.slug));
       const rows: DayRow[] = content.flatMap((c: any) =>
         c.daily.map((d: any) => ({ slug: c.slug, ...d })));
+      // Title, then the format as a muted word. Two spans, not one string: the
+      // cell truncates, and the suffix is the half that must survive it — it
+      // is what keeps the format legible when the colour is not (a reader who
+      // cannot separate the three hues, or a row whose bar is 2px wide). The
+      // suffix sits outside the anchor, since it names a category and is not
+      // somewhere to click.
+      const nameOf = (k: string) => {
+        const title = titles.get(k) ?? k;
+        const url = urls.get(k);
+        const fmt = formats.get(k);
+        return `<span class="comp-name-inner"><span class="comp-title">${
+          url ? `<a href="${url}">${title}</a>` : title}</span>` +
+          (fmt ? `<span class="comp-suffix">· ${fmt}</span>` : '') + '</span>';
+      };
       renderCompTable('table-content', rows, 'slug',
-        humansOnly ? 'rum_visits' : 'visits', (k) => titles.get(k) ?? k,
-        piecesRange.get().win, (k) => minor.has(k));
+        humansOnly ? 'rum_visits' : 'visits', nameOf,
+        piecesRange.get().win, (k) => minor.has(k),
+        (k) => formatInk(t, formats.get(k) ?? ''));
     };
     // The snapshot fallback for a live load (see `content` above). Fired and
     // forgotten: the desk renders empty for as long as this takes, and fills
@@ -2290,7 +2248,7 @@ import SectionHeader from '../components/editorial/SectionHeader.astro';
     const renderTrafficDesk = () => { const t = tokens(); renderHero(t); renderToday(t); renderCumulative(t); };
     const renderAudienceDesk = () => { renderTables(); };
     trafficRange.subscribe(() => { syncTrafficRangeUI(); renderTrafficDesk(); });
-    formatsRange.subscribe(() => { syncFormatsRangeUI(); renderFormatsDesk(); });
+    formatsRange.subscribe(() => { syncFormatsRangeUI(); renderFormats(tokens()); });
     piecesRange.subscribe(() => { syncPiecesRangeUI(); renderContent(); });
     audienceRange.subscribe(() => { syncAudienceRangeUI(); renderAudienceDesk(); });
     syncTrafficRangeUI();
@@ -2298,12 +2256,12 @@ import SectionHeader from '../components/editorial/SectionHeader.astro';
     syncPiecesRangeUI();
     syncAudienceRangeUI();
     renderTrafficDesk();
-    renderFormatsDesk();
+    renderFormats(tokens());
     renderAudienceDesk();
     renderContent();
-    const renderAll = () => { renderTrafficDesk(); renderFormatsDesk(); renderAudienceDesk(); renderContent(); };
+    const renderAll = () => { renderTrafficDesk(); renderFormats(tokens()); renderAudienceDesk(); renderContent(); };
 
-    // --- current-day grain + previous-day toggles (traffic and formats) ---
+    // --- current-day grain + previous-day toggles (the Traffic panel) ---
     const wireGrain = (sel: string, set: (g: '1h' | '15m') => void, render: () => void) =>
       document.querySelectorAll<HTMLButtonElement>(`${sel} button`).forEach((b) =>
         b.addEventListener('click', () => {
@@ -2328,10 +2286,6 @@ import SectionHeader from '../components/editorial/SectionHeader.astro';
     wirePrev('#today-prev', () => (showPrevDay = !showPrevDay), () => renderToday(tokens()));
     wirePrev('#today-local', () => (localToday = !localToday),
       () => { setTz('today-tz', localToday); renderToday(tokens()); });
-    wireGrain('#tformats-grain', (g) => { tformatsGrain = g; }, () => renderTodayFormats(tokens()));
-    wirePrev('#tformats-prev', () => (showPrevDayFmt = !showPrevDayFmt), () => renderTodayFormats(tokens()));
-    wirePrev('#tformats-local', () => (localTFmt = !localTFmt),
-      () => { setTz('tformats-tz', localTFmt); renderTodayFormats(tokens()); });
 
     // --- live tick: keep the in-progress point, the stat tiles, the hourly
     // panel and the comparison tables current. Only armed when the initial load
@@ -2355,7 +2309,7 @@ import SectionHeader from '../components/editorial/SectionHeader.astro';
         // effectScatter↔scatter type change the merge path can't express) and
         // adds/removes the formats stacked bar's faint live glow, so re-render
         // both.
-        if (liveFresh() !== wasFresh) { wasFresh = liveFresh(); renderHero(tokens()); renderStats(); renderFormatsDesk(); }
+        if (liveFresh() !== wasFresh) { wasFresh = liveFresh(); renderHero(tokens()); renderStats(); renderFormats(tokens()); }
       };
       const tick = async () => {
         try {
@@ -2373,10 +2327,9 @@ import SectionHeader from '../components/editorial/SectionHeader.astro';
           sync(formatsDaily, j.formats_daily);
           sync(todayCountries, j.today_countries); sync(todayCountriesHuman, j.today_countries_human);
           sync(todayReferrers, j.today_referrers); sync(todayFormats, j.today_formats);
-          // Intraday buckets for the two current-day panels — full recompute
-          // each tick (keyed by time, regenerated grid), so replace outright.
+          // Intraday buckets for the current-day panel — full recompute each
+          // tick (keyed by time, regenerated grid), so replace outright.
           sync(rolling15, j.rolling15); sync(prevDay15, j.prev_day15);
-          sync(formatsRolling15, j.formats_rolling15); sync(formatsPrevDay15, j.formats_prev_day15);
           for (const k of Object.keys(byDay)) delete byDay[k];
           for (const r of daily) byDay[r.day] = r;
           for (const k of Object.keys(byDayBeacon)) delete byDayBeacon[k];
@@ -2389,7 +2342,7 @@ import SectionHeader from '../components/editorial/SectionHeader.astro';
           // changed day shifts by the same amount, so there is no partial
           // update to express. It also carries no brush state to preserve.
           renderCumulative(tokens());
-          renderFormatsDesk();
+          renderFormats(tokens());
           // A UTC rollover (or a day the feed has newly sealed) changes the
           // axis itself, which the merge update below cannot express — it only
           // ever writes series data. Full re-render in that case, merge in the
@@ -2424,7 +2377,7 @@ import SectionHeader from '../components/editorial/SectionHeader.astro';
     }
 
     const ro = new ResizeObserver(() => charts.forEach((c) => c.resize()));
-    ['chart-hero', 'chart-today', 'chart-cumulative', 'chart-formats', 'chart-today-formats']
+    ['chart-hero', 'chart-today', 'chart-cumulative', 'chart-formats']
       .forEach((id) => ro.observe(el(id)));
     // data-units joins data-theme: both restyle every number on the page.
     // renderAll covers charts and tables; the stat tiles need their own call.
@@ -2441,7 +2394,6 @@ import SectionHeader from '../components/editorial/SectionHeader.astro';
         else if (chartId === 'chart-today') todayChart.resize();
         else if (chartId === 'chart-cumulative') cumChart.resize();
         else if (chartId === 'chart-formats') fmtChart.resize();
-        else if (chartId === 'chart-today-formats') tfmtChart.resize();
       },
       onOpen: () => relocatePageBar(),
       onClose: () => relocatePageBar(),
@@ -2462,7 +2414,7 @@ import SectionHeader from '../components/editorial/SectionHeader.astro';
     let deskSeq = 0;
     const resizeDesk = (i: number) => {
       if (deskEls[i]?.id === 'traffic') { hero.resize(); todayChart.resize(); cumChart.resize(); }
-      else if (deskEls[i]?.id === 'content') { fmtChart.resize(); tfmtChart.resize(); }
+      else if (deskEls[i]?.id === 'content') { fmtChart.resize(); }
     };
 
     // --- desk collapse / expand (ported from DesksView.astro) ---
