@@ -39,7 +39,11 @@ echo "$CF_ANALYTICS_TOKEN" | npx wrangler secret put CF_ANALYTICS_TOKEN
 #   tools/mac-db-refresh.sh → node site/scripts/build-meta.mjs →
 npx wrangler r2 object put tsoi-meta/traffic.json \
   --file ../../../site/public/data/meta/traffic.json \
-  --content-type application/json
+  --content-type application/json --remote
+# --remote is required: wrangler 3.33+ defaults r2 object commands to the LOCAL
+# simulator, and a seed without it silently lands in .wrangler/state instead of
+# prod (looks identical: "Upload complete"). Time the put between cron ticks —
+# a */5 run that read the old object before your put will clobber it after.
 
 # manual first run + check
 curl -s -X POST -H "Authorization: Bearer $CF_ANALYTICS_TOKEN" \
