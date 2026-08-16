@@ -372,7 +372,18 @@ async function refresh(env) {
     // That also made the documented invariant unmeetable — "today so far, by
     // format" is supposed to sum to today's point on the chart above.
     today_formats: formats.filter((r) => r.day === today),
-    formats_daily: clamp(upsert(base.formats_daily, formats, (r) => `${r.day}|${r.format}`)),
+    // A fresh formats row can arrive with all_views: 0 when the edge query
+    // returns success-but-empty (the free-plan failure mode: a day still inside
+    // the harvest window but already past adaptive retention — 15 sealed days
+    // were zeroed this way through 2026-08-13). An empty read is
+    // indistinguishable from "no requests", and a sealed non-zero day can never
+    // legitimately become zero, so in that one case the base value wins.
+    // human_views stays fresh either way.
+    formats_daily: clamp(upsert(base.formats_daily, formats.map((r) => {
+      const b = (base.formats_daily || []).find(
+        (p) => p.day === r.day && p.format === r.format);
+      return b && r.all_views === 0 && b.all_views > 0 ? { ...r, all_views: b.all_views } : r;
+    }), (r) => `${r.day}|${r.format}`)),
     // Intraday buckets for the two "today so far" panels. Not merged onto the
     // base: each is a full recompute of a fixed grid every tick (keyed by
     // time), so the fresh array IS the new value. The baked snapshot has none
@@ -383,6 +394,7 @@ async function refresh(env) {
     formats_rolling15: formatsRolling15,
     formats_prev_day15: formatsPrevDay15,
     dispatches: base.dispatches || [], // git tags: only the seeder knows these
+    content: base.content || [], // per-piece history: only the seeder computes this
     today: todayDaily ? {
       day: todayDaily.day, uniques: todayDaily.uniques,
       page_views: todayDaily.page_views, requests: todayDaily.requests,
