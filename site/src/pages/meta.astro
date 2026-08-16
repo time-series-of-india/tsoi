@@ -2152,14 +2152,13 @@ import SectionHeader from '../components/editorial/SectionHeader.astro';
     // can still go and open.
     // A piece's format decides the colour of its bar and sparkline, and the
     // mapping is READ OFF the FORMATS table the stacked chart below is drawn
-    // from — same three tokens, so that chart's legend, two panels down in
-    // this same desk, is this table's legend too and no second key is needed.
-    // The film is outside that ternary (it is not play, read or explore), so
-    // it takes the subtle ink rather than a fourth hue, which would be a
-    // colour the legend cannot explain, or saffron, which on this page means
-    // "a dispatch happened here".
+    // from — same three tokens, so that chart's legend, one panel down in this
+    // same desk, is this table's legend too and no second key is needed. Three
+    // formats is the whole taxonomy (the film is one of the things under Play),
+    // so every piece finds a colour here; the fallback is only there so an
+    // unclassified row would render rather than throw.
     const formatInk = (t: Tokens, format: string) =>
-      (FORMATS.find((f) => f.key === format)?.color ?? ((tk: Tokens) => tk.subtle))(t);
+      (FORMATS.find((f) => f.key === format)?.color ?? ((tk: Tokens) => tk.primary))(t);
     const renderContent = () => {
       const t = tokens();
       const titles = new Map<string, string>(content.map((c: any) => [c.slug, c.title]));

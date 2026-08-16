@@ -144,10 +144,17 @@ async function freshCountriesHuman(env) {
 // '/economy/read' covers read and reads; the other two need an explicit pair.
 // Bare '/economy/' is deliberately unclassified (own page before the rename,
 // redirects into the read shelf after, so either choice misattributes one era).
+// /independence is Play — the interactive film is one of the things the Play
+// shelf holds. Matched EXACTLY where the others match by prefix, because the
+// film serves its images from /independence/ rather than /_astro/, and a
+// prefix would count every social-card fetch as a page view. Kept in lockstep
+// with FORMAT_CASE in site/scripts/build-meta.mjs: the two classify the same
+// days, and a day that disagrees with itself is worse than a day that is late.
 const formatOf = (p) => {
   if (!p) return null;
   if (p.startsWith('/economy/read')) return 'read';
   if (p.startsWith('/economy/play') || p.startsWith('/economy/beats')) return 'play';
+  if (p === '/independence/') return 'play';
   if (p.startsWith('/economy/explore') || p.startsWith('/economy/dashboards')) return 'explore';
   return null;
 };

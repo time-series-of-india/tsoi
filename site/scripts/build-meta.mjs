@@ -82,9 +82,21 @@ const countries_human_daily = (await client.query(`
 // go; the other two need an explicit pair. Bare '/economy/' is left out: it was
 // its own page before the rename and redirects into the read shelf after, so
 // counting it either way would misattribute one era.
+//
+// /independence is Play. The site has three formats and the interactive film
+// is one of the things under Play (see CLAUDE.md); until now it matched none
+// of the three and its whole launch was simply missing from this chart. It is
+// matched EXACTLY, not by prefix like the others, and that is the one place
+// this CASE cannot follow its own pattern: the film serves its images from
+// /independence/ (card.png, og.jpg, supplement.jpg, rack.jpg — 1,393 requests
+// and not one visit between them) rather than from /_astro/, which is the
+// assumption the whole edge-requests-as-page-views proxy rests on. A prefix
+// here would count every social-card fetch as a play. There are no real
+// sub-routes to miss: the film is one page.
 const FORMAT_CASE = `CASE
   WHEN path LIKE '/economy/read%' THEN 'read'
   WHEN path LIKE '/economy/play%' OR path LIKE '/economy/beats%' THEN 'play'
+  WHEN path = '/independence/' THEN 'play'
   WHEN path LIKE '/economy/explore%' OR path LIKE '/economy/dashboards%' THEN 'explore'
   END`;
 
@@ -227,7 +239,9 @@ const CONTENT = [
   read('what-india-buys', 'Most of what India buys on UPI is food', true),
   read('shops-vs-people', 'India pays shops more often than people', true),
   read('bank-reliability', 'The banks’ own UPI failures are rare, and falling', true),
-  { slug: 'independence', title: 'The Walk through Midnight', format: 'film',
+  // Play, not a format of its own: the interactive film is one of the things
+  // the Play shelf holds, alongside the two games.
+  { slug: 'independence', title: 'The Walk through Midnight', format: 'play',
     paths: ['/independence/'] },
   { slug: 'inflation-peaks', title: 'Inflation Peaks', format: 'play',
     paths: ['/economy/play/inflation-peaks/'] },
