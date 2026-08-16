@@ -82,9 +82,21 @@ const countries_human_daily = (await client.query(`
 // go; the other two need an explicit pair. Bare '/economy/' is left out: it was
 // its own page before the rename and redirects into the read shelf after, so
 // counting it either way would misattribute one era.
+//
+// /independence is Play. The site has three formats and the interactive film
+// is one of the things under Play (see CLAUDE.md); until now it matched none
+// of the three and its whole launch was simply missing from this chart. It is
+// matched EXACTLY, not by prefix like the others, and that is the one place
+// this CASE cannot follow its own pattern: the film serves its images from
+// /independence/ (card.png, og.jpg, supplement.jpg, rack.jpg — 1,393 requests
+// and not one visit between them) rather than from /_astro/, which is the
+// assumption the whole edge-requests-as-page-views proxy rests on. A prefix
+// here would count every social-card fetch as a play. There are no real
+// sub-routes to miss: the film is one page.
 const FORMAT_CASE = `CASE
   WHEN path LIKE '/economy/read%' THEN 'read'
   WHEN path LIKE '/economy/play%' OR path LIKE '/economy/beats%' THEN 'play'
+  WHEN path = '/independence/' THEN 'play'
   WHEN path LIKE '/economy/explore%' OR path LIKE '/economy/dashboards%' THEN 'explore'
   END`;
 
@@ -173,6 +185,129 @@ const today_referrers = (await client.query(`
     AND referer_host <> 'timeseriesofindia.com'
     AND referer_host NOT LIKE '%.cloudflareaccess.com'`)).rows;
 
+// ── per-piece visits, all time (the Content desk) ────────────────────────
+// One row per piece per day, carrying both metrics side by side: edge visits
+// (the All scope) and beacon visits (the Human scope). Three rules from the
+// 2026-08-12 dispatch visit audit decide which paths belong to which piece,
+// and all three are applied HERE, in SQL, never in the client:
+//
+//  1. Old-URL union. The 2026-07-24 rename (beats→play, reads→read singular,
+//     dashboards→explore) left real traffic parked on the old paths: 85,365
+//     visits sit on /economy/reads/upi-architecture/ against 1,870 on the new
+//     one, nearly all of it a single Hacker News front page. Every piece that
+//     predates the rename carries both forms, and the pages that were folded
+//     into an explore desk carry the URLs they were folded from.
+//  2. Multi-route pieces. The Rupee Time Machine's per-year pages and the
+//     puzzle game's numbered archive are sub-routes of one piece, summed into
+//     it rather than listed as dozens of near-empty rows.
+//  3. Exact paths only. cf_path_daily.path is full of bot and log-injection
+//     junk, %-encoded artefacts and doubled slashes, almost all of it at
+//     visits = 0. A LIKE pattern sweeps that in; an equality join cannot.
+//
+// Hubs are not pieces: '/', the section indexes, the read shelf, the play
+// rack, the explore gateway, /meta and /about are all left out. Someone who
+// landed on a shelf has not read anything yet.
+// `minor` marks what the site no longer sends anyone to: the eight dispatch-1
+// payment shorts (lineage.mjs kind 'short', the one-chart pieces written to
+// sit under the flagship read) and the payments play deck. Their traffic still
+// counts and they keep their names here; the page bars them from ranking as
+// rows so the table lists things a reader can still open. Nothing else about
+// them is special-cased, so un-marking one puts it straight back on the board.
+const read = (slug, title, minor = false) => ({
+  slug, title, format: 'read', minor,
+  paths: [`/economy/read/${slug}/`, `/economy/reads/${slug}/`],
+});
+// Sub-route enumerations, written out rather than pattern-matched (rule 3).
+// The ranges are deliberately wider than what is served today, so a new puzzle
+// or a re-cut year range needs no edit here; a path that was never served
+// simply contributes no rows.
+const span = (a, b) => Array.from({ length: b - a + 1 }, (_, i) => a + i);
+const RTM = '/economy/explore/rupee-time-machine';
+// The six dashboards that the Jul 2026 desks fold merged into one explore
+// page. A many-to-one merge rather than a rename, which is why the audit left
+// it alone; both legacy grammars 301 to the payments page today, so their
+// traffic is that page's traffic.
+const FOLDED = ['overview', 'product-view', 'bank-performance', 'upi-ecosystem', 'state-wise', 'mcc'];
+const CONTENT = [
+  read('upi-architecture', 'UPI: Anatomy of a Transaction'),
+  read('price-of-nearly-everything', 'Inflation: The Price of Nearly Everything'),
+  read('credit-vs-debit', 'The debit card faded as UPI rose, the credit card didn’t', true),
+  read('duel', 'Two apps run four-fifths of UPI', true),
+  read('where-india-pays', 'Half of India’s UPI comes from five states', true),
+  read('how-india-moves', 'India runs on UPI, but its money moves on RTGS', true),
+  read('where-money-lands', 'India pays from SBI, and into Yes Bank', true),
+  read('what-india-buys', 'Most of what India buys on UPI is food', true),
+  read('shops-vs-people', 'India pays shops more often than people', true),
+  read('bank-reliability', 'The banks’ own UPI failures are rare, and falling', true),
+  // Play, not a format of its own: the interactive film is one of the things
+  // the Play shelf holds, alongside the two games.
+  { slug: 'independence', title: 'The Walk through Midnight', format: 'play',
+    paths: ['/independence/'] },
+  { slug: 'inflation-peaks', title: 'Inflation Peaks', format: 'play',
+    paths: ['/economy/play/inflation-peaks/'] },
+  { slug: 'off-by-how-much', title: 'Off by How Much?', format: 'play',
+    paths: ['/economy/play/off-by-how-much/', '/economy/beats/off-by-how-much/',
+      ...span(1, 60).flatMap((n) => [
+        `/economy/play/off-by-how-much/${n}/`, `/economy/beats/off-by-how-much/${n}/`])] },
+  // Minor for the same reason as the shorts: the payments deck is the one
+  // card left on a rack the dispatch-2 games have taken over, and it is not
+  // somewhere the site sends anyone any more.
+  { slug: 'payments-deck', title: 'Six things India’s payment data knows', format: 'play', minor: true,
+    paths: ['/economy/play/payments/', '/economy/beats/payments/'] },
+  { slug: 'explore-payments', title: 'India Payments', format: 'explore',
+    paths: ['/economy/explore/payments/',
+      ...FOLDED.flatMap((s) => [`/economy/explore/${s}/`, `/economy/dashboards/${s}/`])] },
+  { slug: 'explore-inflation', title: 'India Inflation', format: 'explore',
+    paths: ['/economy/explore/inflation/'] },
+  { slug: 'rupee-time-machine', title: 'Rupee Time Machine', format: 'explore',
+    paths: [`${RTM}/`, ...span(1947, 2035).map((y) => `${RTM}/${y}/`)] },
+];
+// Unlike every other array here the current (incomplete) day is NOT excluded:
+// this desk is all-time by definition, it carries no range control and no live
+// feed, and dropping today would put it permanently behind the Total visits
+// tile beside it. Beacon days before the site was public are still clamped
+// away (the beacon ran during pre-launch previews).
+const contentRows = (await client.query(`
+  WITH item(slug, path) AS (SELECT * FROM unnest($1::text[], $2::text[]))
+  SELECT i.slug, to_char(d.day, 'YYYY-MM-DD') AS day,
+         sum(d.visits)::int AS visits, sum(d.rum_visits)::int AS rum_visits
+  FROM (
+    SELECT day, path, visits, 0 AS rum_visits FROM telemetry.cf_path_daily
+    UNION ALL
+    SELECT day, path, 0 AS visits, visits AS rum_visits FROM telemetry.rum_path_daily
+  ) d
+  JOIN item i ON i.path = d.path
+  WHERE d.day >= (SELECT min(day) FROM telemetry.cf_daily)
+  GROUP BY i.slug, d.day
+  HAVING sum(d.visits) > 0 OR sum(d.rum_visits) > 0
+  ORDER BY i.slug, d.day`,
+  [CONTENT.flatMap((c) => c.paths.map(() => c.slug)), CONTENT.flatMap((c) => c.paths)])).rows;
+const contentBySlug = new Map();
+for (const r of contentRows) {
+  const list = contentBySlug.get(r.slug) ?? contentBySlug.set(r.slug, []).get(r.slug);
+  list.push({ day: r.day, visits: r.visits, rum_visits: r.rum_visits });
+}
+// Every entry lists its CURRENT-grammar path first and the retired forms
+// after, so paths[0] is the piece's canonical URL and the page can link its
+// title straight there. Guarded rather than trusted: reordering a paths list
+// so it leads with an old form would silently start sending readers through a
+// redirect, and a table of links is exactly the wrong place to find that out.
+const RETIRED = /\/(reads|beats|dashboards)\//;
+for (const c of CONTENT) {
+  if (RETIRED.test(c.paths[0])) {
+    throw new Error(`content ${c.slug}: paths[0] must be the current URL, got ${c.paths[0]}`);
+  }
+}
+// A piece nobody has opened yet ships no empty row — the table would show it
+// as a zero and the "Rest (n)" tally would count it as a piece with traffic.
+const content = CONTENT
+  .filter((c) => contentBySlug.has(c.slug))
+  .map((c) => ({
+    slug: c.slug, title: c.title, format: c.format, url: c.paths[0],
+    ...(c.minor ? { minor: true } : {}),
+    daily: contentBySlug.get(c.slug),
+  }));
+
 // Dispatch markers from git tags — each release event traceable to a commit.
 const dispatches = execSync("git tag -l 'dispatch-*'", { cwd: SITE, encoding: 'utf8' })
   .split('\n').filter(Boolean).sort()
@@ -187,7 +322,7 @@ const dispatches = execSync("git tag -l 'dispatch-*'", { cwd: SITE, encoding: 'u
 const out = {
   built_at: new Date().toISOString(),
   daily, hourly, beacon_daily, countries_daily, countries_human_daily,
-  referrers_daily, formats_daily, dispatches, today,
+  referrers_daily, formats_daily, content, dispatches, today,
   today_countries, today_countries_human, today_referrers, today_formats,
 };
 writeFileSync(resolve(OUT, 'traffic.json'), JSON.stringify(out) + '\n');
@@ -198,6 +333,9 @@ console.log(
   `${nDistinct(countries_human_daily, 'country')} human, ` +
   `${nDistinct(referrers_daily, 'host')} referrers (${referrers_daily.length} day-rows), ` +
   `${nDistinct(formats_daily, 'format')} formats (${formats_daily.length} day-rows), ` +
+  `${content.length} content pieces (${contentRows.length} day-rows, ` +
+  `${content.reduce((s, c) => s + c.daily.reduce((n, d) => n + d.visits, 0), 0)} visits all / ` +
+  `${content.reduce((s, c) => s + c.daily.reduce((n, d) => n + d.rum_visits, 0), 0)} human), ` +
   `${dispatches.length} dispatches (${dispatches.map((d) => d.id).join(', ')})`,
 );
 await client.end();

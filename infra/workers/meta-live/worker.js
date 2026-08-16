@@ -144,10 +144,17 @@ async function freshCountriesHuman(env) {
 // '/economy/read' covers read and reads; the other two need an explicit pair.
 // Bare '/economy/' is deliberately unclassified (own page before the rename,
 // redirects into the read shelf after, so either choice misattributes one era).
+// /independence is Play — the interactive film is one of the things the Play
+// shelf holds. Matched EXACTLY where the others match by prefix, because the
+// film serves its images from /independence/ rather than /_astro/, and a
+// prefix would count every social-card fetch as a page view. Kept in lockstep
+// with FORMAT_CASE in site/scripts/build-meta.mjs: the two classify the same
+// days, and a day that disagrees with itself is worse than a day that is late.
 const formatOf = (p) => {
   if (!p) return null;
   if (p.startsWith('/economy/read')) return 'read';
   if (p.startsWith('/economy/play') || p.startsWith('/economy/beats')) return 'play';
+  if (p === '/independence/') return 'play';
   if (p.startsWith('/economy/explore') || p.startsWith('/economy/dashboards')) return 'explore';
   return null;
 };
@@ -372,7 +379,18 @@ async function refresh(env) {
     // That also made the documented invariant unmeetable — "today so far, by
     // format" is supposed to sum to today's point on the chart above.
     today_formats: formats.filter((r) => r.day === today),
-    formats_daily: clamp(upsert(base.formats_daily, formats, (r) => `${r.day}|${r.format}`)),
+    // A fresh formats row can arrive with all_views: 0 when the edge query
+    // returns success-but-empty (the free-plan failure mode: a day still inside
+    // the harvest window but already past adaptive retention — 15 sealed days
+    // were zeroed this way through 2026-08-13). An empty read is
+    // indistinguishable from "no requests", and a sealed non-zero day can never
+    // legitimately become zero, so in that one case the base value wins.
+    // human_views stays fresh either way.
+    formats_daily: clamp(upsert(base.formats_daily, formats.map((r) => {
+      const b = (base.formats_daily || []).find(
+        (p) => p.day === r.day && p.format === r.format);
+      return b && r.all_views === 0 && b.all_views > 0 ? { ...r, all_views: b.all_views } : r;
+    }), (r) => `${r.day}|${r.format}`)),
     // Intraday buckets for the two "today so far" panels. Not merged onto the
     // base: each is a full recompute of a fixed grid every tick (keyed by
     // time), so the fresh array IS the new value. The baked snapshot has none
@@ -383,6 +401,7 @@ async function refresh(env) {
     formats_rolling15: formatsRolling15,
     formats_prev_day15: formatsPrevDay15,
     dispatches: base.dispatches || [], // git tags: only the seeder knows these
+    content: base.content || [], // per-piece history: only the seeder computes this
     today: todayDaily ? {
       day: todayDaily.day, uniques: todayDaily.uniques,
       page_views: todayDaily.page_views, requests: todayDaily.requests,
