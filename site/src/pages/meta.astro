@@ -206,9 +206,9 @@ import SectionHeader from '../components/editorial/SectionHeader.astro';
               </button>
               <div class="seg" id="range-toggle-formats"
                    data-info="Time window shown. Drag to select; double-click to reset.">
-                <button type="button" data-value="7d" class="active">7D</button>
+                <button type="button" data-value="7d">7D</button>
                 <button type="button" data-value="14d">14D</button>
-                <button type="button" data-value="all">ALL</button>
+                <button type="button" data-value="all" class="active">ALL</button>
               </div>
               <button type="button" class="panel-max" aria-label="Maximize panel">⤢</button>
             </div>
@@ -251,10 +251,10 @@ import SectionHeader from '../components/editorial/SectionHeader.astro';
           <div class="ctl">
             <span class="ctl-label" data-info="Time window for both tables. TODAY is the day still forming.">Range</span>
             <div class="seg" id="range-toggle-audience">
-              <button type="button" data-value="today" class="active">TODAY</button>
+              <button type="button" data-value="today">TODAY</button>
               <button type="button" data-value="7d">7D</button>
               <button type="button" data-value="14d">14D</button>
-              <button type="button" data-value="all">ALL</button>
+              <button type="button" data-value="all" class="active">ALL</button>
             </div>
           </div>
         </div>
@@ -1783,20 +1783,12 @@ import SectionHeader from '../components/editorial/SectionHeader.astro';
     const formatsRange = makeRangeState(nowAnchor);
     const piecesRange = makeRangeState(nowAnchor);
     const audienceRange = makeRangeState(nowAnchor);
-    // Opening windows, set through the same setQuick every button press goes
-    // through (so the markup's `active` class, the reset chip's "back to"
-    // target and the state can't drift apart). Traffic keeps ALL — its hero is
-    // the page's headline series and the whole record belongs on it. Visits by
-    // piece keeps ALL for the same reason: a piece's whole life is the thing
-    // being asked after, and one Hacker News morning is most of this site's
-    // record. The format split beneath it opens on 7D instead: that one is a
-    // "what is being read lately" question, and 43 columns of stacked bar
-    // answers it worse than seven do. Audience opens on TODAY, the window that
-    // matches the clock in the page bar and the day-in-progress tiles above.
-    // No subscribers exist yet, so these are silent — the first render below
-    // picks the state up.
-    formatsRange.setQuick('7d');
-    audienceRange.setQuick('today');
+    // All four open on ALL, which is the factory default — so there is no
+    // opening setQuick call here, and the markup's `active` class sits on ALL
+    // in every one of the four segments. The page is 43 days old and its
+    // record is dominated by two mornings; a window that opens narrower hides
+    // the thing every panel here exists to show. The shorter windows are one
+    // click away in each control, and Audience adds TODAY.
     let currentHeroDays = heroDays;
 
     const computeWindowDays = (win: Win): string[] => {
