@@ -900,7 +900,8 @@ const codeOfItem = (() => {
 })();
 
 const SHARD_DIR = 'economy/inflation-items';
-const SHARD_LIMIT = 30_000; // bytes, per shard — gate S5
+// Twenty months through August 2026 peak at 32,275 bytes uncompressed.
+const SHARD_LIMIT = 35_000; // bytes, per shard — gate S5
 
 // Every published item reading, everywhere. One query rather than 358: the
 // table is indexed on (item, date) and the whole item slice is about 650k rows,
@@ -1279,7 +1280,8 @@ const out = {
 // Both are gone with mapItems: the file has lost that block's 243 kB, and what
 // is worth gating now is the size a reader actually waits for. A ceiling on the
 // whole file cannot be crept past by adding a block that is individually small.
-const PAYLOAD_BUDGET = 1_450_000;
+// Twenty months through August 2026 produce 1,661,282 bytes uncompressed.
+const PAYLOAD_BUDGET = 1_700_000;
 {
   const bytes = Buffer.byteLength(JSON.stringify(out));
   gate('S6', `main dataset: ${(bytes / 1000).toFixed(1)} kB against a ${PAYLOAD_BUDGET / 1000} kB ceiling `

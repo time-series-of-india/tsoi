@@ -1,22 +1,18 @@
 # NPCI Statistics — UPI Data Pipeline
 
-Fetches UPI ecosystem statistics from the NPCI public API and loads them into
-`economy.upi_app_statistics` and `economy.upi_bank_statistics` in TimescaleDB
-(or `economy_dev.*` for dev runs via `SCHEMA_NAME` env var).
+Fetches UPI and IMPS ecosystem statistics from NPCI's public API and loads the
+eight datasets below into TimescaleDB (`economy_dev.*` for development runs via
+`SCHEMA_NAME`).
 
 ## File layout
 
 ```
-npci-statistics/
-├── fetcher.py          # Shared HTTP + pagination utilities (imported by download scripts)
-├── download_bank.py    # Fetch UPI top-50 bank data (remitter + beneficiary)
-├── download_app.py     # Fetch UPI per-app statistics
-├── download_p2m.py     # Fetch UPI P2P and P2M transaction statistics
-├── download_psp.py     # Fetch UPI top-15 payer and payee PSP statistics
-├── download_mcc.py     # Fetch UPI merchant category (MCC) statistics
-├── download_statewise.py   # Fetch UPI state-wise statistics
-├── download_top50_vol_val.py # Fetch UPI top-50 member banks by volume and value
-├── download_imps_bank.py   # Fetch IMPS bank performance statistics
+npci/
+├── fetch_browser.mjs   # Active fetcher: API requests from an NPCI Chromium page
+├── probe_month.mjs     # Read-only publication check by month and dataset
+├── rebuild_combined_from_raw.py # Rebuild all_*.json after a browser fetch
+├── fetcher.py          # Legacy plain-HTTP transport; Akamai currently blocks it
+├── download_*.py       # Legacy wrappers around fetcher.py; do not use for refreshes
 ├── load_bank.py        # Parse raw bank JSON → CSV → load into DB
 ├── load_app.py         # Parse raw app JSON → CSV → load into DB
 ├── load_p2m.py         # Parse raw P2P/P2M JSON → CSV → load into DB
@@ -58,8 +54,12 @@ imps_bank_stats.csv          # Intermediate CSV written by load_imps_bank.py
 
 ## Data sources
 
-All scripts hit the same NPCI endpoint:
+The active browser fetcher and legacy downloaders target the same NPCI endpoint:
 `https://www.npci.org.in/api/ecosystem-statistics/get-statistics`
+
+NPCI's Akamai configuration rejects plain HTTP clients with `403 Access
+Denied`. `fetch_browser.mjs` first opens NPCI's public statistics page and then
+calls the API from that page context. This is the supported fetch path.
 
 | Script | `tab_name` param | Coverage |
 |---|---|---|
@@ -90,39 +90,31 @@ All load scripts use INSERT...ON CONFLICT DO UPDATE (upsert) — reprocessing up
 
 ## Usage
 
-### 1. Download new data
+### 1. Pull, validate and load new data
 
-Run these whenever you want to pull the latest months from NPCI:
+For maintainer refreshes, use the internal CLI. It stages the browser fetch,
+validates it, archives and promotes only new files, rebuilds the combined JSON,
+loads with natural-key upserts, and runs the invariant suite:
 
 ```bash
-# Bank stats (remitter + beneficiary) → raw/
-python download_bank.py
-
-# App stats → raw_apps/
-python download_app.py
-
-# P2P/P2M stats → raw_p2m/
-python download_p2m.py
-
-# PSP stats (payer + payee) → raw_psp/
-python download_psp.py
-
-# MCC stats → raw_mcc/
-python download_mcc.py
-
-# State-wise stats → raw_statewise/
-python download_statewise.py
-
-# Top-50 banks by vol/val → raw_top50_vol_val/
-python download_top50_vol_val.py
-
-# IMPS bank performance → raw_imps_bank/
-python download_imps_bank.py
+tsoi data status --remote --year 2026 --month Aug
+tsoi data pull --dry-run --year 2026
+tsoi data pull --year 2026
 ```
 
-All scripts skip files that already exist on disk, so re-running is safe and fast.
-The `YEARS` list at the top of each file controls how far back to fetch — extend it
-if you need older data.
+The dry run fetches and validates but does not change raw directories, archives,
+or database tables.
+
+Without the internal CLI, run the browser fetcher, rebuild the combined inputs,
+then use the loaders in the next section:
+
+```bash
+node fetch_browser.mjs 2026 2026
+python3 rebuild_combined_from_raw.py
+```
+
+The fetcher skips existing monthly files. Never substitute the `download_*.py`
+commands while plain HTTP remains blocked.
 
 ### 2. Load into TimescaleDB
 
@@ -156,32 +148,26 @@ SCHEMA_NAME=economy_dev python load_imps_bank.py
 
 Use `SCHEMA_NAME=economy` for production runs. Each load script uses psycopg2 with upsert (INSERT...ON CONFLICT DO UPDATE).
 
-### 3. Full refresh (download + load)
+### 3. Verify a load
 
 ```bash
-python download_bank.py && python load_bank.py
-python download_app.py  && python load_app.py
-python download_p2m.py  && python load_p2m.py
-python download_psp.py  && python load_psp.py
-python download_mcc.py       && python load_mcc.py
-python download_statewise.py    && python load_statewise.py
-python download_top50_vol_val.py && python load_top50_vol_val.py
-python download_imps_bank.py     && python load_imps_bank.py
+tsoi data verify --schema economy_dev
 ```
 
-## Current data coverage (as of 2026-05)
+## Current development coverage (verified 2026-09-15)
 
 | Table | From | To | Rows |
 |---|---|---|---|
-| `upi_bank_statistics` | 2022-01 | 2026-02 | ~5,000 |
-| `upi_app_statistics` | 2022-01 | 2026-03 | ~3,790 |
-| `upi_p2p_p2m_statistics` | 2021-01 | 2026-03 | 63 |
-| `upi_psp_statistics` | 2022-01 | 2026-03 | 1,530 |
-| `upi_mcc_statistics` | 2017-01 | 2026-03 | 3,325 |
-| `upi_statewise_statistics` | 2024-01 | 2026-03 | 998 |
-| `upi_top50_vol_val_statistics` | 2021-01 | 2026-02 | 3,124 |
-| `imps_bank_performance` | 2020-01 | 2026-04 | 3,425 |
-| `payment_statistics` (UPI) | 2021-01 | 2026-05 | ~1,949 |
+| `upi_bank_statistics` | 2022-01 | 2026-08 | 5,598 |
+| `upi_app_statistics` | 2022-01 | 2026-08 | 4,243 |
+| `upi_p2p_p2m_statistics` | 2021-01 | 2026-08 | 68 |
+| `upi_psp_statistics` | 2022-01 | 2026-08 | 1,680 |
+| `upi_mcc_statistics` | 2017-01 | 2026-08 | 3,470 |
+| `upi_statewise_statistics` | 2024-01 | 2026-07 | 1,142 |
+| `upi_top50_vol_val_statistics` | 2021-01 | 2026-08 | 3,394 |
+| `imps_bank_performance` | 2020-01 | 2026-08 | 3,631 |
+| `payment_statistics` | 2020-06-01 | 2026-09-14 (partial) | 39,513 |
 
 > `payment_statistics` is populated by the main RBI ETL pipeline
-> (`etl/rbi/`), not by scripts in this directory.
+> (`etl/rbi/`), not by scripts in this directory. Monthly public consumers
+> exclude the incomplete September tail and currently end in August 2026.

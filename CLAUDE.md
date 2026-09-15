@@ -38,20 +38,18 @@ python main.py --load --json-file <basename>.json
 ```
 
 ### Run the NPCI ETL pipeline
-NPCI stats are fetched first (the fetched CSV/JSON are not committed — regenerate
-with the `download_*.py` scripts / `fetch_browser.mjs`), then loaded:
+NPCI stats are fetched first (the fetched CSV/JSON are not committed). Akamai
+blocks the legacy `download_*.py` plain-HTTP transport, so use the staged
+browser path through the maintainer CLI:
 ```bash
-cd etl/npci
-# Fetch (example) then load. Run the loaders you need:
-SCHEMA_NAME=economy_dev python load_imps_bank.py
-SCHEMA_NAME=economy_dev python load_bank.py
-SCHEMA_NAME=economy_dev python load_app.py
-SCHEMA_NAME=economy_dev python load_mcc.py
-SCHEMA_NAME=economy_dev python load_p2m.py
-SCHEMA_NAME=economy_dev python load_psp.py
-SCHEMA_NAME=economy_dev python load_statewise.py
-SCHEMA_NAME=economy_dev python load_top50_vol_val.py
+tsoi data status --remote --year 2026 --month Aug
+tsoi data pull --dry-run --year 2026
+tsoi data pull --year 2026
+tsoi data verify --schema economy_dev
 ```
+
+See `etl/npci/README.md` for the manual `fetch_browser.mjs`, combined-file
+rebuild, and individual loader commands.
 
 ### Run the CPI ETL pipelines
 ```bash
