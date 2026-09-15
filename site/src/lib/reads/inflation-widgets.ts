@@ -2258,8 +2258,8 @@ export function initCore(fig: HTMLElement | null, cd: CoreData) {
 // Part II taught the reader that every item carries a weight. This is what a
 // weight does when the price behind it moves: each bar is one item's
 // contribution to the month's headline, its own rate times its share of the
-// hundred. Silver jewellery is thirty-one paise of that hundred and beats
-// petrol, which is fourteen times its size.
+// hundred. The leading rows can arrive at nearly the same contribution through
+// very different combinations of basket weight and price movement.
 //
 // The button is the argument. Taking the two jewellery items out re-runs the
 // index the way the ministry runs it — a ratio of two weighted sums of index

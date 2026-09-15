@@ -12,7 +12,7 @@
 // stays exported from inflation-widgets.ts and wild.base stays in the payload.
 // Same pass: one averaging table instead of two, index promoted to its own
 // h2, rank-turnover paragraph cut, refs renumbered contiguously (1-9), and
-// the build script now guards the prose's static claims (silver on top,
+// the build script now guards the prose's static claims (contribution leaders,
 // edu ≥ 2x headline).
 // Fresh-eyes pass (2026-08-05): subtext rewritten to match the descent (it
 // still described the climb), figcaptions trimmed to encoding + source only
@@ -108,13 +108,13 @@ const wd = data.wild;
 // and `published` agreeing below is a check the reader can be told about.
 const ct = wd.contrib;
 const ctItem = (needle: string) => ct.items.find((i: any) => i.name.startsWith(needle));
+const onion = ctItem('Onion');
 const silver = ctItem('Silver');
 const petrol = ctItem('Petrol');
 const ctHead = ct.published.toFixed(2);
 const ctEx = ct.ex.toFixed(2);
 const ctDrop = (ct.published - ct.ex).toFixed(2);
 const ctJewelW = ct.jewelW.toFixed(2);
-const silverX = (petrol.w / silver.w).toFixed(0);
 const silverFrom = ct.silver.first.toFixed(0);
 const silverFromM = mFull(ct.silver.months[0]);
 const silverPeak = ct.silver.peak.toFixed(0);
@@ -167,7 +167,7 @@ const subtext = `In three parts: the gap between the headline number and your li
 
       <p class="partmark partmark-first">Part I &middot; The number and you</p>
 
-      <p>On 13 July 2026 the Ministry of Statistics published the number it publishes every
+      <p>On 14 September 2026 the Ministry of Statistics published the number it publishes every
         month: retail inflation. Prices in India, taken together, were
         <strong class="num e e-head">{headline}%</strong> higher than they had been a year
         earlier.<sup class="c"><a href="#r1">1</a></sup> The evening bulletins read it out, the
@@ -593,14 +593,15 @@ const subtext = `In three parts: the gap between the headline number and your li
 
       <p>Part II opened a single number into a tree of weights. Weights are easy
         to nod at and hard to feel, so here is what one does when the price behind it moves. In
-        {month} the item that pushed the headline hardest was none of the usual heavyweights.
-        It was <span class="nl e-lvl-item">silver jewellery</span>, which carries
-        &#8377;{silver.w.toFixed(2)} of the hundred and rose
-        <span class="nl e-lvl-item">{silver.yoy.toFixed(0)}</span> percent on the year. Weight
-        times rise comes to {silver.c.toFixed(3)} of a percentage point, which is more than
-        petrol contributed, and petrol carries {silverX} times the weight.</p>
+        {month}, the three items that pushed the headline hardest finished within three
+        thousandths of a percentage point of one another. <span class="nl e-lvl-item">Onion</span>
+        carries &#8377;{onion.w.toFixed(2)} of the hundred and rose {onion.yoy.toFixed(0)} percent,
+        contributing {onion.c.toFixed(3)} points. Petrol carries &#8377;{petrol.w.toFixed(2)} and
+        contributed {petrol.c.toFixed(3)} points. <span class="nl e-lvl-item">Silver jewellery</span>
+        carries just &#8377;{silver.w.toFixed(2)} and contributed {silver.c.toFixed(3)} points. Three very
+        different paths through the same multiplication: weight times rise.</p>
 
-      <p>The metal did something unusual to get there. The silver jewellery index stood at
+      <p>Silver did something unusual to join that near-tie. Its index stood at
         {silverFrom} in {silverFromM} and has since touched {silverPeak}: it nearly tripled
         inside two years, which is not a thing food or rent can do. Weight decides how loudly
         an item can speak; the price decides whether it shouts.</p>
@@ -663,8 +664,8 @@ const subtext = `In three parts: the gap between the headline number and your li
       <p>The mechanism is blunt and slow: raise it and borrowing gets dearer, households and
         firms spend less, demand cools, and prices rise more slowly, most of it arriving about
         a year later. That lag is why <span class="e e-repo">the staircase</span> below always
-        looks late against the line; it has held at {repoNow} percent since the June 2026
-        meeting.</p>
+        looks late against the line; it has held at {repoNow} percent since the December 2025
+        cut, including at the August 2026 meeting.</p>
 
       <figure class="rofig widgetfig">
         <div class="ro-area"></div>
@@ -714,7 +715,7 @@ const subtext = `In three parts: the gap between the headline number and your li
       <h2>Sources</h2>
       <ol class="refs">
         <li id="r1">Ministry of Statistics and Programme Implementation, Consumer Price Index for
-          June 2026, press release, 13 July 2026. Series 2024=100, provisional.</li>
+          August 2026, press release, 14 September 2026. Series 2024=100, provisional.</li>
         <li id="r2">MoSPI CPI (2024 series), education services division, NCT of Delhi, combined,
           year-on-year. Retrieved from the eSankhyiki CPI service.</li>
         <li id="r3"><a href="https://www.mospi.gov.in/uploads/documents/documents/1770891066052-Annexure_V.pdf">MoSPI,
@@ -740,7 +741,7 @@ const subtext = `In three parts: the gap between the headline number and your li
         <li id="r7"><a href="https://www.business-standard.com/finance/news/rbi-mpc-december-2025-rate-cut-announcement-sanjay-malhotra-cpi-inflation-125120500161_1.html">&ldquo;RBI
           MPC cuts repo rate by 25 bps to 5.25%&rdquo;</a>, Business Standard, 5 December 2025.
           The staircase itself is hand-keyed from RBI Monetary Policy Committee announcements,
-          2014 through the June 2026 hold.</li>
+          2014 through the August 2026 hold.</li>
         <li id="r8">MoSPI, CPI (2024 series) item indices and the Annexure 5.3 weighing
           diagram, All India Combined, {month} &mdash; the item contributions, and the same
           index rebuilt over the basket without COICOP 13.2.1.1.1.01 and 13.2.1.1.1.02

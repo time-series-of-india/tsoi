@@ -87,8 +87,8 @@ const ybHead = ybRaw.find((r) => r.division === 'CPI (General)');
 // Index LEVELS, every published month (2025 included — the 2024 series shipped
 // with a back-computed 2025 so the first YoY could print in Jan 2026). The
 // widget needs them because the CPI's arithmetic is a ratio of two weighted
-// sums of levels, not an average of the divisions' rates: rate-weighting the
-// official basket gives 4.35 where the published number is 4.38.
+// sums of levels, not an average of the divisions' rates. Rate-weighting the
+// divisions can produce a different result from rebuilding the official basket.
 const ylRaw = await q(`
   SELECT to_char(date, 'YYYY-MM') AS m, division, index_value::float AS idx
   FROM ${SCHEMA}.mospi_cpi_coicop
@@ -157,7 +157,7 @@ yourBasket.series = {
   })),
 };
 
-// `level` — Part II's opening beat: what 4.38 percent IS. The ministry
+// `level` — Part II's opening beat: what the latest percent IS. The ministry
 // publishes an index, and the percent on the news is the ratio of two of them
 // twelve months apart. `old` carries the retired ruler's last reading so the
 // prose can restate today's index on the 2012 base with the published linking
@@ -651,10 +651,14 @@ if (!base.months.includes('2024-07')) throw new Error('base-effect home month mi
 // is what licenses the counterfactual: the ex-jewellery number is computed
 // the same way the real one is, not by subtracting contributions.
 //
-// The finding: gold and silver jewellery are ₹0.94 of the hundred and carry
-// roughly three-quarters of a point of a 4.38 percent headline. Silver alone
-// out-drives petrol, which has fourteen times its weight.
+// The finding: gold and silver jewellery occupy less than one rupee of the
+// basket but carry a visible share of the headline. In August, onion, petrol
+// and silver jewellery are the three leading contributors and are separated
+// by only three thousandths of a percentage point despite very different
+// weights and price movements.
 const JEWEL = ['13.2.1.1.1.01', '13.2.1.1.1.02'];
+const ONION = '01.1.7.4.1.01';
+const PETROL = '07.2.2.2.1.01';
 const SILVER = '13.2.1.1.1.02';
 const itemW = await q(`
   SELECT item_code AS code, max(item) AS name, sum(share_all_india)::float AS w
@@ -740,12 +744,19 @@ const contrib = {
   },
   reconWorst: +ctRecon.toFixed(4),
 };
-// "What the average hides" is written around silver jewellery by name — the
-// month it stops being the top contributor, the section becomes fiction with
-// fresh numbers in it. Fail the build instead; the section gets re-anchored.
-if (ctItems[0].code !== SILVER) {
-  throw new Error(`contrib: top pusher in ${ctM} is "${ctItems[0].name}" (${ctItems[0].code}), ` +
-    `not silver jewellery — re-anchor the "What the average hides" section before publishing`);
+// "What the average hides" names the leading trio and describes their
+// contributions as a near-tie. Fail the build when a later print makes either
+// statement false, so fresh numbers cannot quietly invalidate the prose.
+const LEADING_TRIO = new Set([ONION, PETROL, SILVER]);
+const topThree = ctItems.slice(0, 3);
+if (topThree.length !== 3 || topThree.some((r) => !LEADING_TRIO.has(r.code))) {
+  throw new Error(`contrib: leading trio in ${ctM} is ${topThree.map((r) => `"${r.name}"`).join(', ')}, ` +
+    `not onion, petrol and silver jewellery — re-anchor "What the average hides"`);
+}
+const topSpanMillipoints = Math.round(topThree[0].c * 1000) - Math.round(topThree[2].c * 1000);
+if (topSpanMillipoints > 3) {
+  throw new Error(`contrib: leading trio in ${ctM} spans ${(topSpanMillipoints / 1000).toFixed(3)} points, ` +
+    `too wide for the near-tie claim in "What the average hides"`);
 }
 
 // Beat 11, the many Indias: the spread of state inflation, month by month,
@@ -860,8 +871,8 @@ const states = {
 
 // Beat 12, the staircase: the policy repo rate hand-keyed from RBI MPC
 // announcements (administrative record, not derivable from our tables;
-// verified 2026-07-28 — held at 5.25% since the December 2025 cut, through
-// the June 2026 meeting), against headline YoY: 2012-base series to Dec
+// verified 2026-09-15 — held at 5.25% since the December 2025 cut, through
+// the August 2026 meeting), against headline YoY: 2012-base series to Dec
 // 2025, 2024-base series for 2026. YoY is base-independent enough to splice;
 // the figcaption says where the seam is.
 const REPO_STEPS = [
