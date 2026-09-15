@@ -1113,11 +1113,9 @@ import SectionHeader from '../components/editorial/SectionHeader.astro';
     // piece, hubs left out — see build-meta.mjs. Each entry is
     // { slug, title, format, daily: [{ day, visits, rum_visits }] }.
     //
-    // Build-time only, and the live worker rebuilds its payload from
-    // Cloudflare's API rather than carrying this array across, so a live load
-    // arrives without it. Rather than ship an empty desk whenever the feed is
-    // up, fall back to the baked snapshot for this one array — asynchronously,
-    // so nothing else on the page waits on a second fetch.
+    // The worker merges recent per-piece rows into the seeded full history.
+    // A live payload based on an older seed may omit this array, so retain the
+    // asynchronous baked-snapshot fallback during rollout.
     let content: any[] = data.content ?? [];
     // Sealed complete days plus the day still forming. Defined up here rather
     // than beside the tables because the Countries reached tile needs it too:
@@ -2195,7 +2193,11 @@ import SectionHeader from '../components/editorial/SectionHeader.astro';
     if (!content.length && liveOk) {
       void fetch(dataUrl('/data/meta/traffic.json'))
         .then((r) => r.json())
-        .then((j) => { content = j.content ?? []; renderContent(); })
+        // A live poll may have filled `content` while this slower fallback was
+        // in flight. Never let the baked snapshot overwrite that newer array.
+        .then((j) => {
+          if (!content.length) { content = j.content ?? []; renderContent(); }
+        })
         .catch(() => { /* snapshot unreachable too — the desk stays empty */ });
     }
 
@@ -2313,6 +2315,12 @@ import SectionHeader from '../components/editorial/SectionHeader.astro';
       const tick = async () => {
         try {
           const j = await fetchLive();
+          const nextBuiltAtMs = Date.parse(j.built_at);
+          // A request begun before pagehide can finish after the immediate
+          // pageshow catch-up request. Keep every captured array monotonic with
+          // the payload timestamp so the slower response cannot roll the page
+          // back to older live state.
+          if (!Number.isFinite(nextBuiltAtMs) || nextBuiltAtMs <= lastBuiltAtMs) return;
           todayPoint = j.today ?? null;
           // The same payload carries sealed days, healed late data, the
           // hourly window and the audience series — refresh every captured
@@ -2326,6 +2334,7 @@ import SectionHeader from '../components/editorial/SectionHeader.astro';
           sync(formatsDaily, j.formats_daily);
           sync(todayCountries, j.today_countries); sync(todayCountriesHuman, j.today_countries_human);
           sync(todayReferrers, j.today_referrers); sync(todayFormats, j.today_formats);
+          if (Array.isArray(j.content)) content = j.content;
           // Intraday buckets for the current-day panel — full recompute each
           // tick (keyed by time, regenerated grid), so replace outright.
           sync(rolling15, j.rolling15); sync(prevDay15, j.prev_day15);
@@ -2336,6 +2345,7 @@ import SectionHeader from '../components/editorial/SectionHeader.astro';
           setAsof(j.built_at);
           renderStats();
           renderTables();
+          renderContent();
           renderToday(tokens());
           // Full re-render, never a merge: this line's every point past the
           // changed day shifts by the same amount, so there is no partial

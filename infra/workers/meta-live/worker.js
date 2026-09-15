@@ -12,6 +12,12 @@
 // fetch: GET …/traffic.json → R2, revalidating cache (never immutable —
 //   this file changes in place, unlike the hashed /data pipeline).
 
+import {
+  contentHarvestDays,
+  contentSlugOf,
+  mergeContentDaily,
+} from './content.mjs';
+
 const API = 'https://api.cloudflare.com/client/v4/graphql';
 const DAY = 864e5;
 
@@ -192,6 +198,57 @@ async function freshFormats(env) {
   return [...acc.values()];
 }
 
+// Visits by piece. The seed owns the full record, while the worker keeps its
+// recent edge and RUM rows current. On the first tick of each UTC day it pulls
+// the trailing seven-day window needed by the shortest table range. Later
+// ticks only refresh today, which keeps the five-minute cron inexpensive.
+export async function freshContent(env, days) {
+  const acc = new Map();
+  const bump = (day, path, key, n) => {
+    const slug = contentSlugOf(path);
+    if (!slug || !n) return;
+    const id = `${slug}|${day}`;
+    const row = acc.get(id) || { slug, day, visits: 0, rum_visits: 0 };
+    row[key] += n;
+    acc.set(id, row);
+  };
+
+  // Keep every UTC day under its own 5,000-group cap. A single query spanning
+  // the eight-day catch-up window can fill with older date/path groups and
+  // silently omit the newer complete days.
+  const humanQueries = days.map((day) => {
+    const hi = new Date(Date.parse(`${day}T00:00:00Z`) + DAY).toISOString().slice(0, 10);
+    return gql(env, `accounts(filter: {accountTag: "${env.ACCOUNT_TAG}"}) {
+      g: rumPageloadEventsAdaptiveGroups(limit: 5000,
+        filter: {date_geq: "${day}", date_lt: "${hi}"}, orderBy: [date_ASC])
+      { sum { visits } dimensions { date requestPath } } }`);
+  });
+  const edgeQueries = days.map((day) => {
+    const hi = new Date(Date.parse(`${day}T00:00:00Z`) + DAY).toISOString().slice(0, 10);
+    return gql(env, `zones(filter: {zoneTag: "${env.ZONE_TAG}"}) {
+      g: httpRequestsAdaptiveGroups(limit: 5000,
+        filter: {datetime_geq: "${day}T00:00:00Z", datetime_lt: "${hi}T00:00:00Z",
+          OR: [{clientRequestPath_like: "/economy%"}, {clientRequestPath: "/independence/"}]},
+        orderBy: [count_DESC])
+      { sum { visits } dimensions { clientRequestPath } } }`);
+  });
+  const results = await Promise.all([...humanQueries, ...edgeQueries]);
+  const humanDays = results.slice(0, days.length);
+  const edgeDays = results.slice(days.length);
+
+  humanDays.forEach((result) => {
+    for (const g of result.accounts[0].g) {
+      bump(g.dimensions.date, g.dimensions.requestPath, 'rum_visits', g.sum.visits);
+    }
+  });
+  edgeDays.forEach((result, i) => {
+    for (const g of result.zones[0].g) {
+      bump(days[i], g.dimensions.clientRequestPath, 'visits', g.sum.visits);
+    }
+  });
+  return [...acc.values()];
+}
+
 // --- intraday (15-minute) buckets for the two "today so far" panels ---
 // 96 buckets works out to just under 24h (95 whole buckets plus the open one),
 // which keeps every edge query inside its 1-day adaptive cap. Buckets with no
@@ -318,16 +375,25 @@ const upsert = (base, fresh, key) => {
   return [...m.values()];
 };
 
-async function refresh(env) {
+export async function refresh(env) {
   const cur = await env.META.get('traffic.json');
   const base = cur ? await cur.json() : null;
   if (!base?.daily?.length) throw new Error('no seed: PUT build-meta.mjs output to R2 first');
 
+  const today = todayUTC();
+  // An older R2 seed has no full content history to extend. Avoid spending the
+  // eight-day catch-up's 16 requests on rows that mergeContentDaily must omit.
+  const contentDays = Array.isArray(base.content) && base.content.length
+    ? contentHarvestDays(today, base.content_harvest_day)
+    : [];
+
   const [daily, hourly, countries, referrers, beacon, edgeVisits, countriesHuman,
-         formats, rolling15, prevDay15, formatsRolling15, formatsPrevDay15] = await Promise.all([
+         formats, contentRows, rolling15, prevDay15,
+         formatsRolling15, formatsPrevDay15] = await Promise.all([
       freshDaily(env), freshHourly(env), freshCountries(env),
       freshReferrers(env), freshBeaconDaily(env),
       freshEdgeVisits(env), freshCountriesHuman(env), freshFormats(env),
+      freshContent(env, contentDays),
       freshRolling15(env), freshPrevDay15(env),
       freshFormatsRolling15(env), freshFormatsPrevDay15(env),
     ]);
@@ -342,7 +408,6 @@ async function refresh(env) {
     visits: evMap.has(r.day) ? evMap.get(r.day) : (baseVisits.get(r.day) ?? null),
   }));
 
-  const today = todayUTC();
   // The current UTC day's partial row is in `daily`/`beacon` (both windows
   // include today) BEFORE the filters below drop it — `daily`'s contract is
   // complete days only, a partial day reads as a dip on the line. Grab it
@@ -355,6 +420,7 @@ async function refresh(env) {
   const minDay = mDaily[0].day;
   const clamp = (rows) => rows.filter((r) => r.day >= minDay && r.day < today)
     .sort((a, b) => a.day.localeCompare(b.day));
+  const mergedContent = mergeContentDaily(base.content, contentRows);
 
   const out = {
     built_at: new Date().toISOString(),
@@ -401,7 +467,11 @@ async function refresh(env) {
     formats_rolling15: formatsRolling15,
     formats_prev_day15: formatsPrevDay15,
     dispatches: base.dispatches || [], // git tags: only the seeder knows these
-    content: base.content || [], // per-piece history: only the seeder computes this
+    // Omit both fields when R2 predates the full-history content seed. The page
+    // then keeps its baked snapshot during initial load and later live polls.
+    // Publishing the recent catch-up rows alone would mislabel an eight-day
+    // fragment as the all-time Content table.
+    ...(mergedContent ? { content: mergedContent, content_harvest_day: today } : {}),
     today: todayDaily ? {
       day: todayDaily.day, uniques: todayDaily.uniques,
       page_views: todayDaily.page_views, requests: todayDaily.requests,
@@ -417,7 +487,8 @@ async function refresh(env) {
     merged: { daily: daily.length, hourly: hourly.length, countries: countries.length,
       referrers: referrers.length, beacon: beacon.length,
       edge_visits: edgeVisits.length, countries_human: countriesHuman.length,
-      formats: formats.length, rolling15: rolling15.length, prev_day15: prevDay15.length,
+      formats: formats.length, content: contentRows.length, content_days: contentDays.length,
+      rolling15: rolling15.length, prev_day15: prevDay15.length,
       formats_rolling15: formatsRolling15.length, formats_prev_day15: formatsPrevDay15.length },
   };
 }
