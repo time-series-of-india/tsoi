@@ -8,8 +8,8 @@ will never be refreshed by a cron, so it bypasses the usual
 ETL → TimescaleDB → generator pipeline. `site/scripts/build-independence.mjs`
 reads it directly and emits the one JSON file `/independence` fetches.
 
-**Consequence, accepted knowingly: `tsoi trace` lineage does not cover these
-series.**
+**Consequence, accepted knowingly: these series sit outside the database-backed
+lineage used by the rest of the site.**
 
 The file is stored **exactly as downloaded** — unfiltered, all countries. That
 is why the comparator lines (World, United Kingdom, China) cost nothing. Do not

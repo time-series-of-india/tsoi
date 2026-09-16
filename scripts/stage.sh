@@ -27,6 +27,10 @@ if [ "$SKIP_GEN" -eq 0 ]; then
     node scripts/build-dashboard-data.mjs
     node scripts/build-reads-data.mjs
     node scripts/build-read-upi-architecture.mjs
+    node scripts/build-read-inflation.mjs
+    node scripts/build-inflation-peaks.mjs
+    node scripts/build-inflation-board-data.mjs
+    node scripts/build-rupee-time-machine-data.mjs
     node scripts/build-og-cards.mjs
     node scripts/build-meta.mjs
 else

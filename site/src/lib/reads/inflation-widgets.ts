@@ -855,7 +855,7 @@ export function initBeam(
   // reader meets the hierarchy there and can retro-fit what they played with
   // here. Naming it now would be a forward reference to machinery they have
   // not been shown.
-  const BTN0 = `Spike one vegetable inside food (${fmtPct(tomato.infl, 1)} → ${fmtPct(tomato.infl * 2, 1)})`;
+  const BTN0 = `Double one vegetable’s price change (${fmtPct(tomato.infl, 1)} → ${fmtPct(tomato.infl * 2, 1)})`;
 
   // rebuilt at the container's width; the spike toggle and tap selection
   // reset on rebuild (a resize is rare and the reset state is the honest one)
@@ -1546,7 +1546,7 @@ export function initIndexRate(fig: HTMLElement | null, ir: IndexRateData) {
       // from the unrounded index, so the last digit can differ from this
       // division of the published two-decimal levels (Jan 2026: 2.73 v 2.74)
       cap.innerHTML = `<strong>${fmtM(ir.months[k])}: the rate works out to <span class="ix-h">${y != null ? fmtPct(y, 2) : '—'}</span>.</strong> `
-        + `That is the index, <strong>${i.toFixed(2)}</strong>, divided by its mark twelve months back, <strong>${i12.toFixed(2)}</strong>.`;
+        + `The calculation: (<strong>${i.toFixed(2)}</strong> ÷ <strong>${i12.toFixed(2)}</strong> − 1) × 100.`;
     };
 
     // scrub anywhere; the mark needs a year of runway
@@ -1882,8 +1882,8 @@ export function initSectors(fig: HTMLElement | null, rl: RulerData, shares: { ru
       if (u != null) { dU.setAttribute('cx', gx.toFixed(1)); dU.setAttribute('cy', Y(u).toFixed(1)); }
       if (c != null) { dB.setAttribute('cx', gx.toFixed(1)); dB.setAttribute('cy', Y(c).toFixed(1)); }
       cap.innerHTML = `<strong>${fmtM(rl.months[k])}:</strong> `
-        + `<span class="ix-r">rural ${r?.toFixed(2)}</span> × ₹${shares.rural.toFixed(2)} + `
-        + `<span class="ix-u">urban ${u?.toFixed(2)}</span> × ₹${shares.urban.toFixed(2)} → `
+        + `(<span class="ix-r">rural ${r?.toFixed(2)}</span> × ${shares.rural.toFixed(2)} + `
+        + `<span class="ix-u">urban ${u?.toFixed(2)}</span> × ${shares.urban.toFixed(2)}) ÷ 100 → `
         + `<strong>${c?.toFixed(2)}</strong>, the blend the news is read from.`;
     };
 
@@ -2022,7 +2022,7 @@ export function initAisles(
       const rate = i12 != null ? (i / i12 - 1) * 100 : null;
       cap.innerHTML = `<strong>${rows[sel].label}, ${fmtM(months[k])}: <strong>${i.toFixed(2)}</strong>.</strong> `
         + (rate != null
-          ? `Its mark, twelve months back, is <strong>${i12!.toFixed(2)}</strong>: divide, and the aisle prints `
+          ? `Its mark, twelve months back, is <strong>${i12!.toFixed(2)}</strong>: the change between them is `
             + `<span class="ai-r">${fmtPct(rate, 2)}</span> on the year.`
           : `Its mark lies before the series starts, so no rate prints yet.`);
     };
@@ -2358,11 +2358,10 @@ export function initContrib(fig: HTMLElement | null, ct: WildData['contrib']) {
       : `retail inflation, ${fmtM(ct.m)}`;
     btn.textContent = out ? 'Put the jewellery back' : 'Take the jewellery out';
     cap.textContent = out
-      ? `Two items, ₹${ct.jewelW.toFixed(2)} of the hundred between them, were worth `
-        + `${(ct.published - ct.ex).toFixed(2)} points of the headline.`
-      : `Each bar is one item's contribution: its own rate times its share of the ₹100. `
-        + `${shortName(rows[0].name)} carries ₹${rows[0].w.toFixed(2)} and out-drives `
-        + `${shortName(rows[1].name)}, which carries ₹${rows[1].w.toFixed(2)}.`;
+      ? `Rebuilding without two items, ₹${ct.jewelW.toFixed(2)} of the hundred between them, lowers the rate by `
+        + `${(ct.published - ct.ex).toFixed(2)} percentage points.`
+      : `Each bar estimates an item's contribution: its own rate times its share of the ₹100. `
+        + `The button recalculates the rate for the basket without jewellery.`;
     draw();
   };
 

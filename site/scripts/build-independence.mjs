@@ -2,8 +2,8 @@
 // dataset, built directly from the one static CSV in data/independence/.
 // Deliberately DB-free: see data/independence/SOURCES.md for why this source
 // bypasses the usual ETL -> TimescaleDB -> generator pipeline (small, static,
-// externally sourced, never refreshed by a cron). Consequence accepted there:
-// `tsoi trace` lineage does not cover these series.
+// externally sourced, never refreshed by a cron). It therefore sits outside
+// the database-backed lineage used by the rest of the site.
 //
 // This began as a five-panel generator (economy, demographics, environment,
 // infrastructure, governance — git: ca6fdd0). The piece became a single walked

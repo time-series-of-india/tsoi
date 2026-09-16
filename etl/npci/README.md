@@ -90,37 +90,42 @@ All load scripts use INSERT...ON CONFLICT DO UPDATE (upsert) — reprocessing up
 
 ## Usage
 
-### 1. Pull, validate and load new data
+### 1. Check and fetch published data
 
-For maintainer refreshes, use the internal CLI. It stages the browser fetch,
-validates it, archives and promotes only new files, rebuilds the combined JSON,
-loads with natural-key upserts, and runs the invariant suite:
+Install the site dependencies first; the fetch scripts use the repository's
+Playwright installation. Then probe the target month without writing anything:
 
 ```bash
-tsoi data status --remote --year 2026 --month Aug
-tsoi data pull --dry-run --year 2026
-tsoi data pull --year 2026
+cd site
+npm ci
+npx playwright install chromium
+cd ../etl/npci
+node probe_month.mjs 2026 Aug
 ```
 
-The dry run fetches and validates but does not change raw directories, archives,
-or database tables.
-
-Without the internal CLI, run the browser fetcher, rebuild the combined inputs,
-then use the loaders in the next section:
+Fetch the published months and rebuild the combined inputs consumed by the
+loaders and static-data generators:
 
 ```bash
 node fetch_browser.mjs 2026 2026
 python3 rebuild_combined_from_raw.py
 ```
 
-The fetcher skips existing monthly files. Never substitute the `download_*.py`
-commands while plain HTTP remains blocked.
+The fetcher writes only non-empty API responses and skips existing monthly
+files. Review the new files under `raw*/` before loading. Never substitute the
+`download_*.py` commands while plain HTTP remains blocked.
 
 ### 2. Load into TimescaleDB
 
-Requires the Docker stack to be running (`docker compose up -d` from `infra/`).
+Copy `.env.example` to `.env` at the repository root and choose a local
+`DB_PASSWORD`. Export it into the current shell, then start the Docker stack:
 
 ```bash
+set -a
+source ../../.env
+set +a
+(cd ../../infra && docker compose up -d)
+
 # Load bank data (raw/ → economy_dev.upi_bank_statistics)
 SCHEMA_NAME=economy_dev python load_bank.py
 
@@ -150,8 +155,31 @@ Use `SCHEMA_NAME=economy` for production runs. Each load script uses psycopg2 wi
 
 ### 3. Verify a load
 
+Check table coverage directly in the local database:
+
 ```bash
-tsoi data verify --schema economy_dev
+cd ../../infra
+docker compose exec -T timescale psql -U admin -d npci -c "
+SELECT 'bank' AS dataset, min(date), max(date), count(*) FROM economy_dev.upi_bank_statistics
+UNION ALL SELECT 'apps', min(date), max(date), count(*) FROM economy_dev.upi_app_statistics
+UNION ALL SELECT 'p2m', min(date), max(date), count(*) FROM economy_dev.upi_p2p_p2m_statistics
+UNION ALL SELECT 'psp', min(date), max(date), count(*) FROM economy_dev.upi_psp_statistics
+UNION ALL SELECT 'mcc', min(date), max(date), count(*) FROM economy_dev.upi_mcc_statistics
+UNION ALL SELECT 'statewise', min(date), max(date), count(*) FROM economy_dev.upi_statewise_statistics
+UNION ALL SELECT 'top50', min(date), max(date), count(*) FROM economy_dev.upi_top50_vol_val_statistics
+UNION ALL SELECT 'imps', min(date), max(date), count(*) FROM economy_dev.imps_bank_performance
+ORDER BY dataset;"
+```
+
+Finally, run the downstream generators and test suite. The generators contain
+their own continuity, range, reconstruction and payload gates:
+
+```bash
+cd ../site
+node scripts/build-dashboard-data.mjs
+node scripts/build-reads-data.mjs
+node scripts/build-read-upi-architecture.mjs
+npm test
 ```
 
 ## Current development coverage (verified 2026-09-15)

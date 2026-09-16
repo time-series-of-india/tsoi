@@ -18,9 +18,12 @@ See [`AGENTS.md`](AGENTS.md) for the mental model.
 
 ### Start the build-time database (TimescaleDB)
 ```bash
-cd infra
-docker compose up -d          # brings up TimescaleDB on 127.0.0.1:5432
+cp .env.example .env          # first run only; choose a local DB_PASSWORD
+set -a; source .env; set +a
+docker compose -f infra/docker-compose.yml up -d
 ```
+This brings up TimescaleDB on `127.0.0.1:5432`. Source `.env` once in each shell
+before running loaders or database-backed generators.
 Apply the schema DDL on first run (see `infra/db/*.sql`).
 
 ### Run the RBI ETL pipeline
@@ -39,17 +42,21 @@ python main.py --load --json-file <basename>.json
 
 ### Run the NPCI ETL pipeline
 NPCI stats are fetched first (the fetched CSV/JSON are not committed). Akamai
-blocks the legacy `download_*.py` plain-HTTP transport, so use the staged
-browser path through the maintainer CLI:
+blocks the legacy `download_*.py` plain-HTTP transport, so use the checked-in
+browser fetcher and loaders:
 ```bash
-tsoi data status --remote --year 2026 --month Aug
-tsoi data pull --dry-run --year 2026
-tsoi data pull --year 2026
-tsoi data verify --schema economy_dev
+cd etl/npci
+node probe_month.mjs 2026 Aug
+node fetch_browser.mjs 2026 2026
+python3 rebuild_combined_from_raw.py
+
+SCHEMA_NAME=economy_dev python3 load_bank.py
+SCHEMA_NAME=economy_dev python3 load_app.py
+# Run the remaining load_*.py scripts listed in etl/npci/README.md.
 ```
 
-See `etl/npci/README.md` for the manual `fetch_browser.mjs`, combined-file
-rebuild, and individual loader commands.
+See `etl/npci/README.md` for prerequisites, every loader command, database
+coverage checks, and the generators used to validate downstream consumers.
 
 ### Run the CPI ETL pipelines
 ```bash

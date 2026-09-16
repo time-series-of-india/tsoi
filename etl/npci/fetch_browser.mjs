@@ -19,8 +19,8 @@ const require = createRequire(resolve(dirname(fileURLToPath(import.meta.url)), '
 const { chromium } = require('playwright');
 
 const HERE = dirname(fileURLToPath(import.meta.url));
-// RAW_ROOT lets a wrapper stage fetches outside the real raw_*/ dirs and only
-// promote validated files (tsoi data pull).
+// RAW_ROOT lets a wrapper stage fetches outside the real raw_*/ dirs for
+// inspection before selected files are promoted into the working cache.
 const RAW_ROOT = process.env.RAW_ROOT ?? HERE;
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const startYear = Number(process.argv[2] ?? 2026);

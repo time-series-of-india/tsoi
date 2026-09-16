@@ -84,13 +84,11 @@ const tom = data.pyramid.path;
 // the same strand read as index levels, which is what actually merges: the
 // percentages are only what these come to against their own value a year back
 const tomIdx = tom[0].idx.toFixed(2);
-const subIdx = tom[1].idx.toFixed(2);
-const classIdx = tom[2].idx.toFixed(2);
-const groupIdx = tom[3].idx.toFixed(2);
 const divIdx = tom[4].idx.toFixed(2);
 const wRural = data.pyramid.sectors.rural.toFixed(2);
 const wUrban = data.pyramid.sectors.urban.toFixed(2);
-const tomInfl = tom[0].infl.toFixed(2);
+const tomInfl = Math.abs(tom[0].infl).toFixed(2);
+const tomDirection = tom[0].infl < 0 ? 'cheaper' : 'dearer';
 // the per-floor RATES (tom[1..4].infl) left the prose when the percentage walk
 // and the index walk merged into one paragraph: the descent is told in index
 // levels now, and the rates would only have said the same thing twice
@@ -108,7 +106,6 @@ const wd = data.wild;
 // and `published` agreeing below is a check the reader can be told about.
 const ct = wd.contrib;
 const ctItem = (needle: string) => ct.items.find((i: any) => i.name.startsWith(needle));
-const onion = ctItem('Onion');
 const silver = ctItem('Silver');
 const petrol = ctItem('Petrol');
 const ctHead = ct.published.toFixed(2);
@@ -135,7 +132,6 @@ const repoNow = wd.repo.steps[wd.repo.steps.length - 1].r.toFixed(2);
 
 const title = 'Inflation: The Price of Nearly Everything';
 const deck = 'One number claims to describe a billion baskets. This is how it is made.';
-const subtext = `In three parts: the gap between the headline number and your life; the headline taken apart, floor by floor, down to a collector's tablet; and the number let out into the country.`;
 ---
 
 <StoryPage title={title} description={deck} og_type="article" og_image="/og/reads/price-of-nearly-everything.png">
@@ -148,7 +144,6 @@ const subtext = `In three parts: the gap between the headline number and your li
       <p class="kicker">How it works &middot; Prices &middot; {readingMinutes('price-of-nearly-everything')} min read &middot; data through {month}</p>
       <h1>{title}</h1>
       <p class="deck">{deck}</p>
-      <p class="subtext">{subtext}</p>
       <div class="toolbar"><ReaderControls /><ShareButtons title={title} variant="icon" /></div>
     </header>
 
@@ -161,8 +156,7 @@ const subtext = `In three parts: the gap between the headline number and your li
         {/* one line: the drawing states the number itself and the opening para
             repeats it; what only the caption can say is the source and the
             splice (this line joins the 2012 and 2024 series with no seam) */}
-        <figcaption>Retail inflation since 2014. MoSPI, Consumer Price Index; 2012 series
-          to 2025, 2024 series from 2026.</figcaption>
+        <figcaption>Retail inflation since 2014. MoSPI.</figcaption>
       </figure>
 
       <p class="partmark partmark-first">Part I &middot; The number and you</p>
@@ -178,8 +172,7 @@ const subtext = `In three parts: the gap between the headline number and your li
         come harder. By the government&rsquo;s own count, the cost of education in the capital was
         running <strong class="num e e-you">{edu}%</strong> above last year, more than double the all-India
         pace,<sup class="c"><a href="#r2">2</a></sup> and the fight over fee hikes had already
-        produced a new law and a High Court
-        order.<sup class="c"><a href="#r4">4</a></sup><sup class="c"><a href="#r5">5</a></sup>
+        brought fresh government scrutiny.<sup class="c"><a href="#r4">4</a></sup><sup class="c"><a href="#r5">5</a></sup>
         None of that turmoil is visible in the {headline} percent.</p>
 
       <figure class="gapfig widgetfig">
@@ -189,8 +182,9 @@ const subtext = `In three parts: the gap between the headline number and your li
           Index.</figcaption>
       </figure>
 
-      <p>Both numbers are honest. <span class="e e-you">The school bill</span> answers a question
-        about one kind of spending in one city. The number on the news answers a stranger
+      <p>Both numbers are honest. <span class="e e-you">The education figure</span> answers a question
+        about one kind of spending in one city, though it cannot describe every school bill.
+        The number on the news answers a stranger
         question: what happened to the price of nearly everything, everywhere, averaged across
         everyone. Economists call it <span class="e e-head">headline inflation</span>, because it
         is the one that makes the headlines. The rest of this piece is
@@ -224,8 +218,7 @@ const subtext = `In three parts: the gap between the headline number and your li
           basket, sorted by the gap between the two. MoSPI, HCES weights.</figcaption>
       </figure>
 
-      <p>The important thing about the official basket is that no household actually divides its
-        hundred this way. Below is the real basket with its real weights
+      <p>The official basket need not resemble your own. Below is the real basket with its real weights
         and each division&rsquo;s latest rate of inflation. The sliders are yours, and they hold
         one shared &#8377;100. Set the mix to the way your own month actually goes, and watch
         <span class="e e-you">your number</span> walk away from
@@ -234,7 +227,8 @@ const subtext = `In three parts: the gap between the headline number and your li
       <figure class="ybfig widgetfig">
         <div class="yb-area"></div>
         <figcaption>The official basket, yours to reweight; the line traces your number against
-          the headline. MoSPI, {month}.</figcaption>
+          the headline. This changes spending shares, using national category rates;
+          it does not measure your local prices. MoSPI, {month}.</figcaption>
       </figure>
 
       <p>Whatever you set, you are still pricing today&rsquo;s spending habits. Habits drift, and
@@ -273,9 +267,9 @@ const subtext = `In three parts: the gap between the headline number and your li
           (MoSPI, HCES weights).</figcaption>
       </figure>
 
-      <p>None of this rewrites a price anyone paid. The part of a rebuild that genuinely
-        changes the number is the weights, the same dials the basket figure above put in your
-        hands.</p>
+      <p>None of this rewrites a price anyone paid. New weights change how much each price
+        counts, the same dials the basket figure above put in your hands. Changes to the
+        shopping list and the way prices are collected matter too.</p>
 
       <p>A basket, in the end, is a shopping list, and the headline is what the list turns into
         once every item on it has been priced and weighed. So far the number has been taken at
@@ -303,12 +297,12 @@ const subtext = `In three parts: the gap between the headline number and your li
 
       <p>The bulletin also carries the same index for {lvAgoM}:
         <strong class="num">{lvAgo}</strong>. Divide the newer by the older and the answer
-        is &times;{lvRatio}, which the news reads out
-        as <span class="e e-head">{headline} percent</span>. That is the whole of the last
-        step: two published numbers and one division, a month set against the same month a
-        year before. Holding the two months a year apart is what makes the seasons cancel:
-        December is set against December, harvest against harvest, so a winter spike in
-        onions reads as winter rather than inflation.</p>
+        is &times;{lvRatio}. Subtract one and multiply by a hundred: the news reads out
+        <span class="e e-head">{headline} percent</span>.</p>
+
+      <p>The comparison is a month set against the same month a year before:
+        December against December, harvest against harvest. That helps account for the
+        usual seasons; an unusual harvest or a price spike can still move the number.</p>
 
       <figure class="rlfig ixfig widgetfig">
         <div class="rl-area"></div>
@@ -380,14 +374,10 @@ const subtext = `In three parts: the gap between the headline number and your li
           combined.</figcaption>
       </figure>
 
-      <p>How do twelve indices become one? Not by treating them as equals. Each division
-        counts in proportion to its share of the household &#8377;100, and the shares are
-        not read off any price: they come from the Household Consumption Expenditure Survey
-        of 2023&ndash;24, which asked 2,61,953 households what they actually
-        spend.<sup class="c"><a href="#r6">6</a></sup> Their answers are the &#8377;100 of
-        Part I, and the rural and urban shares that blended the two indices at the top of
-        the descent. The rule is one line: each division&rsquo;s index times its share,
-        summed.</p>
+      <p>How do twelve indices become one? Each counts in proportion to its share of the
+        household &#8377;100. The shares come from the Household Consumption Expenditure
+        Survey of 2023&ndash;24, the spending survey behind the basket in Part I.<sup class="c"><a href="#r6">6</a></sup>
+        Multiply each index by its share of the basket, then add the results.</p>
 
       <p>A weighted average behaves like a beam balancing. Each division sits at its own rate
         of price rise, heavy or light according to its share, and the headline is the point
@@ -405,10 +395,10 @@ const subtext = `In three parts: the gap between the headline number and your li
           combined.</figcaption>
       </figure>
 
-      <p>The shares stay frozen until the next rebuild, and that is a known, accepted
-        distortion: households drift away from whatever gets dear, so an aging basket slightly
-        overstates the cost of living, which is why the ministry now intends to rebuild every
-        few years instead of once in thirteen.<sup class="c"><a href="#r3">3</a></sup></p>
+      <p>The shares stay frozen until the next rebuild, while households can drift away
+        from whatever gets dear. An aging basket can therefore overstate the cost of living.
+        The ministry now intends to rebuild every few years instead of once in
+        thirteen.<sup class="c"><a href="#r3">3</a></sup></p>
 
       <p>This floor is also where one more famous number is made by subtraction. Set aside the
         aisles that swing with harvests and crude, food and fuel, and the inflation of what
@@ -430,8 +420,8 @@ const subtext = `In three parts: the gap between the headline number and your li
         <span class="e e-lvl-sub">sub-classes</span>, and sub-classes into the {nItems}
         <span class="e e-lvl-item">items</span> of the basket: four more floors, and the same
         rule binding every one of them to the floor above, each member&rsquo;s index times its
-        share, summed. Nothing else happens between a market price and the headline; the rule
-        just runs five times. The figure holds the whole tree. Follow the strand already lit,
+        share, summed. Once the item indices are built, the same rule joins each floor to
+        the one above. The figure holds the whole tree. Follow the strand already lit,
         from the headline down to the tomato, or tap any cell and follow your own.</p>
 
       <figure class="pyfig widgetfig">
@@ -443,27 +433,18 @@ const subtext = `In three parts: the gap between the headline number and your li
           combined.</figcaption>
       </figure>
 
-      <p>Read down the tomato&rsquo;s strand and the indices tell it floor by floor: the food
-        and beverages <span class="e e-lvl-div">division</span> at
-        <span class="nl e-lvl-div">{divIdx}</span>; the food
-        <span class="e e-lvl-group">group</span> at
-        <span class="nl e-lvl-group">{groupIdx}</span>; the vegetables
-        <span class="e e-lvl-class">class</span> at
-        <span class="nl e-lvl-class">{classIdx}</span>, still under its base-year hundred,
-        because vegetables cost less than they did in 2024; the
-        <span class="e e-lvl-sub">sub-class</span> at
-        <span class="nl e-lvl-sub">{subIdx}</span>; and at the bottom the tomato itself at
-        <span class="nl e-lvl-item">{tomIdx}</span>. Each floor is the ones below it, weighed
-        and added, and the percentages the bulletin quotes are only what these indices come to
-        when set beside their own value a year earlier.</p>
+      <p>Read down the tomato&rsquo;s strand: food and beverages, food, vegetables,
+        fruit-bearing vegetables, and finally the tomato itself, at
+        <span class="nl e-lvl-item">{tomIdx}</span>. Each floor is the ones below it,
+        weighed and added. The figure carries the numbers; the same rule carries them
+        all the way up.</p>
 
       <p>The strand also prices the tomato&rsquo;s vote in the headline. In {month} the tomato
-        stood <span class="nl e-lvl-item">{tomInfl}</span> percent dearer than a year before, and
-        its weight is {tomPaise} paise of the &#8377;100. A share does the same work on a
-        change as it does on an index: move times share, roughly
-        <span class="nl e-lvl-item">{tomDelta}</span> of the
-        <span class="e e-head">{headline}</span> points the news read out, from the tomato
-        alone.</p>
+        stood <span class="nl e-lvl-item">{tomInfl}</span> percent {tomDirection} than a year before,
+        and its weight is {tomPaise} paise of the &#8377;100. Multiplying that change by
+        its basket share gives a rough estimate:
+        <span class="nl e-lvl-item">{tomDelta}</span> percentage points of the headline,
+        from the tomato alone.</p>
 
       <h2>The last split</h2>
 
@@ -486,7 +467,7 @@ const subtext = `In three parts: the gap between the headline number and your li
           into the generator, when a newer rate is worth quoting. */}
       <p>They come from a walk. Every month, field staff of the National Sample Survey walk
         into 1,465 villages and 1,395 urban markets spread across 434 towns and price the
-        basket item by item, on a weekly roster, by personal
+        basket item by item, by personal
         visit.<sup class="c"><a href="#r3">3</a></sup> The paper schedules are gone; since the
         2024 series the prices go into a tablet that checks them as they are keyed. In June
         2026 the collection&rsquo;s response rate was 100 percent, in both rural and urban
@@ -531,12 +512,14 @@ const subtext = `In three parts: the gap between the headline number and your li
       </figure>
 
       <p>Every price ends back at &#8377;20, so the honest answer for the whole trip is that
-        nothing happened. Each month&rsquo;s moves are &times;2 and &times;0.5. Multiply them
-        and take the root: &times;1, both months, and the trip is &times;1. Add and divide:
-        &times;1.25, both months, and the overshoots multiply into &times;1.56, a little
+        nothing happened. The multiplied average gets us there. The added average reports
+        a rise in both months; those rises compound into a 56 percent increase, a little
         inflation that never happened, permanently on the record.</p>
 
-      <p>That is why, in each state, an item&rsquo;s single figure is the multiplied average
+      <p>The problem here is chaining those monthly averages of price changes.
+        The weighted averages higher up the basket do a different job.</p>
+
+      <p>That is why, within each state&rsquo;s rural or urban sector, an item&rsquo;s figure is the multiplied average
         of its market quotes: the changes multiplied together and the root
         taken.<sup class="c"><a href="#r3">3</a></sup></p>
 
@@ -564,9 +547,9 @@ const subtext = `In three parts: the gap between the headline number and your li
         tomato cost in that same market in 2024: not a rupee amount but a ratio, a
         &#8377;30 tomato that cost &#8377;20 back then reading as &times;1.5. Multiply every
         market&rsquo;s ratio together, take the root, put the answer on a scale of a hundred,
-        and the result is the
-        <span class="e e-lvl-item">item</span>&rsquo;s index for the month, the
-        <span class="nl e-lvl-item">{tomIdx}</span> of the strand.</p>
+        and the result is a local <span class="e e-lvl-item">item</span> index.
+        Those state and sector indices are combined into the national figure,
+        the <span class="nl e-lvl-item">{tomIdx}</span> of the strand.</p>
 
       <p>That is the floor of the tree, and the whole of the machine. Ratios averaged into an
         item&rsquo;s index; indices weighed and summed, floor over floor, five times; two trees
@@ -592,19 +575,16 @@ const subtext = `In three parts: the gap between the headline number and your li
       <h2>What the average hides</h2>
 
       <p>Part II opened a single number into a tree of weights. Weights are easy
-        to nod at and hard to feel, so here is what one does when the price behind it moves. In
-        {month}, the three items that pushed the headline hardest finished within three
-        thousandths of a percentage point of one another. <span class="nl e-lvl-item">Onion</span>
-        carries &#8377;{onion.w.toFixed(2)} of the hundred and rose {onion.yoy.toFixed(0)} percent,
-        contributing {onion.c.toFixed(3)} points. Petrol carries &#8377;{petrol.w.toFixed(2)} and
-        contributed {petrol.c.toFixed(3)} points. <span class="nl e-lvl-item">Silver jewellery</span>
-        carries just &#8377;{silver.w.toFixed(2)} and contributed {silver.c.toFixed(3)} points. Three very
-        different paths through the same multiplication: weight times rise.</p>
+        to nod at and hard to feel, so here is what one does when the price behind it moves.
+        In {month}, <span class="nl e-lvl-item">silver jewellery</span> carried just
+        &#8377;{silver.w.toFixed(2)} of the hundred, against petrol&rsquo;s
+        &#8377;{petrol.w.toFixed(2)}. Yet its price rose {silver.yoy.toFixed(0)} percent,
+        against petrol&rsquo;s {petrol.yoy.toFixed(1)} percent.
+        A small share can make itself felt when the price moves far enough.</p>
 
-      <p>Silver did something unusual to join that near-tie. Its index stood at
-        {silverFrom} in {silverFromM} and has since touched {silverPeak}: it nearly tripled
-        inside two years, which is not a thing food or rent can do. Weight decides how loudly
-        an item can speak; the price decides whether it shouts.</p>
+      <p>Silver&rsquo;s index stood at {silverFrom} in {silverFromM} and has since
+        touched {silverPeak}: it nearly tripled inside two years.
+        Weight decides how loudly an item can speak; the price decides whether it shouts.</p>
 
       <figure class="ctfig widgetfig">
         <div class="ct-area"></div>
@@ -612,7 +592,7 @@ const subtext = `In three parts: the gap between the headline number and your li
             contribution: its own rate times its share of the ₹100", and the
             re-run-not-subtracted method note lives in the next paragraph and
             ref 8 — this one keeps only the scope */}
-        <figcaption>The twelve largest contributions of {nItems} items, {month}. MoSPI item
+        <figcaption>The twelve largest estimated contributions of {nItems} items, {month}. MoSPI item
           indices; weights from the 2024 weighing diagram.</figcaption>
       </figure>
 
@@ -621,7 +601,8 @@ const subtext = `In three parts: the gap between the headline number and your li
         356 items, using the same arithmetic the ministry uses, and {month}&rsquo;s headline
         falls from <span class="e e-head">{ctHead}</span> percent to
         <span class="e e-head">{ctEx}</span>.<sup class="c"><a href="#r8">8</a></sup> That is {ctDrop} points of a national inflation
-        rate coming from two items most households did not buy this year.</p>
+        rate separating the two baskets, because of items your household may not have bought
+        this year.</p>
 
       <p>None of this is an error. The weights are published, the item indices are published, and
         the rebuild above reproduces the ministry&rsquo;s own headline to the second decimal
@@ -632,8 +613,8 @@ const subtext = `In three parts: the gap between the headline number and your li
       <h2>Many Indias</h2>
 
       <p>The other thing the average folds away is the country. India&rsquo;s inflation is
-        published as one rate, and there has never been a month in which one rate was close to
-        true. In {month} the {st.latest.n} states and union territories ran from
+        published as one rate, but it lands differently across the map.
+        In {month} the {st.latest.n} states and union territories ran from
         {st.latest.lo.toFixed(2)} percent to {st.latest.hi.toFixed(2)}, with the All-India
         number at <span class="e e-head">{stAI}</span> and Delhi at {stDelhi}.</p>
 
@@ -647,10 +628,10 @@ const subtext = `In three parts: the gap between the headline number and your li
           name. MoSPI, 2024 series, combined.</figcaption>
       </figure>
 
-      <p>This is not one bad month. Ignore the extremes at both ends, which are mostly small
-        union territories with thin samples, and the middle eighty percent of states was between
-        {stNarrowest} and {stWidest} points wide in every year of the old basket, {stFirstY} to
-        2025.<sup class="c"><a href="#r9">9</a></sup> The gap has never closed.</p>
+      <p>This is not one bad month. Even leaving out the highest and lowest readings,
+        the gap persists. Across the years {stFirstY} to 2025, the middle eighty percent
+        of state and union-territory rates spanned an average of {stNarrowest} points
+        in the narrowest year and {stWidest} in the widest.<sup class="c"><a href="#r9">9</a></sup></p>
 
       <h2>The number answers back</h2>
 
@@ -658,14 +639,13 @@ const subtext = `In three parts: the gap between the headline number and your li
         Reserve Bank&rsquo;s Monetary Policy Committee has been bound by law to keep the number
         this piece has been building at 4 percent, give or take two, and its instrument is
         <span class="e e-repo">the repo rate</span>: what banks pay to borrow overnight from the
-        Reserve Bank, and so the floor under every other rate in the
+        Reserve Bank against eligible securities, influencing borrowing costs across the
         country.<sup class="c"><a href="#r7">7</a></sup></p>
 
-      <p>The mechanism is blunt and slow: raise it and borrowing gets dearer, households and
-        firms spend less, demand cools, and prices rise more slowly, most of it arriving about
-        a year later. That lag is why <span class="e e-repo">the staircase</span> below always
-        looks late against the line; it has held at {repoNow} percent since the December 2025
-        cut, including at the August 2026 meeting.</p>
+      <p>The mechanism is blunt and slow: raise it and borrowing gets dearer, which can
+        cool spending and ease the pressure on prices. The effect takes months to work
+        through. <span class="e e-repo">The staircase</span> below has held at {repoNow}
+        percent since the December 2025 cut, including at the August 2026 meeting.</p>
 
       <figure class="rofig widgetfig">
         <div class="ro-area"></div>
@@ -675,12 +655,11 @@ const subtext = `In three parts: the gap between the headline number and your li
           announcements.</figcaption>
       </figure>
 
-      <p>The limit matters more than the mechanism. Dearer money works on demand, not supply. It
-        cannot make it rain on a failed crop, and it cannot move the world price of a metal. The
-        latest number in front of the committee is {ctHead} percent, of which {ctDrop} points is
-        jewellery. Worse, the usual defence against exactly this problem does not catch it: core
-        inflation removes only food and fuel, which leaves gold and silver sitting inside
-        it.</p>
+      <p>The limit matters more than the mechanism. Dearer money can cool demand; it
+        cannot make it rain on a failed crop. In {month}, leaving jewellery out of the
+        basket lowers the rate by {ctDrop} points. Even core inflation, which sets aside
+        food and fuel, leaves gold and silver sitting inside it. Looking past the headline
+        takes more than one subtraction.</p>
 
       <figure class="scfig">
         <div class="sc-area"></div>
@@ -692,14 +671,14 @@ const subtext = `In three parts: the gap between the headline number and your li
           <span class="nl e-lvl-item">358 items</span>. Tap to redraw. MoSPI.</figcaption>
       </figure>
 
-      <p>Which brings us back to the school-fee circular in Delhi. It was inside the headline the
+      <p>Which brings us back to the school-fee circular in Delhi. That kind of bill was inside the headline the
         whole time. Education carries &#8377;{eduW} of the hundred; Delhi is one state&rsquo;s
         share of that; and what comes out of the merge is averaged with every household that paid
         no fees at all. The parent&rsquo;s year is in the number, and it is outvoted.</p>
 
       <p>That is not a flaw to repair. An average is a decision about what to fold together, and
         this one is read by a committee that can move the price of money. Next month it will be
-        back in the same corner of the page, one number, unchanged. What has changed is that it
+        back in the same corner of the page, still one number. What has changed is that it
         comes apart in the hand. It is the price of nearly everything, and the heavy word in that
         phrase has always been <em>nearly</em>.</p>
 
@@ -715,7 +694,8 @@ const subtext = `In three parts: the gap between the headline number and your li
       <h2>Sources</h2>
       <ol class="refs">
         <li id="r1">Ministry of Statistics and Programme Implementation, Consumer Price Index for
-          August 2026, press release, 14 September 2026. Series 2024=100, provisional.</li>
+          August 2026, press release, 14 September 2026. Series 2024=100, provisional.
+          The opening line uses the 2012 series through 2025 and the 2024 series from 2026.</li>
         <li id="r2">MoSPI CPI (2024 series), education services division, NCT of Delhi, combined,
           year-on-year. Retrieved from the eSankhyiki CPI service.</li>
         <li id="r3"><a href="https://www.mospi.gov.in/uploads/documents/documents/1770891066052-Annexure_V.pdf">MoSPI,
@@ -741,13 +721,19 @@ const subtext = `In three parts: the gap between the headline number and your li
         <li id="r7"><a href="https://www.business-standard.com/finance/news/rbi-mpc-december-2025-rate-cut-announcement-sanjay-malhotra-cpi-inflation-125120500161_1.html">&ldquo;RBI
           MPC cuts repo rate by 25 bps to 5.25%&rdquo;</a>, Business Standard, 5 December 2025.
           The staircase itself is hand-keyed from RBI Monetary Policy Committee announcements,
-          2014 through the August 2026 hold.</li>
+          2014 through the August 2026 hold. For the policy target and transmission, see
+          <a href="https://rbi.org.in/scripts/PublicationsView.aspx?Id=18086">RBI&rsquo;s
+          account of the monetary policy framework</a>. The chart compares the two series;
+          it does not isolate policy&rsquo;s effect on inflation.</li>
         <li id="r8">MoSPI, CPI (2024 series) item indices and the Annexure 5.3 weighing
           diagram, All India Combined, {month} &mdash; the item contributions, and the same
           index rebuilt over the basket without COICOP 13.2.1.1.1.01 and 13.2.1.1.1.02
           (gold and silver jewellery). In the tree figure, class and sub-class shares are
           sums of their items. The full rebuild reproduces the published headline to
-          the second decimal in every month of 2026.</li>
+          the second decimal in every month of 2026. The bars use base weight times annual
+          price change, an approximation; exact contributions also depend on year-ago index
+          levels. The jewellery comparison rebuilds the basket in both months and need not
+          equal the sum of its two approximate bars.</li>
         <li id="r9">MoSPI, CPI state and union-territory series, Combined, General:
           2012 base January 2016 to December 2025, 2024 base from January 2026. The band is
           the 10th to 90th percentile across {st.latest.n} states and union territories,
