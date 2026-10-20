@@ -1,0 +1,71 @@
+---
+import StoryPage from '../../../layouts/StoryPage.astro';
+import ShareButtons from '../../../components/editorial/ShareButtons.astro';
+import release from '../../../lib/weather-wings-release.json';
+const assets = `/weather-wings/${release.revision}/src/`;
+const canonical = new URL('/play/weather-wings/', Astro.site);
+const description = 'Fly through India’s seasons. A game by Time Series of India.';
+---
+<StoryPage title="Weather Wings · Time Series of India" description={description} og_image="/og/play/weather-wings.png">
+  <Fragment slot="head">
+    <base href={assets} />
+    <meta name="weather-wings-share-url" content={canonical} />
+    <link id="weather-game-styles" rel="stylesheet" href={`${assets}styles.css`} media="not all" />
+  </Fragment>
+  <div data-weather-landing>
+    <nav class="folio" aria-label="Section"><a href="/environment">Environment</a><span>·</span><a href="/?format=play">Play</a></nav>
+    <header class="title-block">
+      <div class="title-top"><p class="kicker">Play</p><ShareButtons title="Weather Wings" shareUrl={canonical.href} variant="icon" align="end" /></div>
+      <h1>Weather Wings</h1>
+      <p class="standfirst">Fly through India’s seasons.</p>
+      <p class="climate-note">Each city’s climate data shapes the course you fly.</p>
+    </header>
+    <button type="button" class="weather-poster" data-weather-launch disabled aria-label="Open Weather Wings in the full viewport">
+      <img class="poster-city" src="/weather-wings/cover.webp" alt="Mumbai’s waterfront and the Gateway of India" width="640" height="360" fetchpriority="high" />
+      <img class="poster-bird" src="/weather-wings/bird.webp" alt="" width="400" height="180" />
+      <span class="poster-play">Play</span>
+    </button>
+    <p class="poster-caption">Tap the picture to play. The game fills the screen.</p>
+    <noscript><p>Weather Wings needs JavaScript to play.</p></noscript>
+  </div>
+  <section id="weather-game" class="weather-game" hidden aria-label="Weather Wings" data-module={`${assets}game.js`}>
+    <div id="app">
+      <div id="surround" aria-hidden="true"></div>
+      <section id="stage" aria-label="Rainfall flight">
+        <canvas id="scene" tabindex="0" aria-label="Tap repeatedly or press Space to flap."></canvas>
+        <div id="loading"><span class="boot-wordmark">Weather Wings</span><div class="boot-progress"><span class="boot-status loading-label" role="status">Preparing the wings…</span><span class="loading-meter" role="progressbar" aria-label="Loading flight" aria-valuemin="0" aria-valuemax="100"><span class="loading-fill"></span></span></div></div>
+      </section>
+    </div>
+    <button type="button" class="weather-exit" aria-label="Leave the game" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7.5 7.5 L16.5 16.5 M16.5 7.5 L7.5 16.5" /></svg></button>
+  </section>
+</StoryPage>
+<script>
+  import { mountWeatherLanding } from '../../../lib/play/weather-wings-landing';
+  mountWeatherLanding();
+</script>
+<style>
+  .folio { font:var(--tsoi-text-byline); font-size:11px; text-transform:uppercase; margin-bottom:24px; }
+  .folio a { color:var(--tsoi-color-primary-text); text-decoration:none; }
+  .folio span { margin-inline:6px; }
+  .title-top { display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:12px; }
+  .kicker { margin:0; font:var(--tsoi-text-label-caps); letter-spacing:var(--tsoi-text-label-caps-tracking); color:var(--tsoi-color-primary-text); text-transform:uppercase; }
+  h1 { margin:0; font:var(--tsoi-text-headline-xl); letter-spacing:var(--tsoi-text-headline-xl-tracking); }
+  .standfirst { margin:12px 0 6px; font:var(--tsoi-text-deck); color:var(--tsoi-color-on-surface-variant); }
+  .climate-note { margin:0 0 20px; font:var(--tsoi-text-body); color:var(--tsoi-color-on-surface-variant); }
+  .weather-poster { position:relative; display:block; width:100%; height:58dvh; min-height:320px; max-height:680px; padding:0; overflow:hidden; border:1px solid var(--tsoi-color-outline); background:#e6edf0; cursor:pointer; }
+  .poster-city { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; object-position:50% 76%; }
+  .poster-bird { position:absolute; top:43%; left:25%; width:8%; height:auto; transform:rotate(-7deg); }
+  .poster-play { position:absolute; left:50%; top:28%; transform:translateX(-50%); color:#263d50; font:28px/1.2 Georgia,serif; text-decoration:underline; text-underline-offset:6px; }
+  .poster-caption { margin:8px 0 0; font:var(--tsoi-text-byline); color:var(--tsoi-color-on-surface-variant); }
+  .weather-poster:focus-visible { outline:2px solid var(--tsoi-color-primary); outline-offset:4px; }
+  @media(max-width:650px) { .poster-bird { width:14%; left:21%; } }
+</style>
+<style is:global>
+  .weather-game { position:fixed; inset:0; width:100vw; height:100dvh; z-index:200; touch-action:none; background:#f4f1eb; color:#263d50; }
+  .weather-game[hidden] { display:none !important; }
+  .weather-exit { position:fixed; top:var(--flight-controls-top,max(10px,env(safe-area-inset-top))); right:max(10px,env(safe-area-inset-right)); z-index:500; width:44px; height:44px; border:0; padding:10px; color:#263d50; background:transparent; cursor:pointer; }
+  .weather-exit[hidden] { display:none; }
+  .weather-exit svg { width:24px; height:24px; fill:none; stroke:currentColor; stroke-width:1.5; }
+  .weather-game .home-top { right:max(74px,calc(64px + env(safe-area-inset-right))); }
+  .weather-game .game-settings-toggle { right:max(70px,calc(60px + env(safe-area-inset-right))); }
+</style>

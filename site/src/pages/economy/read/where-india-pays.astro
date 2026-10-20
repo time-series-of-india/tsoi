@@ -3,9 +3,8 @@
 // Map: public/maps/india_states.json (J&K/Ladakh/Arunachal per india-official-geojson).
 import ReadLayout from '../../../components/read/ReadLayout.astro';
 import { readFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
 
-const raw = JSON.parse(readFileSync(fileURLToPath(new URL('../../../../public/data/economy/state-wise.json', import.meta.url)), 'utf8'));
+const raw = JSON.parse(readFileSync('public/data/economy/state-wise.json', 'utf8'));
 const rows = raw.rows ?? raw;
 // Set<string> is spelled out because `rows` is any: calling .map on an `any`
 // yields `any`, which makes the Set infer as Set<unknown> and leaves `lm`

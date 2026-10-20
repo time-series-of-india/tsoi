@@ -3,9 +3,8 @@
 // (scripts/build-reads-data.mjs). Read at build for the figures; embedded for the chart.
 import ReadLayout from '../../../components/read/ReadLayout.astro';
 import { readFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
 
-const data = JSON.parse(readFileSync(fileURLToPath(new URL('../../../../public/data/economy/reads/shops-vs-people.json', import.meta.url)), 'utf8'));
+const data = JSON.parse(readFileSync('public/data/economy/reads/shops-vs-people.json', 'utf8'));
 const { stats } = data;
 const inr = (n: number) => '₹' + n.toLocaleString('en-IN');
 const payload = JSON.stringify(data);

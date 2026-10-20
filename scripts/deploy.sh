@@ -19,6 +19,9 @@ if [ ! -d "$SITE_DIR" ]; then
     exit 1
 fi
 
+# The date is an editorial release decision, never inferred from a build clock.
+node "$SITE_DIR/scripts/check-publication.mjs"
+
 # Build-time data steps need DB credentials.
 if [ -f "$REPO_ROOT/.env" ]; then
     set -a; source "$REPO_ROOT/.env"; set +a
@@ -28,6 +31,9 @@ else
 fi
 
 cd "$SITE_DIR"
+
+echo "==> Generating the verified national monsoon snapshot..."
+node scripts/build-home-monsoon.mjs
 
 echo "==> Generating spec-driven dashboard datasets from TimescaleDB..."
 node scripts/build-dashboard-data.mjs
@@ -53,14 +59,20 @@ node scripts/build-rupee-time-machine-data.mjs
 echo "==> Generating per-content OG cards..."
 node scripts/build-og-cards.mjs
 
-echo "==> Generating meta page dataset (site's own traffic)..."
-node scripts/build-meta.mjs
+echo "==> Refreshing the Meta fallback from the validated live traffic snapshot..."
+node scripts/build-meta.mjs --live
 
 echo "==> Content-hashing runtime data files + writing manifest..."
 node scripts/hash-data.mjs
 
 echo "==> Building Astro site..."
 npm run build
+
+echo "==> Deploying the Meta worker before publishing the new content paths..."
+(
+    cd "$REPO_ROOT/infra/workers/meta-live"
+    npx wrangler deploy --var ACCOUNT_TAG:"${CLOUDFLARE_ACCOUNT_ID:?CLOUDFLARE_ACCOUNT_ID is required}"
+)
 
 echo "==> Deploying dist/ to Cloudflare (Workers Static Assets)..."
 npx wrangler deploy

@@ -70,6 +70,7 @@ Data JSON under `site/public/data/` is **gitignored** and regenerated at build:
 | `build-rupee-time-machine-data.mjs` | rupee time machine dataset | TimescaleDB (CPI + CPI-IW) |
 | `build-inflation-peaks.mjs` | game terrain + the worker's weight table | TimescaleDB (CPI + CPI-IW) |
 | `build-independence.mjs` | The Walk through Midnight dataset | committed CSV in `data/independence/` (DB-free; see its `SOURCES.md`) |
+| `build-home-monsoon.mjs` | dated national monsoon observation | manually verified CSV in `data/monsoon/` (DB-free; see its `SOURCES.md`) |
 | `build-series.mjs` | time-series slices | TimescaleDB |
 | `build-india-map.mjs` | statewise map data | — |
 | `build-og-cards.mjs` / `build-og-default.mjs` | social cards | reads/dashboards registries |
@@ -172,6 +173,23 @@ A PR is ready to merge when:
       committed (they're gitignored)
 - [ ] Any change to **displayed numbers or claims** carries a source
 - [ ] Commit messages are clear and reference the dataset or fix
+
+## Weather Wings release checks
+
+Use Node.js 22.22.0 or newer. Keep `site/src/lib/weather-wings-publication.json`
+`published` as `null` during review. At publication, set it to the actual release
+day in India (`YYYY-MM-DD`), then keep that date fixed on subsequent builds.
+An unset date omits Weather Wings from RSS and blocks `scripts/deploy.sh` before
+any credential loading or deployment.
+
+The deploy script validates the live Meta snapshot before replacing its static
+fallback, deploys the Meta worker with the new content paths, then publishes the
+static site. A failed worker deployment stops the static deployment. Preserve
+the existing R2 history; do not reseed it from the static fallback.
+
+The static response headers include HSTS. The apex HTTP-to-HTTPS redirect must
+also be configured at Cloudflare's edge, preserving paths and query parameters.
+Verify both after publication. Follow the maintainer's deployment approval process.
 
 ## Reporting a data error
 

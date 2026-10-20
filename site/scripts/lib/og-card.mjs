@@ -12,7 +12,7 @@ import { mkdtemp, writeFile, readFile, rm, mkdir } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { promisify } from 'node:util';
-import { join, resolve, dirname } from 'node:path';
+import { join, resolve, dirname, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const execFileAsync = promisify(execFile);
@@ -71,16 +71,30 @@ function chromiumBin() {
 // Render one full HTML document to `outPath` (a 1200×630 PNG) via headless
 // chromium. `mkdir`s the parent dir.
 export async function renderCard(html, outPath) {
+  // Prepare the same card HTML for a browser-backed capture when the local
+  // Chromium CLI cannot take screenshots. The normal pipeline still renders PNGs.
+  if (process.env.OG_HTML_DIR) {
+    const target = resolve(process.env.OG_HTML_DIR, relative(PUBLIC_DIR, outPath) + '.html');
+    await mkdir(dirname(target), { recursive: true });
+    await writeFile(target, html);
+    return;
+  }
   await mkdir(dirname(outPath), { recursive: true });
   const dir = await mkdtemp(join(tmpdir(), 'og-'));
   const htmlPath = join(dir, 'card.html');
   try {
     await writeFile(htmlPath, html);
+    await rm(outPath, { force: true });
     await execFileAsync(chromiumBin(), [
       '--headless', '--no-sandbox', '--hide-scrollbars', '--force-device-scale-factor=1',
+      '--no-first-run', '--disable-background-networking', `--user-data-dir=${join(dir, 'profile')}`,
       '--window-size=1200,630', '--default-background-color=00000000',
       `--screenshot=${outPath}`, `file://${htmlPath}`,
-    ]);
+    ], { timeout: 30_000, maxBuffer: 2 * 1024 * 1024 });
+    const png = await readFile(outPath);
+    if (!png.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]))) {
+      throw new Error(`Chromium did not render a valid PNG: ${outPath}`);
+    }
   } finally {
     await rm(dir, { recursive: true, force: true });
   }

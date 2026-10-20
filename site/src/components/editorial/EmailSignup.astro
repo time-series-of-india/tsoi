@@ -8,22 +8,24 @@
 // "check your inbox to confirm" success copy.
 interface Props {
   compact?: boolean;   // footer: single tight row, no heading
+  strip?: boolean;
   heading?: string;
   blurb?: string;
 }
 const {
   compact = false,
+  strip = false,
   heading = 'Get new reads in your inbox',
   blurb = 'New charts and longform, occasionally. No spam, no tracking — unsubscribe anytime.',
 } = Astro.props;
 const ACTION = 'https://buttondown.com/api/emails/embed-subscribe/timeseriesofindia';
 ---
 
-<section class="signup" class:list={{ compact }} data-signup>
+<section class="signup" class:list={{ compact, strip }} data-signup>
   {!compact && (
     <div class="signup-copy">
       <p class="signup-h">{heading}</p>
-      <p class="signup-sub">{blurb}</p>
+      {blurb && <p class="signup-sub">{blurb}</p>}
     </div>
   )}
   <form class="signup-form" action={ACTION} method="post" target="_blank">
@@ -80,6 +82,26 @@ const ACTION = 'https://buttondown.com/api/emails/embed-subscribe/timeseriesofin
   .signup.compact input[type='email'] { flex: 0 1 220px; }
   .signup.compact button { flex: 0 0 auto; }
   .signup.compact .signup-msg { flex-basis: 100%; text-align: center; }
+  .signup.strip {
+    display:grid;
+    grid-template-columns:minmax(0,1fr) minmax(0,1fr);
+    align-items:center;
+    gap:var(--tsoi-spacing-unit) calc(var(--tsoi-spacing-unit) * 3);
+    margin:0;
+    padding:calc(var(--tsoi-spacing-unit) * 2) 0;
+    border:0;
+    border-block:var(--tsoi-rule-column) solid var(--tsoi-color-outline);
+    background:transparent;
+  }
+  .strip .signup-h { font:var(--tsoi-text-headline-md); }
+  .strip .signup-form { flex-wrap:nowrap; }
+  .strip .signup-form[hidden] { display:none; }
+  .strip input[type='email'] { flex:1 1 0; min-height:44px; }
+  .strip button { min-height:44px; color:var(--tsoi-color-on-primary); }
+  .strip .signup-msg { grid-column:1 / -1; }
+  @media(max-width:650px) {
+    .signup.strip { grid-template-columns:1fr; gap:calc(var(--tsoi-spacing-unit) * 1.5); }
+  }
   /* phones: let the field + button stack under the label */
   @media (max-width: 480px) {
     .signup.compact .signup-form { flex-wrap: wrap; justify-content: center; }

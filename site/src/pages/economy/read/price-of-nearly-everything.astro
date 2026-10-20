@@ -36,9 +36,8 @@ import ScrollProgress from '../../../components/read/ScrollProgress.astro';
 import ShareButtons from '../../../components/editorial/ShareButtons.astro';
 import { readingMinutes } from '../../../lib/reading-time';
 import { readFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
 
-const data = JSON.parse(readFileSync(fileURLToPath(new URL('../../../../public/data/lab/inflation-read.json', import.meta.url)), 'utf8'));
+const data = JSON.parse(readFileSync('public/data/lab/inflation-read.json', 'utf8'));
 const payload = JSON.stringify(data);
 
 const MONTHS_FULL = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -105,6 +104,7 @@ const wd = data.wild;
 // emit unless the full rebuild reproduces the published number, so `rebuilt`
 // and `published` agreeing below is a check the reader can be told about.
 const ct = wd.contrib;
+const contributionMonth = mFull(ct.m);
 const ctItem = (needle: string) => ct.items.find((i: any) => i.name.startsWith(needle));
 const silver = ctItem('Silver');
 const petrol = ctItem('Petrol');
@@ -161,7 +161,7 @@ const deck = 'One number claims to describe a billion baskets. This is how it is
 
       <p class="partmark partmark-first">Part I &middot; The number and you</p>
 
-      <p>On 14 September 2026 the Ministry of Statistics published the number it publishes every
+      <p>On 12 October 2026 the Ministry of Statistics published the number it publishes every
         month: retail inflation. Prices in India, taken together, were
         <strong class="num e e-head">{headline}%</strong> higher than they had been a year
         earlier.<sup class="c"><a href="#r1">1</a></sup> The evening bulletins read it out, the
@@ -170,15 +170,15 @@ const deck = 'One number claims to describe a billion baskets. This is how it is
 
       <p>If you were a parent in Delhi that week, holding a school-fee circular, belief may have
         come harder. By the government&rsquo;s own count, the cost of education in the capital was
-        running <strong class="num e e-you">{edu}%</strong> above last year, more than double the all-India
+        running <strong class="num e e-you">{edu}%</strong> above last year, almost double the all-India
         pace,<sup class="c"><a href="#r2">2</a></sup> and the fight over fee hikes had already
-        brought fresh government scrutiny.<sup class="c"><a href="#r4">4</a></sup><sup class="c"><a href="#r5">5</a></sup>
+        brought government scrutiny.<sup class="c"><a href="#r4">4</a></sup><sup class="c"><a href="#r5">5</a></sup>
         None of that turmoil is visible in the {headline} percent.</p>
 
       <figure class="gapfig widgetfig">
         <div class="gap-area"></div>
-        <figcaption>Education in Delhi against the all-India average, year on year; the shaded
-          column is the gap, at least double in every month so far. MoSPI, Consumer Price
+        <figcaption>Education in Delhi against the all-India average, index levels (2024=100); the shaded
+          column is the gap. MoSPI, Consumer Price
           Index.</figcaption>
       </figure>
 
@@ -576,7 +576,7 @@ const deck = 'One number claims to describe a billion baskets. This is how it is
 
       <p>Part II opened a single number into a tree of weights. Weights are easy
         to nod at and hard to feel, so here is what one does when the price behind it moves.
-        In {month}, <span class="nl e-lvl-item">silver jewellery</span> carried just
+        In {contributionMonth}, <span class="nl e-lvl-item">silver jewellery</span> carried just
         &#8377;{silver.w.toFixed(2)} of the hundred, against petrol&rsquo;s
         &#8377;{petrol.w.toFixed(2)}. Yet its price rose {silver.yoy.toFixed(0)} percent,
         against petrol&rsquo;s {petrol.yoy.toFixed(1)} percent.
@@ -592,13 +592,13 @@ const deck = 'One number claims to describe a billion baskets. This is how it is
             contribution: its own rate times its share of the ₹100", and the
             re-run-not-subtracted method note lives in the next paragraph and
             ref 8 — this one keeps only the scope */}
-        <figcaption>The twelve largest estimated contributions of {nItems} items, {month}. MoSPI item
+        <figcaption>The twelve largest estimated contributions of {nItems} items, {contributionMonth}. MoSPI item
           indices; weights from the 2024 weighing diagram.</figcaption>
       </figure>
 
       <p>The button under the figure is worth dwelling on. Gold and silver jewellery together are
         &#8377;{ctJewelW} of the hundred, less than a rupee. Rebuild the index over the other
-        356 items, using the same arithmetic the ministry uses, and {month}&rsquo;s headline
+        356 items, using the same arithmetic the ministry uses, and {contributionMonth}&rsquo;s headline
         falls from <span class="e e-head">{ctHead}</span> percent to
         <span class="e e-head">{ctEx}</span>.<sup class="c"><a href="#r8">8</a></sup> That is {ctDrop} points of a national inflation
         rate separating the two baskets, because of items your household may not have bought
@@ -644,13 +644,13 @@ const deck = 'One number claims to describe a billion baskets. This is how it is
 
       <p>The mechanism is blunt and slow: raise it and borrowing gets dearer, which can
         cool spending and ease the pressure on prices. The effect takes months to work
-        through. <span class="e e-repo">The staircase</span> below has held at {repoNow}
-        percent since the December 2025 cut, including at the August 2026 meeting.</p>
+        through. <span class="e e-repo">The staircase</span> below rose to {repoNow}
+        percent on 7 October 2026.</p>
 
       <figure class="rofig widgetfig">
         <div class="ro-area"></div>
         <figcaption><span class="e e-repo">The policy repo rate</span> as a staircase over
-          <span class="e e-head">headline inflation</span>, 2014 to {month}, the mandate drawn
+          <span class="e e-head">headline inflation</span>, CPI through {month} and the repo rate through October 2026, the mandate drawn
           as its three numbers. CPI spliced across the 2024 rebuild; repo steps from RBI
           announcements.</figcaption>
       </figure>
@@ -693,8 +693,8 @@ const deck = 'One number claims to describe a billion baskets. This is how it is
 
       <h2>Sources</h2>
       <ol class="refs">
-        <li id="r1">Ministry of Statistics and Programme Implementation, Consumer Price Index for
-          August 2026, press release, 14 September 2026. Series 2024=100, provisional.
+        <li id="r1"><a href="https://www.pib.gov.in/PressReleaseIframePage.aspx?PRID=2322244&amp;lang=2&amp;reg=48">Ministry of Statistics and Programme Implementation, Consumer Price Index for
+          September 2026</a>, press release, 12 October 2026. Series 2024=100, provisional.
           The opening line uses the 2012 series through 2025 and the 2024 series from 2026.</li>
         <li id="r2">MoSPI CPI (2024 series), education services division, NCT of Delhi, combined,
           year-on-year. Retrieved from the eSankhyiki CPI service.</li>
@@ -718,19 +718,19 @@ const deck = 'One number claims to describe a billion baskets. This is how it is
             the Onmanorama state-ranking piece (r14, left with the rank-turnover cut). */}
         <li id="r6">MoSPI / National Sample Survey, Household Consumption Expenditure Survey
           2023&ndash;24 &mdash; the source of the 2024-series weights.</li>
-        <li id="r7"><a href="https://www.business-standard.com/finance/news/rbi-mpc-december-2025-rate-cut-announcement-sanjay-malhotra-cpi-inflation-125120500161_1.html">&ldquo;RBI
-          MPC cuts repo rate by 25 bps to 5.25%&rdquo;</a>, Business Standard, 5 December 2025.
+        <li id="r7"><a href="https://www.rbi.org.in/Scripts/BS_PressReleaseDisplay.aspx?prid=63742">RBI Monetary Policy Committee resolution,
+          5 to 7 October 2026</a>, published 7 October 2026. Repo rate raised to 5.50%.
           The staircase itself is hand-keyed from RBI Monetary Policy Committee announcements,
-          2014 through the August 2026 hold. For the policy target and transmission, see
+          2014 through the October 2026 increase. For the policy target and transmission, see
           <a href="https://rbi.org.in/scripts/PublicationsView.aspx?Id=18086">RBI&rsquo;s
           account of the monetary policy framework</a>. The chart compares the two series;
           it does not isolate policy&rsquo;s effect on inflation.</li>
         <li id="r8">MoSPI, CPI (2024 series) item indices and the Annexure 5.3 weighing
-          diagram, All India Combined, {month} &mdash; the item contributions, and the same
+          diagram, All India Combined, {contributionMonth} &mdash; the dated item contributions, and the same
           index rebuilt over the basket without COICOP 13.2.1.1.1.01 and 13.2.1.1.1.02
           (gold and silver jewellery). In the tree figure, class and sub-class shares are
           sums of their items. The full rebuild reproduces the published headline to
-          the second decimal in every month of 2026. The bars use base weight times annual
+          the second decimal through August 2026. The bars use base weight times annual
           price change, an approximation; exact contributions also depend on year-ago index
           levels. The jewellery comparison rebuilds the basket in both months and need not
           equal the sum of its two approximate bars.</li>

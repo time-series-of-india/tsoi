@@ -18,15 +18,16 @@
 // JS), but a tiny enhancement rebuilds the target from the LIVE location.href on
 // click — so a shared dashboard link carries its current control state.
 interface Props {
+  shareUrl?: string;                // fixed URL for landing pages
   title: string;                     // the headline that travels with the link
   variant?: 'button' | 'icon' | 'fab'; // labelled, icon-only in-flow, or corner fab
   divider?: boolean;                 // top hairline rule (button variant only)
   align?: 'start' | 'center' | 'end'; // popover anchor edge — 'end' for a trigger
                                       // sitting against the content's right edge
 }
-const { title, variant = 'button', divider = true, align = 'start' } = Astro.props;
+const { title, variant = 'button', divider = true, align = 'start', shareUrl } = Astro.props;
 const iconOnly = variant !== 'button';
-const url = new URL(Astro.url.pathname, Astro.site).href;
+const url = shareUrl ?? new URL(Astro.url.pathname, Astro.site).href;
 const t = encodeURIComponent(title);
 const u = encodeURIComponent(url);
 
@@ -48,7 +49,7 @@ const NETS = [
 const isFab = variant === 'fab';
 ---
 
-<div class="share" class:list={{ divider: divider && variant === 'button', 'is-icon': iconOnly, 'is-fab': isFab }} data-share data-title={title} data-align={isFab ? 'end' : align}>
+<div class="share" class:list={{ divider: divider && variant === 'button', 'is-icon': iconOnly, 'is-fab': isFab }} data-share data-share-url={shareUrl} data-title={title} data-align={isFab ? 'end' : align}>
   <button type="button" class="share-btn" aria-haspopup="true" aria-expanded="false" aria-label="Share">
     <Fragment set:html={SHARE_GLYPH} />
     {!iconOnly && <span>Share</span>}
@@ -117,6 +118,7 @@ const isFab = variant === 'fab';
 
   document.querySelectorAll<HTMLElement>('[data-share]').forEach((box) => {
     const title = box.dataset.title ?? document.title;
+    const shareUrl = () => box.dataset.shareUrl || location.href;
     const btn = box.querySelector<HTMLButtonElement>('.share-btn')!;
     const menu = box.querySelector<HTMLElement>('.share-menu')!;
 
@@ -128,7 +130,7 @@ const isFab = variant === 'fab';
       btn.removeAttribute('aria-expanded');
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
-        navigator.share({ title, url: location.href }).catch(() => {});
+        navigator.share({ title, url: shareUrl() }).catch(() => {});
       });
       return;
     }
@@ -149,7 +151,7 @@ const isFab = variant === 'fab';
     box.querySelectorAll<HTMLAnchorElement>('a[data-net]').forEach((a) => {
       a.addEventListener('click', (e) => {
         e.preventDefault();
-        window.open(build(a.dataset.net!, location.href, title), '_blank', 'noopener,noreferrer,width=600,height=540');
+        window.open(build(a.dataset.net!, shareUrl(), title), '_blank', 'noopener,noreferrer,width=600,height=540');
         close();
       });
     });
@@ -158,7 +160,7 @@ const isFab = variant === 'fab';
     const copyHtml = copy.innerHTML;
     copy.addEventListener('click', async () => {
       try {
-        await navigator.clipboard.writeText(location.href);
+        await navigator.clipboard.writeText(shareUrl());
         copy.innerHTML = CHECK;
         copy.classList.add('copied');
         copy.setAttribute('aria-label', 'Copied');

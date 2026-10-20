@@ -7,15 +7,25 @@
 // Zone counts (daily/hourly) are edge-measured: every request, bots included.
 // Referrers come from the RUM beacon: human-ish, adblock-undercounted. The page
 // says so — neither series is adjusted.
+// --live copies the validated public worker snapshot, retaining its timestamp
+// and full history. It needs no database or Cloudflare credentials.
 import pg from 'pg';
 import { execSync } from 'node:child_process';
 import { writeFileSync, mkdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 import { CONTENT } from '../../infra/workers/meta-live/content.mjs';
+import { readMetaSnapshot, refreshMetaFromLive, validateMetaSnapshot } from './lib/meta-snapshot.mjs';
 
 const SITE = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const OUT = resolve(SITE, 'public/data/meta');
+const snapshotPath = resolve(OUT, 'traffic.json');
+if (process.argv.includes('--live')) {
+  const snapshot = await refreshMetaFromLive(snapshotPath);
+  console.log(`meta/traffic.json: live source ${snapshot.built_at}; ${snapshot.daily.length} days, ` +
+    `observations through ${snapshot.daily.at(-1).day}; ${snapshot.content.length} content pieces`);
+  process.exit(0);
+}
 
 const client = new pg.Client({
   host: process.env.DB_HOST || '127.0.0.1',
@@ -109,7 +119,7 @@ const countries_human_daily = (await client.query(`
 const FORMAT_CASE = `CASE
   WHEN path LIKE '/economy/read%' THEN 'read'
   WHEN path LIKE '/economy/play%' OR path LIKE '/economy/beats%' THEN 'play'
-  WHEN path = '/independence/' THEN 'play'
+  WHEN path IN ('/independence/', '/play/weather-wings/') THEN 'play'
   WHEN path LIKE '/economy/explore%' OR path LIKE '/economy/dashboards%' THEN 'explore'
   END`;
 
@@ -290,7 +300,9 @@ const out = {
   dispatches, today,
   today_countries, today_countries_human, today_referrers, today_formats,
 };
-writeFileSync(resolve(OUT, 'traffic.json'), JSON.stringify(out) + '\n');
+await client.end();
+validateMetaSnapshot(out, { previous: await readMetaSnapshot(snapshotPath) });
+writeFileSync(snapshotPath, JSON.stringify(out) + '\n');
 const nDistinct = (rows, key) => new Set(rows.map((r) => r[key])).size;
 console.log(
   `meta/traffic.json: ${daily.length} days (${beacon_daily.length} beacon), ${hourly.length} hours, ` +
@@ -303,4 +315,3 @@ console.log(
   `${content.reduce((s, c) => s + c.daily.reduce((n, d) => n + d.rum_visits, 0), 0)} human), ` +
   `${dispatches.length} dispatches (${dispatches.map((d) => d.id).join(', ')})`,
 );
-await client.end();

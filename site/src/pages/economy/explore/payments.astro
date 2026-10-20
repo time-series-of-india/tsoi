@@ -19,8 +19,13 @@
 import StoryPage from '../../../layouts/StoryPage.astro';
 import BoardView from '../../../components/dashboard/BoardView.astro';
 import { getBoard } from '../../../lib/dashboards/boards';
+import { readFileSync } from 'node:fs';
 
 const board = getBoard('payments')!;
+const ecosystem = JSON.parse(readFileSync('public/data/economy/upi-ecosystem.json', 'utf8'));
+const pspLatest = ecosystem.rows.filter((row: { kind: string }) => row.kind === 'psp')
+  .map((row: { date: string }) => row.date).sort().at(-1);
+const pspThrough = pspLatest && new Date(pspLatest).toLocaleDateString('en-GB', { month: 'long', year: 'numeric', timeZone: 'UTC' });
 ---
 
 <StoryPage
@@ -43,6 +48,7 @@ const board = getBoard('payments')!;
       states. Data comes from RBI and NPCI monthly releases. Drag across any chart to zoom
       every desk to the same window.
     </p>
+    {pspThrough && <p class="coverage">NPCI PSP statistics: data through {pspThrough}.</p>}
   </header>
 
   <BoardView board={board} />
@@ -59,4 +65,5 @@ const board = getBoard('payments')!;
   .all-head { max-width: 70ch; }
   .all-head h1 { margin: 0; font: var(--tsoi-text-headline-lg); letter-spacing: var(--tsoi-text-headline-lg-tracking); }
   .deck { margin: var(--tsoi-spacing-unit) 0 0; font: var(--tsoi-text-deck); color: var(--tsoi-color-on-surface-variant); }
+  .coverage { margin:var(--tsoi-spacing-unit) 0 0; font:var(--tsoi-text-byline); color:var(--tsoi-color-on-surface-variant); }
 </style>

@@ -24,6 +24,8 @@ infra/db/data/
 /data/*
 # Independence flagship source CSVs are committed deliberately — see data/independence/SOURCES.md.
 !/data/independence/
+# Manually verified, dated monsoon facts; see its SOURCES.md.
+!/data/monsoon/
 etl/**/*.json
 etl/**/*.csv
 # product-dict.json is committed config, not a generated artifact — keep it tracked.

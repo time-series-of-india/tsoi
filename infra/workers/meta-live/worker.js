@@ -160,7 +160,7 @@ const formatOf = (p) => {
   if (!p) return null;
   if (p.startsWith('/economy/read')) return 'read';
   if (p.startsWith('/economy/play') || p.startsWith('/economy/beats')) return 'play';
-  if (p === '/independence/') return 'play';
+  if (p === '/independence/' || p === '/play/weather-wings/') return 'play';
   if (p.startsWith('/economy/explore') || p.startsWith('/economy/dashboards')) return 'explore';
   return null;
 };
@@ -228,7 +228,7 @@ export async function freshContent(env, days) {
     return gql(env, `zones(filter: {zoneTag: "${env.ZONE_TAG}"}) {
       g: httpRequestsAdaptiveGroups(limit: 5000,
         filter: {datetime_geq: "${day}T00:00:00Z", datetime_lt: "${hi}T00:00:00Z",
-          OR: [{clientRequestPath_like: "/economy%"}, {clientRequestPath: "/independence/"}]},
+          OR: [{clientRequestPath_like: "/economy%"}, {clientRequestPath: "/independence/"}, {clientRequestPath: "/play/weather-wings/"}]},
         orderBy: [count_DESC])
       { sum { visits } dimensions { clientRequestPath } } }`);
   });
@@ -330,7 +330,7 @@ async function freshFormatsRolling15(env) {
       { count dimensions { datetimeFifteenMinutes requestPath } } }`),
     gql(env, `zones(filter: {zoneTag: "${env.ZONE_TAG}"}) {
       g: httpRequestsAdaptiveGroups(limit: 5000,
-        filter: {datetime_geq: "${since}", clientRequestPath_like: "/economy%"})
+        filter: {datetime_geq: "${since}", OR: [{clientRequestPath_like: "/economy%"}, {clientRequestPath: "/independence/"}, {clientRequestPath: "/play/weather-wings/"}]})
       { count dimensions { datetimeFifteenMinutes clientRequestPath } } }`),
   ]);
   for (const g of human.accounts[0].g) bump(key15(g), formatOf(g.dimensions.requestPath), 'human', g.count);
@@ -359,7 +359,7 @@ async function freshFormatsPrevDay15(env) {
       { count dimensions { datetimeFifteenMinutes requestPath } } }`),
     gql(env, `zones(filter: {zoneTag: "${env.ZONE_TAG}"}) {
       g: httpRequestsAdaptiveGroups(limit: 5000,
-        filter: {datetime_geq: "${lo}T00:00:00Z", datetime_lt: "${hi}T00:00:00Z", clientRequestPath_like: "/economy%"})
+        filter: {datetime_geq: "${lo}T00:00:00Z", datetime_lt: "${hi}T00:00:00Z", OR: [{clientRequestPath_like: "/economy%"}, {clientRequestPath: "/independence/"}, {clientRequestPath: "/play/weather-wings/"}]})
       { count dimensions { datetimeFifteenMinutes clientRequestPath } } }`),
   ]);
   for (const g of human.accounts[0].g) bump(key15(g), formatOf(g.dimensions.requestPath), 'human', g.count);
@@ -518,7 +518,10 @@ export default {
 
     // Manual run for verification (guarded by the same runtime secret).
     if (url.pathname === '/__run' && req.method === 'POST') {
-      if (req.headers.get('Authorization') !== `Bearer ${env.CF_ANALYTICS_TOKEN}`)
+      const token = env.CF_ANALYTICS_TOKEN;
+      if (typeof token !== 'string' || token.trim().length === 0)
+        return new Response(null, { status: 503 });
+      if (req.headers.get('Authorization') !== `Bearer ${token}`)
         return new Response(null, { status: 401 });
       try {
         return Response.json(await refresh(env));

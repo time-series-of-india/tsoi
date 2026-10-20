@@ -3,9 +3,8 @@
 // public/data/economy/reads/duel.json (scripts/build-reads-data.mjs).
 import ReadLayout from '../../../components/read/ReadLayout.astro';
 import { readFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
 
-const data = JSON.parse(readFileSync(fileURLToPath(new URL('../../../../public/data/economy/reads/duel.json', import.meta.url)), 'utf8'));
+const data = JSON.parse(readFileSync('public/data/economy/reads/duel.json', 'utf8'));
 const { stats } = data;
 const payload = JSON.stringify(data);
 ---

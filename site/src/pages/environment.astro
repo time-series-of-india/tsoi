@@ -1,0 +1,21 @@
+---
+import StoryPage from '../layouts/StoryPage.astro';
+import WeatherWingsCard from '../components/editorial/WeatherWingsCard.astro';
+import { lead } from '../lib/publications';
+---
+
+<StoryPage title="Environment · Time Series of India" description={`${lead.title}. ${lead.description} ${lead.cardDescription}`} og_image="/og/play/weather-wings.png">
+  <header class="section-intro"><h1>Environment</h1></header>
+  <section aria-label="Environment publications">
+    <p class="format">Play</p>
+    <WeatherWingsCard />
+  </section>
+</StoryPage>
+
+<style>
+  .section-intro { border-bottom:2px solid var(--tsoi-color-on-surface); padding-bottom:calc(var(--tsoi-spacing-unit) * 1.5); }
+  h1 { margin:0; font:700 28px/1.2 var(--tsoi-font-headline); }
+  section { margin-top:calc(var(--tsoi-spacing-unit) * 3); }
+  .format { margin:0 0 var(--tsoi-spacing-unit); font:var(--tsoi-text-label-caps); letter-spacing:.1em; text-transform:uppercase; color:var(--tsoi-color-primary-text); }
+  @media(max-width:650px) { h1 { font-size:24px; } }
+</style>

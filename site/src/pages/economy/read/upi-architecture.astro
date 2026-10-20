@@ -10,6 +10,10 @@ import ShareButtons from '../../../components/editorial/ShareButtons.astro';
 import { readingMinutes } from '../../../lib/reading-time';
 import { dataThrough } from '../../../lib/data-through';
 import { INode, Actor, IC } from '../../../lib/diagrams/nodes';
+import { readFileSync } from 'node:fs';
+
+const readData = JSON.parse(readFileSync('public/data/economy/read-upi-architecture.json', 'utf8'));
+const throughputText = `${Math.round(readData.throughput.volume_mn / 10).toLocaleString('en-IN')} crore`;
 
 const title = 'UPI: Anatomy of a Transaction';
 const deck = 'You pay in seconds. Seven parties make it happen, and you see only one of them.';
@@ -105,8 +109,8 @@ const recoActors = [
         looked up from the screen. The app on your phone is only the first link, and it never touches
         your money.</p>
       <p>It is worth knowing how much rides on this quiet handover. In
-        <span class="liveM">June 2026</span> alone UPI carried more than
-        <span class="liveT">2,272 crore</span> payments, more than any other real-time payment system
+        <span class="liveM">{readData.throughput.label}</span> alone UPI carried
+        <span class="liveT">{throughputText}</span> payments, more than any other real-time payment system
         in the world.<sup class="c"><a href="#r5">5</a></sup></p>
       <p>This piece fills in the gap between the scan and the green tick. We follow a single payment
         down the chain, one party at a time: who hands it to whom, what each one checks, and where
@@ -149,7 +153,7 @@ const recoActors = [
       <figure class="chartfig">
         <div class="chart" id="fig-app" style="height:420px"></div>
         <figcaption>Rank of the leading UPI apps by yearly transaction volume. Source: NPCI app
-          statistics.<sup class="c"><a href="#r10">10</a></sup></figcaption>
+          statistics. {readData.appRace.at(-1)?.period} is year to date through {readData.appThrough ?? readData.throughput.label}.<sup class="c"><a href="#r10">10</a></sup></figcaption>
       </figure>
 
       <p>For all that competition, there is one thing none of these apps can do on their own: reach
@@ -263,8 +267,8 @@ const recoActors = [
 
       <figure class="statfig">
         <div class="bigstat">
-          <span class="n liveT">2,272 crore</span>
-          <span class="l">UPI payments in <span class="liveM">June 2026</span>, up from a few million a month at launch in 2016</span>
+          <span class="n liveT">{throughputText}</span>
+          <span class="l">UPI payments in <span class="liveM">{readData.throughput.label}</span>, up from a few million a month at launch in 2016</span>
         </div>
       </figure>
 

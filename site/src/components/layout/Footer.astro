@@ -4,6 +4,8 @@
 // while this footer is global chrome. Carries the newsletter signup — this is
 // the end-of-page capture point on every standard page (beats has its own).
 import EmailSignup from '../editorial/EmailSignup.astro';
+interface Props { hideNewsletter?: boolean }
+const { hideNewsletter = false } = Astro.props;
 const links = [
   { label: 'About', href: '/about' },
   { label: 'Data', href: '/data' },
@@ -15,7 +17,7 @@ const links = [
 ---
 
 <footer class="footer">
-  <EmailSignup compact />
+  {!hideNewsletter && <EmailSignup compact />}
   <nav class="footer-nav" aria-label="Footer">
     {
       links.map((l, i) => (

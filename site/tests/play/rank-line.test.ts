@@ -50,7 +50,7 @@ const rankLine = new Function(`
   const RANK_NAMED = ${NAMED};
   const PCT_FLOOR = ${FLOOR};
   return rankLine;
-`)() as (hist: number[], bin: number, plays: number) => string;
+`)() as (hist: number[], bin: number, plays: number, context?: 'page' | 'share') => string;
 
 const clockLine = new Function(`
   ${extract(src, 'ordinal')}

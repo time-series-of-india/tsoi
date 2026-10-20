@@ -46,16 +46,10 @@ const gap = {
   }),
 };
 const gapLast = [...gap.months].reverse().find((r) => r.headline != null && r.edu != null);
-// The read's Part I claims Delhi education has run "more than double the
-// all-India pace" and the gap caption says "at least double in every month so
-// far" — static prose around refreshed numbers. Refuse to emit the month the
-// claim stops being true, so the prose is rewritten rather than silently wrong.
-for (const r of gap.months) {
-  if (r.headline == null || r.edu == null) continue;
-  if (r.edu < 2 * r.headline) {
-    throw new Error(`gap: ${r.m} Delhi edu ${r.edu}% is under 2x the headline ` +
-      `${r.headline}% — the read's "at least double" claim no longer holds; reword Part I`);
-  }
+// The approved opening is September's release and calls the gap "almost double".
+// A later print needs an editorial review before it can move this opening.
+if (gapLast.m !== '2026-09' || gapLast.edu / gapLast.headline < 1.8 || gapLast.edu / gapLast.headline >= 2) {
+  throw new Error(`gap: ${gapLast.m} education/headline no longer supports the September opening`);
 }
 
 // `basket` — beat 3's slopegraph: division weights of the 2012 and 2024
@@ -652,14 +646,12 @@ if (!base.months.includes('2024-07')) throw new Error('base-effect home month mi
 // the same way the real one is, not by subtracting contributions.
 //
 // The finding: gold and silver jewellery occupy less than one rupee of the
-// basket but carry a visible share of the headline. In August, onion, petrol
-// and silver jewellery are the three leading contributors and are separated
-// by only three thousandths of a percentage point despite very different
-// weights and price movements.
+// basket but carry a visible share of the headline. This example stays at
+// August 2026, with the source revisions applied to that dated observation.
 const JEWEL = ['13.2.1.1.1.01', '13.2.1.1.1.02'];
-const ONION = '01.1.7.4.1.01';
 const PETROL = '07.2.2.2.1.01';
 const SILVER = '13.2.1.1.1.02';
+const CONTRIBUTION_MONTH = '2026-08';
 const itemW = await q(`
   SELECT item_code AS code, max(item) AS name, sum(share_all_india)::float AS w
   FROM ${SCHEMA}.mospi_cpi_item_weights GROUP BY 1`);
@@ -669,8 +661,8 @@ const itemIdxRaw = await q(`
          round(inflation::numeric, 2)::float AS yoy
   FROM ${SCHEMA}.mospi_cpi_coicop
   WHERE state = 'All India' AND sector = 'Combined' AND item IS NOT NULL
-    AND index_value IS NOT NULL
-  ORDER BY date`);
+    AND index_value IS NOT NULL AND date <= $1::date
+  ORDER BY date`, [`${CONTRIBUTION_MONTH}-01`]);
 // month -> code -> {idx, yoy}, for the two rebuilds
 const byMonth = new Map();
 for (const r of itemIdxRaw) {
@@ -744,19 +736,13 @@ const contrib = {
   },
   reconWorst: +ctRecon.toFixed(4),
 };
-// "What the average hides" names the leading trio and describes their
-// contributions as a near-tie. Fail the build when a later print makes either
-// statement false, so fresh numbers cannot quietly invalidate the prose.
-const LEADING_TRIO = new Set([ONION, PETROL, SILVER]);
-const topThree = ctItems.slice(0, 3);
-if (topThree.length !== 3 || topThree.some((r) => !LEADING_TRIO.has(r.code))) {
-  throw new Error(`contrib: leading trio in ${ctM} is ${topThree.map((r) => `"${r.name}"`).join(', ')}, ` +
-    `not onion, petrol and silver jewellery — re-anchor "What the average hides"`);
-}
-const topSpanMillipoints = Math.round(topThree[0].c * 1000) - Math.round(topThree[2].c * 1000);
-if (topSpanMillipoints > 3) {
-  throw new Error(`contrib: leading trio in ${ctM} spans ${(topSpanMillipoints / 1000).toFixed(3)} points, ` +
-    `too wide for the near-tie claim in "What the average hides"`);
+// This dated example compares silver with petrol; it makes no ranking claim.
+// Keep its month fixed and verify the actual items and the nearly-tripled index.
+const silverItem = ctItems.find(r => r.code === SILVER);
+const petrolItem = ctItems.find(r => r.code === PETROL);
+const silverMultiple = contrib.silver.peak / contrib.silver.first;
+if (ctM !== CONTRIBUTION_MONTH || !silverItem || !petrolItem || silverItem.yoy <= petrolItem.yoy || silverMultiple < 2.6 || silverMultiple >= 3.2) {
+  throw new Error('contrib: the August example no longer supports the authored silver/petrol comparison');
 }
 
 // Beat 11, the many Indias: the spread of state inflation, month by month,
@@ -871,8 +857,8 @@ const states = {
 
 // Beat 12, the staircase: the policy repo rate hand-keyed from RBI MPC
 // announcements (administrative record, not derivable from our tables;
-// verified 2026-09-15 — held at 5.25% since the December 2025 cut, through
-// the August 2026 meeting), against headline YoY: 2012-base series to Dec
+// verified 2026-10-16: RBI raised the rate to 5.50% on 7 October 2026),
+// against headline YoY: 2012-base series to Dec
 // 2025, 2024-base series for 2026. YoY is base-independent enough to splice;
 // the figcaption says where the seam is.
 const REPO_STEPS = [
@@ -882,7 +868,7 @@ const REPO_STEPS = [
   ['2019-06', 5.75], ['2019-08', 5.40], ['2019-10', 5.15], ['2020-03', 4.40],
   ['2020-05', 4.00], ['2022-05', 4.40], ['2022-06', 4.90], ['2022-08', 5.40],
   ['2022-09', 5.90], ['2022-12', 6.25], ['2023-02', 6.50], ['2025-02', 6.25],
-  ['2025-04', 6.00], ['2025-06', 5.50], ['2025-12', 5.25],
+  ['2025-04', 6.00], ['2025-06', 5.50], ['2025-12', 5.25], ['2026-10', 5.50],
 ];
 const cpiOldRaw = await q(`
   SELECT to_char(date, 'YYYY-MM') AS m, round(inflation::numeric, 2)::float AS yoy

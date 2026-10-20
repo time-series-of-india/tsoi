@@ -1,6 +1,7 @@
 // @ts-check
 import { defineConfig } from 'astro/config';
 import sitemap from '@astrojs/sitemap';
+import { fileURLToPath } from 'node:url';
 import { READS } from './src/lib/reads-index.ts';
 
 // Retired short reads — unlisted everywhere, so out of the sitemap too. Read
@@ -13,6 +14,8 @@ const SHORT_PATHS = READS.filter((r) => r.kind === 'short').map(
 // https://astro.build/config
 export default defineConfig({
   output: 'static',
+  // Preserve existing spaces between inline elements across the Astro 7 upgrade.
+  compressHTML: true,
   site: 'https://timeseriesofindia.com',
   // Sitemap of the indexable pages only: the payments dashboard is canonical
   // and indexable since the desks fold (Jul 2026); the explore index stays
@@ -24,6 +27,18 @@ export default defineConfig({
   // they were listed here while being unlisted in the UI, which is how search
   // kept sending readers to pages no index links to.
   integrations: [
+    {
+      name: 'separate-vite-caches',
+      hooks: {
+        'astro:config:setup': ({ command, updateConfig }) => {
+          // A build must not replace dependency files served by a running dev
+          // preview: that leaves chart imports returning Outdated Optimize Dep.
+          updateConfig({ vite: {
+            cacheDir: fileURLToPath(new URL(`./node_modules/.vite/${command}/`, import.meta.url)),
+          } });
+        },
+      },
+    },
     sitemap({
       filter: (page) =>
         (!page.includes('/explore') ||
@@ -34,7 +49,7 @@ export default defineConfig({
         !page.includes('/play/payments') &&
         !page.includes('/lab/') &&
         !SHORT_PATHS.some((p) => page.endsWith(p)) &&
-        !/\/(environment|infrastructure|demographics|governance)\/$/.test(page),
+        !/\/(infrastructure|demographics|governance)\/$/.test(page),
     }),
   ],
   // Static fallback redirects (meta-refresh pages). In production Cloudflare's
@@ -43,8 +58,7 @@ export default defineConfig({
   // _redirects targets exactly so neither path double-hops.
   // '/' is a real page now — the dispatch front page (src/pages/index.astro).
   // Format rename (Jul 2026): beats → play, reads → read, dashboards →
-  // explore. '/economy' 301s to the read shelf (its default view); /economy
-  // stays reserved for a future real section front. The dynamic pairs cover
+  // explore. /economy now has an all-format section page. The dynamic pairs cover
   // deck/dashboard deep links; old per-read URLs (individual .astro pages, no
   // dynamic destination route to pair with) are covered by _redirects only —
   // in production every old deep link 301s.
@@ -58,7 +72,6 @@ export default defineConfig({
   // with it — a static destination has no dynamic segment to pair with, and
   // prod covers the deep link through _redirects.
   redirects: {
-    '/economy': '/economy/read',
     '/economy/reads': '/economy/read',
     '/economy/beats': '/',
     '/economy/dashboards': '/economy/explore',
