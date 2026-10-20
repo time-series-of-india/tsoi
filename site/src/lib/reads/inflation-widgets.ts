@@ -2545,7 +2545,8 @@ export function initRepo(fig: HTMLElement | null, rp: WildData['repo']) {
   const svg = svgEl('svg', { class: 'ro-svg' }) as SVGSVGElement;
   area.appendChild(svg);
 
-  const months = rp.cpi.map((r) => r.m);
+  // Policy decisions can be newer than the latest published CPI observation.
+  const months = [...new Set([...rp.cpi.map((r) => r.m), ...rp.steps.map((r) => r.m)])].sort();
   const N = months.length;
 
   const build = () => {
@@ -3549,10 +3550,11 @@ export function initCloseUnfold(
     play();
   } else {
     draw();
-    if (headPath) {
-      const L = headPath.getTotalLength();
-      headPath.style.strokeDasharray = String(L);
-      headPath.style.strokeDashoffset = String(L);
+    const path = svg.querySelector<SVGPathElement>('.sc-line-head');
+    if (path) {
+      const L = path.getTotalLength();
+      path.style.strokeDasharray = String(L);
+      path.style.strokeDashoffset = String(L);
     }
   }
 

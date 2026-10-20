@@ -1,0 +1,111 @@
+---
+import { homeObservations } from '../../lib/home-observations';
+import { fmtCountProse } from '../../lib/units-prose';
+const items = homeObservations();
+---
+<section class="observed" aria-labelledby="observed-title">
+  <h2 id="observed-title">India, Observed</h2>
+  {items.length ? <>
+    <div class="topics" role="group" aria-label="Choose an observation">
+      {items.map((item, i) => <button type="button" data-observation={i} aria-pressed={i === 0 ? 'true' : 'false'} aria-controls="observation-panels" disabled>{item.short}</button>)}
+    </div>
+    <div class="panels" id="observation-panels">
+      {items.map((item, i) => <article class="observation" aria-hidden={i !== 0 ? 'true' : 'false'} inert={i !== 0}>
+        <div class="heading"><h3>{item.title}</h3>{item.metric && <strong class:list={["metric", {num:item.count !== undefined}]} data-count={item.count} data-style="abbr">{item.metric}</strong>}<p class="basis">{item.basis}</p><p class="period">{item.period}</p></div>
+        <div class="graphic">
+          {item.graphic === 'line' && item.series && <div class="trend"><svg viewBox="0 0 260 84" role="img" aria-label={`Year-on-year inflation: ${item.series.map(point => `${point.date} ${point.value.toFixed(2)}%`).join('; ')}`}><line x1="10" y1="78" x2="250" y2="78"/><polyline points={item.series.map(point => `${point.x},${point.y}`).join(' ')}/>{item.series.map(point => <circle cx={point.x} cy={point.y} r="2.8" />)}</svg><div class="chart-ends"><span>{item.series[0].date}<strong>{item.series[0].value.toFixed(2)}%</strong></span><span>{item.series.at(-1)?.date}<strong>{item.series.at(-1)?.value.toFixed(2)}%</strong></span></div></div>}
+          {item.graphic === 'rainfall-gap' && item.rainfall && <div class="rainfall-gap">
+            <div class="rain-labels"><span>{item.rainfall.actual.toFixed(1)} mm received</span><span>{item.rainfall.normal.toFixed(1)} mm normal</span></div>
+            <div class="rain-track" role="img" aria-label={`Rainfall received: ${item.rainfall.actual.toFixed(1)} millimetres, ${item.rainfall.receivedPct.toFixed(1)}% of the ${item.rainfall.normalPeriod} normal of ${item.rainfall.normal.toFixed(1)} millimetres. Shortfall: ${item.rainfall.shortfallPct.toFixed(1)}%.`}>
+              <i class="rain-received" style={`width:${item.rainfall.receivedPct}%`}></i>
+            </div>
+            <div class="gap-bracket" style={`width:${item.rainfall.shortfallPct}%`}><span>{item.rainfall.shortfallPct.toFixed(1)}% shortfall</span></div>
+          </div>}
+          {item.graphic === 'columns' && item.columns && item.columnMax && <div class="payment-trend">
+            <svg viewBox="0 0 300 112" role="img" aria-label={`Monthly UPI payment counts: ${item.columns.map(column => `${column.date}: ${Math.round(column.count).toLocaleString('en-GB')} payments`).join('; ')}`}>
+              <line class="column-grid" x1="58" y1="10" x2="292" y2="10"/>
+              <text class="column-tick num" data-count={item.columnMax} data-style="abbr" x="52" y="13" text-anchor="end">{fmtCountProse(item.columnMax, false, 'abbr')}</text>
+              <text class="column-tick" x="52" y="93" text-anchor="end">0</text>
+              {item.columns.map((column, n) => <rect class:list={["payment-column", {latest:n === item.columns!.length - 1}]} x={column.x} y={column.y} width="11" height={column.height}><title>{column.date}: {Math.round(column.count).toLocaleString('en-GB')} payments</title></rect>)}
+              <line x1="58" y1="90" x2="292" y2="90"/>
+              {item.columns.map(column => <text class="column-month" x={column.x + 5.5} y="105" text-anchor="middle">{column.month}</text>)}
+            </svg>
+            <div class="payment-dates"><span>{item.columns[0].date}</span><span>{item.columns.at(-1)?.date}</span></div>
+          </div>}
+        </div>
+        <footer><span>{item.source}</span><a href={item.href}>{item.action} &rarr;</a></footer>
+      </article>)}
+    </div>
+    <div class="controls"><button type="button" data-step="-1" disabled>Previous</button><span class="position" aria-live="polite">1 of {items.length}</span><button type="button" data-step="1" disabled>Next</button></div>
+  </> : <p class="unavailable" role="status">Observations are unavailable while the data snapshot is missing. The publications remain available below.</p>}
+</section>
+<script>
+  const root = document.querySelector<HTMLElement>('.observed');
+  if (root) {
+    const buttons = [...root.querySelectorAll<HTMLButtonElement>('[data-observation]')];
+    const panels = [...root.querySelectorAll<HTMLElement>('.observation')];
+    buttons.forEach(button => button.disabled = false);
+    const next = root.querySelector<HTMLButtonElement>('[data-step="1"]');
+    if (next) next.disabled = buttons.length < 2;
+    let index = 0;
+    const select = (next: number) => {
+      index = Math.max(0, Math.min(buttons.length - 1, next));
+      buttons.forEach((button, i) => button.setAttribute('aria-pressed', String(i === index)));
+      panels.forEach((panel, i) => { panel.setAttribute('aria-hidden', String(i !== index)); panel.inert = i !== index; });
+      const position = root.querySelector<HTMLElement>('.position');
+      if (position) position.textContent = `${index + 1} of ${buttons.length}`;
+      root.querySelector<HTMLButtonElement>('[data-step="-1"]')!.disabled = index === 0;
+      root.querySelector<HTMLButtonElement>('[data-step="1"]')!.disabled = index === buttons.length - 1;
+    };
+    buttons.forEach((button, i) => button.addEventListener('click', () => select(i)));
+    root.querySelectorAll<HTMLButtonElement>('[data-step]').forEach(button => button.addEventListener('click', () => select(index + Number(button.dataset.step))));
+    root.querySelector('.topics')?.addEventListener('keydown', event => {
+      const key = (event as KeyboardEvent).key;
+      if (!['ArrowLeft','ArrowRight','Home','End'].includes(key)) return;
+      event.preventDefault();
+      select(key === 'Home' ? 0 : key === 'End' ? buttons.length - 1 : index + (key === 'ArrowRight' ? 1 : -1));
+      buttons[index].focus();
+    });
+    let start: {x:number;y:number}|null = null;
+    root.querySelector('.panels')?.addEventListener('touchstart', event => { const touch = (event as TouchEvent).touches[0]; start = touch ? {x:touch.clientX,y:touch.clientY} : null; }, {passive:true});
+    root.querySelector('.panels')?.addEventListener('touchend', event => { const touch = (event as TouchEvent).changedTouches[0]; if (!start || !touch) return; const dx=touch.clientX-start.x, dy=touch.clientY-start.y; if (Math.abs(dx)>60 && Math.abs(dx)>Math.abs(dy)*1.5) select(index+(dx<0?1:-1)); start=null; }, {passive:true});
+  }
+</script>
+<style>
+  .observed { min-width:0; padding:calc(var(--tsoi-spacing-unit) * 1.5) calc(var(--tsoi-spacing-unit) * 2) var(--tsoi-spacing-unit); border:1px solid var(--tsoi-color-outline); border-top:2px solid var(--tsoi-color-on-surface); display:flex; flex-direction:column; text-align:center; }
+  h2 { margin:0 0 calc(var(--tsoi-spacing-unit) * .5); font:700 20px/1.2 var(--tsoi-font-headline); }
+  .topics { display:flex; justify-content:space-between; gap:var(--tsoi-spacing-unit); border-bottom:1px solid var(--tsoi-color-outline); margin-bottom:var(--tsoi-spacing-unit); }
+  .topics button { min-height:44px; padding:var(--tsoi-spacing-unit) 0; margin-bottom:-1px; border:0; border-bottom:2px solid transparent; background:transparent; color:var(--tsoi-color-on-surface-variant); font:var(--tsoi-text-body); font-size:12px; white-space:nowrap; cursor:pointer; }
+  .topics button[aria-pressed='true'] { color:var(--tsoi-color-primary-text); border-bottom-color:var(--tsoi-color-primary); font-weight:600; }
+  button:focus-visible, a:focus-visible { outline:2px solid var(--tsoi-color-primary); outline-offset:2px; }
+  .panels { display:grid; flex:1; }
+  .observation { grid-area:1/1; display:grid; grid-template-rows:auto minmax(100px,1fr) auto; gap:8px; min-width:0; border:0; padding:0; }
+  .observation[aria-hidden='true'] { visibility:hidden; pointer-events:none; }
+  h3 { margin:0 0 4px; font:600 18px/1.25 var(--tsoi-font-body); }
+  .metric { display:block; font:var(--tsoi-text-metric-xl); font-variant-numeric:tabular-nums; }
+  .basis,.period { margin:4px 0 0; font:var(--tsoi-text-body); color:var(--tsoi-color-on-surface-variant); }
+  .basis { font-size:13px; line-height:1.4; } .period { font-size:12px; line-height:1.4; }
+  .graphic { align-self:center; width:100%; max-width:calc(var(--tsoi-spacing-unit) * 39); min-width:0; margin-inline:auto; }
+  .trend svg { display:block; width:100%; height:auto; aspect-ratio:260 / 84; overflow:visible; }
+  svg line { stroke:var(--tsoi-color-outline); } svg polyline { fill:none; stroke:var(--tsoi-color-primary); stroke-width:2; vector-effect:non-scaling-stroke; } svg circle { fill:var(--tsoi-color-primary); }
+  .chart-ends { display:flex; justify-content:space-between; gap:12px; margin-top:3px; padding-inline:3.846%; font:11px/1.3 var(--tsoi-font-mono); color:var(--tsoi-color-on-surface-variant); text-align:left; }
+  .chart-ends span { display:grid; gap:2px; } .chart-ends span:last-child { text-align:right; } .chart-ends strong { color:var(--tsoi-color-on-surface); font-weight:500; }
+  .rainfall-gap { padding-bottom:calc(var(--tsoi-spacing-unit) * 4); }
+  .rain-labels { display:flex; justify-content:space-between; gap:var(--tsoi-spacing-unit); margin-bottom:var(--tsoi-spacing-unit); font:11px/1.4 var(--tsoi-font-mono); color:var(--tsoi-color-on-surface-variant); }
+  .rain-track { height:calc(var(--tsoi-spacing-unit) * 3); border:1px solid var(--tsoi-color-on-surface-variant); }
+  .rain-received { display:block; height:100%; background:var(--tsoi-color-primary); border-right:1px solid var(--tsoi-color-on-surface-variant); }
+  .gap-bracket { position:relative; height:calc(var(--tsoi-spacing-unit) * .75); margin-top:calc(var(--tsoi-spacing-unit) * .5); margin-left:auto; border:1px solid var(--tsoi-color-on-surface-variant); border-top:0; }
+  .gap-bracket span { position:absolute; top:var(--tsoi-spacing-unit); right:0; white-space:nowrap; font:11px/1.4 var(--tsoi-font-body); color:var(--tsoi-color-on-surface-variant); }
+  .payment-trend svg { display:block; width:100%; height:auto; }
+  .column-tick,.column-month { fill:var(--tsoi-color-on-surface-variant); font:9px var(--tsoi-font-mono); }
+  .column-grid { stroke-dasharray:2 3; }
+  .payment-column { fill:var(--tsoi-color-on-surface-variant); }
+  .payment-column.latest { fill:var(--tsoi-color-primary); }
+  .payment-dates { display:flex; justify-content:space-between; gap:var(--tsoi-spacing-unit); padding-left:19.333%; padding-right:2.667%; font:11px/1.4 var(--tsoi-font-mono); color:var(--tsoi-color-on-surface-variant); }
+  footer { display:flex; justify-content:space-between; gap:var(--tsoi-spacing-unit); padding-top:var(--tsoi-spacing-unit); border-top:1px solid var(--tsoi-color-outline); font:11px/1.5 var(--tsoi-font-body); color:var(--tsoi-color-on-surface-variant); text-align:left; }
+  footer span { max-width:52%; } footer a { color:var(--tsoi-color-primary-text); text-align:right; }
+  .controls { display:flex; justify-content:space-between; align-items:center; gap:12px; padding-top:5px; font:12px var(--tsoi-font-body); }
+  .controls button { border:0; background:transparent; color:var(--tsoi-color-on-surface); text-decoration:underline; text-underline-offset:4px; min-height:44px; padding:8px 0; cursor:pointer; }
+  .controls button:disabled { opacity:.45; text-decoration:none; cursor:default; }
+  @media(max-width:1000px) { .observed { padding:calc(var(--tsoi-spacing-unit) * 2) 0 var(--tsoi-spacing-unit); border-left:0; border-right:0; } .observation { grid-template-rows:auto auto auto; gap:var(--tsoi-spacing-unit); } .panels { flex:none; } .topics { max-width:calc(var(--tsoi-spacing-unit) * 48); width:100%; margin-inline:auto; } .controls { width:100%; max-width:calc(var(--tsoi-spacing-unit) * 48); margin-inline:auto; } footer { width:100%; max-width:calc(var(--tsoi-spacing-unit) * 48); margin-inline:auto; } }
+</style>

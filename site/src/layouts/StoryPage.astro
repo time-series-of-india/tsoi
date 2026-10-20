@@ -17,23 +17,26 @@ interface Props {
   last_updated?: string;
   /** Front page only: render the masthead wordmark as the page h1. */
   homeH1?: boolean;
+  /** Link to an earlier signup instead of repeating the form in the footer. */
+  hideFooterNewsletter?: boolean;
   /** Opt in to the wide container tier (≥1600px) for data-dense dashboard
    * surfaces. Editorial/prose pages should leave this unset — the 1280px
    * measure stays the default. */
   wide?: boolean;
 }
 
-const { homeH1 = false, wide = false, ...props } = Astro.props;
+const { homeH1 = false, wide = false, hideFooterNewsletter = false, ...props } = Astro.props;
 ---
 
 <BaseLayout {...props}>
   <slot name="ld-json" slot="ld-json" />
+  <slot name="head" slot="head" />
   <Masthead homeH1={homeH1} />
   <SectionNav />
   <main class:list={['tsoi-container', 'story-main', { 'tsoi-container-wide': wide }]}>
     <slot />
   </main>
-  <Footer />
+  <Footer hideNewsletter={hideFooterNewsletter} />
 </BaseLayout>
 
 <style>

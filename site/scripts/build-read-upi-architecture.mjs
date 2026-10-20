@@ -99,9 +99,12 @@ p2m.sort((a, b) => (a.year - b.year) || 0);
 const monthName = (m) => ({ Jan: 'January', Feb: 'February', Mar: 'March', Apr: 'April', May: 'May', Jun: 'June', Jul: 'July', Aug: 'August', Sep: 'September', Oct: 'October', Nov: 'November', Dec: 'December' }[m] || m);
 const latest = p2m[p2m.length - 1];
 const throughput = { volume_mn: Math.round(num(latest.total_volume_mn)), label: `${monthName(latest.month)} ${latest.year}` };
+const monthOrder = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const latestApp = [...apps].sort((a, b) => Number(a.year) - Number(b.year) || monthOrder.indexOf(a.month) - monthOrder.indexOf(b.month)).at(-1);
+const appThrough = `${monthName(latestApp.month)} ${latestApp.year}`;
 
 mkdirSync(dirname(OUT), { recursive: true });
-writeFileSync(OUT, JSON.stringify({ appRace, bankFlow, decline, throughput }, null, 0));
+writeFileSync(OUT, JSON.stringify({ appRace, appThrough, bankFlow, decline, throughput }, null, 0));
 console.log('throughput:', JSON.stringify(throughput));
 console.log('wrote', OUT);
 console.log('appRace rows:', appRace.length, '| apps:', topApps.join(', '));

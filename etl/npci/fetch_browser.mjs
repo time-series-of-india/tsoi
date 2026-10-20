@@ -47,7 +47,7 @@ const browser = await chromium.launch({
   args: ['--no-sandbox', '--disable-gpu', '--disable-dev-shm-usage'],
 });
 const page = await browser.newPage();
-await page.goto('https://www.npci.org.in/statistics/upi/upi-ecosystem-statistics', {
+await page.goto('https://www.npci.org.in/product/ecosystem-statistics/upi', {
   waitUntil: 'domcontentloaded', timeout: 60_000,
 });
 

@@ -1,0 +1,22 @@
+---
+import { lead } from '../../lib/publications';
+---
+
+<a class="weather" href={lead.href}>
+  <img class="weather-city" src="/weather-wings/cover.webp" width="1658" height="949" alt="" fetchpriority="high" decoding="async" />
+  <img class="weather-bird" src="/weather-wings/bird.webp" width="400" height="180" alt="" decoding="async" />
+  <div class="weather-ink"><h2>{lead.title}</h2><span class="standfirst">{lead.description}</span><span class="lead-detail">{lead.cardDescription}</span></div>
+</a>
+
+<style>
+  .weather { display:block; position:relative; min-height:430px; overflow:hidden; border:1px solid var(--tsoi-color-outline); border-left:4px solid var(--tsoi-color-primary); background:var(--tsoi-color-surface-container-low); color:#263d50; text-decoration:none; }
+  .weather-city { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; object-position:50% 76%; }
+  .weather-bird { position:absolute; top:44%; left:24%; width:8%; height:auto; transform:rotate(-7deg); }
+  .weather:focus-visible { outline:2px solid var(--tsoi-color-primary); outline-offset:3px; }
+  .weather-ink { position:relative; display:block; text-align:center; padding:clamp(24px,3vw,40px) 14px; }
+  .weather-ink h2 { margin:0; font:700 clamp(36px,4.4vw,58px)/1.16 var(--tsoi-font-headline); }
+  .standfirst { display:block; margin:10px auto 0; font:clamp(13px,1.1vw,16px)/1.5 Georgia,'Times New Roman',serif; text-wrap:balance; }
+  .lead-detail { display:block; margin:6px auto 0; font:clamp(12px,1vw,14px)/1.5 Georgia,'Times New Roman',serif; text-wrap:balance; }
+  @media(max-width:1000px) { .weather { min-height:380px; } }
+  @media(max-width:650px) { .weather { min-height:390px; } .weather-ink h2 { font-size:clamp(34px,9vw,48px); } .weather-bird { width:14%; left:17%; top:46%; } }
+</style>

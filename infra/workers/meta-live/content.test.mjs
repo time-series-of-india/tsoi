@@ -14,6 +14,8 @@ test('current, retired and sub-routes resolve to the same piece', () => {
   assert.equal(contentSlugOf('/economy/play/off-by-how-much/42/'), 'off-by-how-much');
   assert.equal(contentSlugOf('/economy/explore/rupee-time-machine/1992/'), 'rupee-time-machine');
   assert.equal(contentSlugOf('/economy/read/'), null);
+  assert.equal(contentSlugOf('/play/weather-wings/'), 'weather-wings');
+  assert.equal(contentSlugOf('/weather-wings/r-5e73faf9159f34ac/src/game.js'), null);
 });
 
 test('the first daily run backfills the full 7D window including today', () => {

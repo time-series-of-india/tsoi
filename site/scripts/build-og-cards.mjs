@@ -166,7 +166,7 @@ for (const r of READS) {
     deck: r.deck,
     footer: `A Read · Source: ${r.source}`,
   }), out);
-  console.log(`wrote ${out}`);
+  console.log(`${process.env.OG_HTML_DIR ? "prepared HTML for" : "wrote"} ${out}`);
   count++;
 }
 
@@ -195,7 +195,7 @@ const ONE_OFFS = [
   {
     out: resolve(PUBLIC_DIR, 'og/explore', 'rupee-time-machine.png'),
     title: 'The Rupee Time Machine',
-    deck: 'Any amount, any two months since 1969, one continuous price line. ₹100 of 2000 amounts to about ₹456 today.',
+    deck: 'Any amount, any two months since 1969, one continuous price line.',
     footer: 'Explore · Data: Labour Bureau · MoSPI',
   },
   // Superseded by og/explore/payments.png (share v1 §6). Kept rendering so
@@ -224,6 +224,13 @@ const ONE_OFFS = [
     </svg>`,
   },
   {
+    out: resolve(PUBLIC_DIR, 'og/play', 'weather-wings.png'),
+    title: 'Weather Wings',
+    deck: 'Fly through India’s seasons.',
+    footer: 'Play · Climate normals: WMO · NOAA NCEI',
+    motif: `<img src="data:image/webp;base64,${readFileSync(resolve(PUBLIC_DIR, 'weather-wings/cover.webp')).toString('base64')}" width="620" height="180" style="object-fit:cover;object-position:50% 76%;margin-top:20px" alt=""/>`,
+  },
+  {
     out: resolve(PUBLIC_DIR, 'og/play', 'inflation-peaks.png'),
     title: 'Inflation Peaks',
     deck: INFLATION_PEAKS_DECK,
@@ -237,8 +244,8 @@ const ONE_OFFS = [
 
 for (const { out, title, deck, footer, motif } of ONE_OFFS) {
   await renderCard(await cardHtml({ title, deck, footer, motif }), out);
-  console.log(`wrote ${out}`);
+  console.log(`${process.env.OG_HTML_DIR ? "prepared HTML for" : "wrote"} ${out}`);
   count++;
 }
 
-console.log(`\n${count} cards written.`);
+console.log(`\n${count} cards ${process.env.OG_HTML_DIR ? "prepared as HTML" : "written"}.`);

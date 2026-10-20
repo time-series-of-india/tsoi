@@ -34,4 +34,4 @@ html,body{width:1200px;height:630px;}
 </div></body></html>`;
 
 await renderCard(await html(), outPath);
-console.log(`wrote ${outPath}`);
+console.log(`${process.env.OG_HTML_DIR ? "prepared HTML for" : "wrote"} ${outPath}`);

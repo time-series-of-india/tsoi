@@ -1,0 +1,64 @@
+---
+import type { Publication } from '../../lib/publications';
+import PeaksAuto from '../play/PeaksAuto.astro';
+import { readFileSync } from 'node:fs';
+import { lineMotif } from '../../lib/lineMotif';
+import { coverAuto } from '../../lib/play/peaks-cover';
+
+interface Props { piece: Publication }
+const { piece } = Astro.props;
+const peaks = piece.art === 'peaks' ? (() => {
+  try {
+    const all = JSON.parse(readFileSync('public/data/economy/play/inflation-peaks.json', 'utf8')).points as { ym: string; yoy: number }[];
+    const line = lineMotif(all.filter(p => p.ym >= '2020-01').map(p => p.yoy), { samples: 96 });
+    return { points: line.points, auto: coverAuto(line) };
+  } catch { return null; }
+})() : null;
+const date = piece.published && new Date(`${piece.published}T00:00:00Z`).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
+---
+
+<article class="publication" data-piece-id={piece.id} data-format={piece.format.toLowerCase()} data-topic={piece.theme} data-published={piece.published} data-rank={piece.initialRank}>
+  <a href={piece.href}>
+    <div class="meta"><span>{piece.format}</span>{piece.theme && <span>{piece.theme === 'inflation' ? 'Prices' : 'Payments'}</span>}</div>
+    <div class="art" aria-hidden="true">
+      {piece.thumb?.endsWith('.jpg') ? <img src={piece.thumb} alt="" loading="lazy" decoding="async" /> : piece.thumb && <>
+        <img class="art-light" src={`${piece.thumb}.png`} alt="" loading="lazy" decoding="async" />
+        <img class="art-dark" src={`${piece.thumb}-dark.png`} alt="" loading="lazy" decoding="async" />
+      </>}
+      {peaks && <div class="peaks-cover"><svg viewBox="0 0 100 30" preserveAspectRatio="none"><polyline points={peaks.points} /></svg><PeaksAuto {...peaks.auto} /></div>}
+      {piece.art === 'gauge' && <div class="gauge"><span class="ticks"></span><span class="track"></span><i class="guess"></i><i class="actual"></i></div>}
+    </div>
+    <div class="copy"><h3>{piece.title}</h3><p>{piece.cardDescription ?? piece.description}</p></div>
+    <div class="foot"><span>{date ? `Published ${date}` : 'Interactive tool'}</span><span>{piece.format === 'Read' ? 'Read' : piece.format === 'Play' ? 'Play' : 'Explore'} &rarr;</span></div>
+  </a>
+</article>
+
+<style>
+  /* Keep the short deck in normal flow so larger text never gets clipped. */
+  .publication { min-width: 0; border: 1px solid var(--tsoi-color-outline); background: var(--tsoi-color-surface-container-low); }
+  .publication a { display: flex; flex-direction: column; height: 100%; color: inherit; text-decoration: none; }
+  .publication:hover, .publication:focus-within { background: var(--tsoi-color-surface-container-high); }
+  .publication a:focus-visible { outline: 2px solid var(--tsoi-color-primary); outline-offset: 3px; }
+  .meta, .foot { display: flex; justify-content: space-between; gap: 12px; font: var(--tsoi-text-byline); color: var(--tsoi-color-on-surface-variant); }
+  .meta { padding: 15px 17px 8px; text-transform: uppercase; letter-spacing: .08em; }
+  .meta span:first-child { color: var(--tsoi-color-primary-text); }
+  .art { display: grid; place-items: center; height: calc(var(--tsoi-spacing-unit) * 25); padding: var(--tsoi-spacing-unit) calc(var(--tsoi-spacing-unit) * 2); overflow: hidden; }
+  .art img { display: block; max-width: 100%; max-height: 100%; min-height:0; width: auto; height: auto; object-fit: contain; }
+  .art .art-dark { display: none; }
+  :global(html[data-theme='dark']) .art .art-light { display: none; }
+  :global(html[data-theme='dark']) .art .art-dark { display: block; }
+  .copy { padding: 9px 17px 13px; }
+  h3 { margin: 0; font:700 clamp(21px,1.9vw,25px)/1.16 var(--tsoi-font-headline); text-wrap: balance; }
+  p { margin: var(--tsoi-spacing-unit) 0 0; font: var(--tsoi-text-body); font-size:14px; line-height:1.45; color: var(--tsoi-color-on-surface-variant); }
+  .foot { align-items: baseline; margin-top: auto; padding: var(--tsoi-spacing-unit) calc(var(--tsoi-spacing-unit) * 2) calc(var(--tsoi-spacing-unit) * 1.5); }
+  .foot span:last-child { color: var(--tsoi-color-primary-text); white-space: nowrap; }
+  .peaks-cover { position: relative; width: 100%; margin-top: 0; }
+  .peaks-cover svg:not(.peaks-auto) { display: block; width: 100%; height: 58px; overflow: visible; }
+  .peaks-cover polyline { fill: none; stroke: var(--tsoi-color-primary); stroke-width: 1.5; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+  .gauge { position: relative; width: 100%; height: 75px; }
+  .ticks { position: absolute; left: 0; right: 0; top: 20px; height: 26px; background: repeating-linear-gradient(90deg,var(--tsoi-color-outline) 0 1px,transparent 1px 12px); mask-image: linear-gradient(90deg,transparent,#000 8% 92%,transparent); }
+  .track { position: absolute; left: 0; right: 0; top: 48px; border-top: 2px solid var(--tsoi-color-primary); }
+  .guess,.actual { position: absolute; top: 39px; width: 2px; height: 19px; background: var(--tsoi-color-on-surface); }
+  .guess { left: 9%; } .actual { left: 72%; }
+  @media(max-width: 600px) { .art { height: calc(var(--tsoi-spacing-unit) * 23); } }
+</style>

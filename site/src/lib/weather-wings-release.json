@@ -1,0 +1,835 @@
+{
+  "revision": "r-7b9f2b8ce5651fac",
+  "files": [
+    {
+      "path": "assets/audio/air.mp3",
+      "bytes": 192717,
+      "sha256": "6dc8579edbae619928aacbe2a78f358e09ed14cb64e2d8d01076b8b82fb9b39e"
+    },
+    {
+      "path": "assets/audio/alexandrine-parakeet.mp3",
+      "bytes": 32877,
+      "sha256": "cd6f880cbc7a9beeb2b7ab97232f151426118110d45fb9f36691f5bfd6db5b2e"
+    },
+    {
+      "path": "assets/audio/common-myna.mp3",
+      "bytes": 44685,
+      "sha256": "bcc37a6c39aaee593a8372f2fabd1be9c879c3861ee16673cef3a43a590338a3"
+    },
+    {
+      "path": "assets/audio/credits.html",
+      "bytes": 6465,
+      "sha256": "c470fdb0887743dd9d3f09facfb13fd4c7f7d8d761342352c1bb758622fa437f"
+    },
+    {
+      "path": "assets/audio/indian-roller.mp3",
+      "bytes": 36671,
+      "sha256": "b5820f7c178088bab0b4d7feb312dc2d61a68b40e0353c08ed14cd2a75f524e3"
+    },
+    {
+      "path": "assets/audio/purple-rumped-sunbird.mp3",
+      "bytes": 40653,
+      "sha256": "874b8b9e24d80b38f0f4c587d4c1ffbc9fa9c1a17f4b8c43da420e3e0a610610"
+    },
+    {
+      "path": "assets/audio/rain.mp3",
+      "bytes": 192717,
+      "sha256": "05ccb13e6a49d1c328224ac1ac3ce16dd944bea12a31b264b4bcd77eb8a302e7"
+    },
+    {
+      "path": "assets/audio/river.mp3",
+      "bytes": 192141,
+      "sha256": "59cd80342fac6046258daa58e77fc2763ad05e6db644c6955ee3946063d1bb29"
+    },
+    {
+      "path": "assets/audio/sea-wash.mp3",
+      "bytes": 191853,
+      "sha256": "de808f08de13be2262a4d7b946ca03e380bc5a403dd76bff413a58f30fa54964"
+    },
+    {
+      "path": "assets/audio/sources.json",
+      "bytes": 10782,
+      "sha256": "21d41f0e222b0966de25529020468413745a12855df10c5a9befa25249892343"
+    },
+    {
+      "path": "assets/audio/thunder.mp3",
+      "bytes": 96813,
+      "sha256": "5cbb99865f88cc083a18c191eadaf33f8a791ecea5f2580e7d4dac571199ab7b"
+    },
+    {
+      "path": "assets/audio/white-throated-kingfisher.mp3",
+      "bytes": 40653,
+      "sha256": "710bfc05d1b254edefb35bdd71d98b4c6d4017c0570d3c266a4f860a318e405e"
+    },
+    {
+      "path": "assets/audio/wire-tailed-swallow.mp3",
+      "bytes": 44685,
+      "sha256": "6523efca98fdd1b82cab27ae4901f26b8ca205bc04a7cf1f90419857be4fd270"
+    },
+    {
+      "path": "assets/prepared/alexandrine-parakeet-0-75523b8708bdbb77.webp",
+      "bytes": 76406,
+      "sha256": "75523b8708bdbb77865a204cb676200b669ef51a790cf042a635aaa28389f385"
+    },
+    {
+      "path": "assets/prepared/alexandrine-parakeet-1-216dbf36d4b64323.webp",
+      "bytes": 71264,
+      "sha256": "216dbf36d4b64323d4ede56144ba2d14719f0f04f8e6bce5524948247b0bcda7"
+    },
+    {
+      "path": "assets/prepared/alexandrine-parakeet-2-583c23ed109c9ebe.webp",
+      "bytes": 53772,
+      "sha256": "583c23ed109c9ebe2d49596181492679887ff1320dffa385f9d293ab2191aa93"
+    },
+    {
+      "path": "assets/prepared/alexandrine-parakeet-3-5ada878e3d03f2b4.webp",
+      "bytes": 59872,
+      "sha256": "5ada878e3d03f2b41e4151b73d7e82a2bb0a12a1d949da77458a12e255b74f32"
+    },
+    {
+      "path": "assets/prepared/alexandrine-parakeet-4-a6795cd494c0bc10.webp",
+      "bytes": 62892,
+      "sha256": "a6795cd494c0bc1094ff1c955f50f7ba14c49ebd6178486425ff8a23495fd890"
+    },
+    {
+      "path": "assets/prepared/alexandrine-parakeet-5-d0642c038d595ed5.webp",
+      "bytes": 60190,
+      "sha256": "d0642c038d595ed525ba9ff3923fefc37463a0aef99a1b21d667a97366ebd250"
+    },
+    {
+      "path": "assets/prepared/alexandrine-parakeet-6-6a21fa2d4b18df8e.webp",
+      "bytes": 52970,
+      "sha256": "6a21fa2d4b18df8e37fc66f5cc9402ff9ba69d3ae6a040fd38c95d19fba0e055"
+    },
+    {
+      "path": "assets/prepared/alexandrine-parakeet-7-f97c32646aa6289f.webp",
+      "bytes": 69408,
+      "sha256": "f97c32646aa6289fed7ebdd2ec2f3b475940641b054b72cac90cdb050dbf23ec"
+    },
+    {
+      "path": "assets/prepared/bengaluru-0-a23d6b1b424432cd.webp",
+      "bytes": 137234,
+      "sha256": "a23d6b1b424432cd879d086693347b4c27b74e17929834acc10cd35fff02a908"
+    },
+    {
+      "path": "assets/prepared/bengaluru-1-5b4c1cdbf7b41d05.webp",
+      "bytes": 145638,
+      "sha256": "5b4c1cdbf7b41d05cb7557f156bb40e93f65ace44cd959ea9b8935317058a9ff"
+    },
+    {
+      "path": "assets/prepared/bengaluru-2-53b1dd6d88f57275.webp",
+      "bytes": 144304,
+      "sha256": "53b1dd6d88f572750720cb8e5ea1ca9d0f09e7f6fa0cecc576db1765dd748c98"
+    },
+    {
+      "path": "assets/prepared/bengaluru-3-ec08231cb3d03f38.webp",
+      "bytes": 145042,
+      "sha256": "ec08231cb3d03f38a90d8be4b104344eb4c6c52abaa67e1af3803f058c1c83ef"
+    },
+    {
+      "path": "assets/prepared/bengaluru-4-ac515187fde761a9.webp",
+      "bytes": 146576,
+      "sha256": "ac515187fde761a9f0d3d5b72316277af3d65b0d7a15879f4dd668e600285766"
+    },
+    {
+      "path": "assets/prepared/bengaluru-5-f9cfabc0d3ffb2d6.webp",
+      "bytes": 149222,
+      "sha256": "f9cfabc0d3ffb2d631c0deac919e13a461aa71c175c4be48be686769bbeeb459"
+    },
+    {
+      "path": "assets/prepared/bengaluru-preview-665b0293bbd88a5e.webp",
+      "bytes": 27036,
+      "sha256": "665b0293bbd88a5e3d32604d630cd78b06c05c4cd98f7279adea7ce37d3a8018"
+    },
+    {
+      "path": "assets/prepared/chennai-0-f690fd375b996fd3.webp",
+      "bytes": 143804,
+      "sha256": "f690fd375b996fd32c5f79eb43587dda6b3bc6f3d7af1acb79b86449d41fad0c"
+    },
+    {
+      "path": "assets/prepared/chennai-1-7a8ccbc74ea5f77e.webp",
+      "bytes": 148002,
+      "sha256": "7a8ccbc74ea5f77e462d6b63f7712d26e2b76a2cfa731efd32d0d6263510d9b4"
+    },
+    {
+      "path": "assets/prepared/chennai-2-e3f80cc362323b5f.webp",
+      "bytes": 143568,
+      "sha256": "e3f80cc362323b5f54b65c0bd9e6fe918c31723aa5f060ac312581e6afd81db1"
+    },
+    {
+      "path": "assets/prepared/chennai-3-a3cc944cd9905de3.webp",
+      "bytes": 146152,
+      "sha256": "a3cc944cd9905de37487008f05bdf41e5993b475d2699cd4f8cd2a90438d5144"
+    },
+    {
+      "path": "assets/prepared/chennai-4-beb21ed4bd99b11d.webp",
+      "bytes": 149154,
+      "sha256": "beb21ed4bd99b11d3c23bf9c4c0a50275dd44eff9b0da3c4549a8e9693c1e54e"
+    },
+    {
+      "path": "assets/prepared/chennai-5-ba26721d31a91724.webp",
+      "bytes": 149432,
+      "sha256": "ba26721d31a91724462ada95d353a60170e67331badf1ccd3b05459a2b20856b"
+    },
+    {
+      "path": "assets/prepared/chennai-preview-8601bc208f480134.webp",
+      "bytes": 34078,
+      "sha256": "8601bc208f480134b9b2376640d4e9b4729d1c0def4b51c5468bac5145464858"
+    },
+    {
+      "path": "assets/prepared/common-myna-0-55b85aa490f51026.webp",
+      "bytes": 74788,
+      "sha256": "55b85aa490f510267591536a60cb0a5b709285219358f9ab09287fda20294d07"
+    },
+    {
+      "path": "assets/prepared/common-myna-1-73a24162f47a32e1.webp",
+      "bytes": 66604,
+      "sha256": "73a24162f47a32e17c713aea7ee4684150678e444278bfcf0bf1d044cf1445cd"
+    },
+    {
+      "path": "assets/prepared/common-myna-2-3730873594db5539.webp",
+      "bytes": 52870,
+      "sha256": "3730873594db553938727632fed90f79923cf069f7304e661362df9f00055164"
+    },
+    {
+      "path": "assets/prepared/common-myna-3-e4c54eb7bce88622.webp",
+      "bytes": 63222,
+      "sha256": "e4c54eb7bce8862281036db05dd364b125b54d81a6d23c8ebc841f16d796f8fd"
+    },
+    {
+      "path": "assets/prepared/common-myna-4-791e986dabc156b2.webp",
+      "bytes": 66076,
+      "sha256": "791e986dabc156b2ac62e432d6524bdce3105d608cc7a70060f3ee015ea9aada"
+    },
+    {
+      "path": "assets/prepared/common-myna-5-f53573fdf38d6da3.webp",
+      "bytes": 66492,
+      "sha256": "f53573fdf38d6da3b867728a2a64110b655d499c78fc765afee3adf631db73fd"
+    },
+    {
+      "path": "assets/prepared/common-myna-6-60058e21fd5eb3d4.webp",
+      "bytes": 51352,
+      "sha256": "60058e21fd5eb3d45122f3135527460385ecb1cf07c16d0532a6c49c178ff0f3"
+    },
+    {
+      "path": "assets/prepared/common-myna-7-b31943fa3345bc0c.webp",
+      "bytes": 65278,
+      "sha256": "b31943fa3345bc0c1071392dea33a250afa3c8ef107d401ea49d193f6d6281b7"
+    },
+    {
+      "path": "assets/prepared/delhi-0-5e3672c43e612c1a.webp",
+      "bytes": 152344,
+      "sha256": "5e3672c43e612c1a4e6f8821c7a97f513825235c591681ce72dad4c3565857af"
+    },
+    {
+      "path": "assets/prepared/delhi-1-6e5bed884c608dda.webp",
+      "bytes": 156870,
+      "sha256": "6e5bed884c608ddad93444f720e1689ed71295a97a03adbcdd8f5801dc5ad402"
+    },
+    {
+      "path": "assets/prepared/delhi-2-4d183b2984f13019.webp",
+      "bytes": 156272,
+      "sha256": "4d183b2984f13019c6a3349fd1e887d00e045e4eb9382d0002dabcbde5fb3d1c"
+    },
+    {
+      "path": "assets/prepared/delhi-3-1a725ab8a58b3966.webp",
+      "bytes": 139406,
+      "sha256": "1a725ab8a58b396624cbde2b0faec08adc76f207780bf2e44b3756f2c809c3a4"
+    },
+    {
+      "path": "assets/prepared/delhi-4-dcea3a1ea2d1e2da.webp",
+      "bytes": 139154,
+      "sha256": "dcea3a1ea2d1e2da28b9d8bdb944aa990a7d1a08b83b5cf9134b20dc0b87661b"
+    },
+    {
+      "path": "assets/prepared/delhi-5-a6893bcc565bf2c1.webp",
+      "bytes": 130246,
+      "sha256": "a6893bcc565bf2c170fc8f2043d508cb5cb26b3d06a9b328d645d316de8fa4a1"
+    },
+    {
+      "path": "assets/prepared/delhi-preview-d1d7e6ceda402d99.webp",
+      "bytes": 27028,
+      "sha256": "d1d7e6ceda402d99138d912a46ac5e6712f2f9dd79cd031bac50a8b9c3b1c69d"
+    },
+    {
+      "path": "assets/prepared/indian-roller-0-6be927ef71b8f7c3.webp",
+      "bytes": 110482,
+      "sha256": "6be927ef71b8f7c3c2fb06d27e720db0eb471ba933703db733011db1d808bdc9"
+    },
+    {
+      "path": "assets/prepared/indian-roller-1-81c702f0af57fab6.webp",
+      "bytes": 94986,
+      "sha256": "81c702f0af57fab68a267faffb9a484a113dd96b01d315afd61a3122f969b577"
+    },
+    {
+      "path": "assets/prepared/indian-roller-2-e09bb192a36d2be3.webp",
+      "bytes": 66460,
+      "sha256": "e09bb192a36d2be3aea7f5166f4156e2e2171de337215ad72a4f2f2a97c4594f"
+    },
+    {
+      "path": "assets/prepared/indian-roller-3-ce361fdd97689288.webp",
+      "bytes": 84200,
+      "sha256": "ce361fdd97689288035e19882e3794381df6f33bcee6ced62c0859cf000071a7"
+    },
+    {
+      "path": "assets/prepared/indian-roller-4-0a2d5759de2513b8.webp",
+      "bytes": 91704,
+      "sha256": "0a2d5759de2513b85bd32727b25e4f03037cb6bbeb9bd8f01a6e47ccf8cc409b"
+    },
+    {
+      "path": "assets/prepared/indian-roller-5-5eea315a370c3e68.webp",
+      "bytes": 81574,
+      "sha256": "5eea315a370c3e6861595926bc3fe02ebb0bf9c0ce27cae734ac701f78899134"
+    },
+    {
+      "path": "assets/prepared/indian-roller-6-821b8c013a55af62.webp",
+      "bytes": 65252,
+      "sha256": "821b8c013a55af62643ca7d94ad4efc0201b5dd533bcb294e0f10c39be578a4d"
+    },
+    {
+      "path": "assets/prepared/indian-roller-7-88b79bfa4792cdfc.webp",
+      "bytes": 91204,
+      "sha256": "88b79bfa4792cdfcb683895d9975a2339a237ecccc303f2634227c5cecca6fc7"
+    },
+    {
+      "path": "assets/prepared/kolkata-0-e43780fe7fd07cc1.webp",
+      "bytes": 196886,
+      "sha256": "e43780fe7fd07cc16152d700fbc64313e292f93e9cd87640e6e29fd17151e276"
+    },
+    {
+      "path": "assets/prepared/kolkata-1-539e57cb07834df9.webp",
+      "bytes": 194034,
+      "sha256": "539e57cb07834df97c900f12166782d841f874417f5c2dee43f566e47f91b5aa"
+    },
+    {
+      "path": "assets/prepared/kolkata-2-553ea453c3128d2c.webp",
+      "bytes": 197444,
+      "sha256": "553ea453c3128d2c21a08b5419f17d7549b7728da4e0a58eb10e7bf4e7545a53"
+    },
+    {
+      "path": "assets/prepared/kolkata-3-302a40c8c23bc6fd.webp",
+      "bytes": 181330,
+      "sha256": "302a40c8c23bc6fdd96f6c6ddd9b982212b7d9ef7d2541ff5df8a34960890a5a"
+    },
+    {
+      "path": "assets/prepared/kolkata-4-b242dcff3b4b4aff.webp",
+      "bytes": 200954,
+      "sha256": "b242dcff3b4b4affd3e4a480788e2c802deba76d59b13015f19b7e15afdaec74"
+    },
+    {
+      "path": "assets/prepared/kolkata-5-0695889266c66352.webp",
+      "bytes": 191748,
+      "sha256": "0695889266c66352cd67c690bda606ad63f1716e683fdc61823c54cd9b720e78"
+    },
+    {
+      "path": "assets/prepared/kolkata-preview-3b57d362a4edd498.webp",
+      "bytes": 41794,
+      "sha256": "3b57d362a4edd498852c1a989a49d57c44bd3fd8252529cba9cbe5991815e7b7"
+    },
+    {
+      "path": "assets/prepared/mumbai-0-64f4b680e96e34a4.webp",
+      "bytes": 113664,
+      "sha256": "64f4b680e96e34a4cb6a49f2d1953f79b592dffb4b26b6bd469766a5e95fa575"
+    },
+    {
+      "path": "assets/prepared/mumbai-1-011954781e5a79c7.webp",
+      "bytes": 94278,
+      "sha256": "011954781e5a79c7da8509478664707255277e3e9612096d58f592ac6e87acad"
+    },
+    {
+      "path": "assets/prepared/mumbai-2-26a5b2e293ffbd94.webp",
+      "bytes": 113124,
+      "sha256": "26a5b2e293ffbd944317fb31382c79e2c9c18414b53ca8473b1fee5ee95b51b6"
+    },
+    {
+      "path": "assets/prepared/mumbai-3-a3fa1ea2daffd2e9.webp",
+      "bytes": 114152,
+      "sha256": "a3fa1ea2daffd2e90d279fe1e68264e702a7288e301ed5cec97d7646010249b4"
+    },
+    {
+      "path": "assets/prepared/mumbai-4-0563768f4cb6f27e.webp",
+      "bytes": 92164,
+      "sha256": "0563768f4cb6f27ed231da18b364930d75f44d1ade8719d364a0869813101d56"
+    },
+    {
+      "path": "assets/prepared/mumbai-5-88fd7c5825b335cb.webp",
+      "bytes": 108182,
+      "sha256": "88fd7c5825b335cb055dcc022e5ccce71fb8cf384e5a101cd27fcc9058221275"
+    },
+    {
+      "path": "assets/prepared/mumbai-6-2229b406326f2628.webp",
+      "bytes": 108394,
+      "sha256": "2229b406326f26281652d9930392c602641250a90f4b975e29d6483a4710fb6b"
+    },
+    {
+      "path": "assets/prepared/mumbai-7-39132187af7b3066.webp",
+      "bytes": 98348,
+      "sha256": "39132187af7b30667f22013d0c6c2d089e10f903465b6b31f9daed9e48ca76f9"
+    },
+    {
+      "path": "assets/prepared/mumbai-8-5c8fd26ecb648895.webp",
+      "bytes": 111250,
+      "sha256": "5c8fd26ecb6488959ac6d69228a84b178c9c386b3d512f5042aa2210fd24681b"
+    },
+    {
+      "path": "assets/prepared/mumbai-preview-d5725de07a58b7ab.webp",
+      "bytes": 30298,
+      "sha256": "d5725de07a58b7abbf825204bb4f31564c72f123f6adf3300c5d745751e8a08d"
+    },
+    {
+      "path": "assets/prepared/purple-rumped-sunbird-0-f60477daf47531c6.webp",
+      "bytes": 84810,
+      "sha256": "f60477daf47531c62f61346eec89f083e4e24f3bcedf1c6053133973284fb6c3"
+    },
+    {
+      "path": "assets/prepared/purple-rumped-sunbird-1-3742a513785b2dd6.webp",
+      "bytes": 71064,
+      "sha256": "3742a513785b2dd6f172dc5cb35d3ce75457fe329645b2a184d79708d89037a5"
+    },
+    {
+      "path": "assets/prepared/purple-rumped-sunbird-2-a9325db1358f4be4.webp",
+      "bytes": 54796,
+      "sha256": "a9325db1358f4be4defb6f7b3030485e3c95b6d3712283082e4a8d8688f100c3"
+    },
+    {
+      "path": "assets/prepared/purple-rumped-sunbird-3-96fb772cb3d57fef.webp",
+      "bytes": 57780,
+      "sha256": "96fb772cb3d57fefc9a68e40d45acd12daa065c7019568fc5c5ff301a2a6013b"
+    },
+    {
+      "path": "assets/prepared/purple-rumped-sunbird-4-5acb7218d1a450ae.webp",
+      "bytes": 64334,
+      "sha256": "5acb7218d1a450aec24a506e619a2fab57a960a7eb3302902c4279594d42e880"
+    },
+    {
+      "path": "assets/prepared/purple-rumped-sunbird-5-343ae5f0638bdede.webp",
+      "bytes": 50122,
+      "sha256": "343ae5f0638bdeded00ad438050b3d191e4a51cef1fe68c425583461d17d6659"
+    },
+    {
+      "path": "assets/prepared/purple-rumped-sunbird-6-0188bf060851f0cc.webp",
+      "bytes": 54698,
+      "sha256": "0188bf060851f0cc393bb3fc90ceacdb8d8f0b30d84abf495310f6dc50ee3d24"
+    },
+    {
+      "path": "assets/prepared/purple-rumped-sunbird-7-fc42b7086be5a88f.webp",
+      "bytes": 67764,
+      "sha256": "fc42b7086be5a88f3374873e0e88d70ec8078bdb012c5eb873ab78a59e338b7b"
+    },
+    {
+      "path": "assets/prepared/sky-ca1234e5b02cbd24.webp",
+      "bytes": 108686,
+      "sha256": "ca1234e5b02cbd247573af80135b3cefbd7babbed4720c77d33a067f8e898a4a"
+    },
+    {
+      "path": "assets/prepared/ui-paper.webp",
+      "bytes": 18114,
+      "sha256": "bc30afa8cefc92c11ba56cec879096f36e08dbb6ee8953484199926ba8d30878"
+    },
+    {
+      "path": "assets/prepared/water-7386033a0eb95501.webp",
+      "bytes": 133352,
+      "sha256": "7386033a0eb955015d13837961d9b37594936c08cf6698063de0a287872ad7bd"
+    },
+    {
+      "path": "assets/prepared/white-throated-kingfisher-0-8b1e91687d4bf1ff.webp",
+      "bytes": 90646,
+      "sha256": "8b1e91687d4bf1ff1e3a353b49e88beb209e42b14b1413e070e7e9a56d5329b6"
+    },
+    {
+      "path": "assets/prepared/white-throated-kingfisher-1-98026a4082c8c4a2.webp",
+      "bytes": 77522,
+      "sha256": "98026a4082c8c4a2398756739874a1a299115dd321e26a11cd5e2cc8804d1a61"
+    },
+    {
+      "path": "assets/prepared/white-throated-kingfisher-2-09b64ea15161e4e3.webp",
+      "bytes": 55396,
+      "sha256": "09b64ea15161e4e3a674442f9abdf4e7a33c9395ae895e844f7f38973dbe927d"
+    },
+    {
+      "path": "assets/prepared/white-throated-kingfisher-3-a2d502951b482e91.webp",
+      "bytes": 67584,
+      "sha256": "a2d502951b482e91b67026175410175e8dfa95ddaa7d02a23244c7aab5daa199"
+    },
+    {
+      "path": "assets/prepared/white-throated-kingfisher-4-ad2f20436f67753a.webp",
+      "bytes": 74730,
+      "sha256": "ad2f20436f67753ab50725d9e5066fdb87bd025acc10faafce432c8f28c90139"
+    },
+    {
+      "path": "assets/prepared/white-throated-kingfisher-5-3809a7668a728044.webp",
+      "bytes": 70150,
+      "sha256": "3809a7668a72804497e6858470091c0389438e26483b547f42712b0e7b40f058"
+    },
+    {
+      "path": "assets/prepared/white-throated-kingfisher-6-89d5f3f3e474df9b.webp",
+      "bytes": 56264,
+      "sha256": "89d5f3f3e474df9b1d5b519523e413ad023c7154f036352b92a8419ee10e67e5"
+    },
+    {
+      "path": "assets/prepared/white-throated-kingfisher-7-778f3c581895718b.webp",
+      "bytes": 77792,
+      "sha256": "778f3c581895718b2cb1e135c15624be4be460200c086f82488ee88f171f8f7d"
+    },
+    {
+      "path": "assets/prepared/wire-tailed-swallow-0-01da8f4390c4506f.webp",
+      "bytes": 69096,
+      "sha256": "01da8f4390c4506fdd2610a2daf7f852192d0190ec9ccc8d7d7c4296e019a8b9"
+    },
+    {
+      "path": "assets/prepared/wire-tailed-swallow-1-c794eb7dda71f5f1.webp",
+      "bytes": 57700,
+      "sha256": "c794eb7dda71f5f1e1a2a956f56ab83f94038792c2351e29ac08d488b7d47f0f"
+    },
+    {
+      "path": "assets/prepared/wire-tailed-swallow-2-637c026dd3b68b69.webp",
+      "bytes": 46348,
+      "sha256": "637c026dd3b68b698951404a0dfa2775eb5e92830f1d39cc3b3f1815cc1d4eb0"
+    },
+    {
+      "path": "assets/prepared/wire-tailed-swallow-3-02beb2509f6f271c.webp",
+      "bytes": 55636,
+      "sha256": "02beb2509f6f271cc8bc79dd7f45bd854d16655fe27d30ccfcb03d3ace738676"
+    },
+    {
+      "path": "assets/prepared/wire-tailed-swallow-4-b4665b22a5d58eb5.webp",
+      "bytes": 55002,
+      "sha256": "b4665b22a5d58eb5a8a380a47aa90e2e59eda001c4690670f25ad8de914212c1"
+    },
+    {
+      "path": "assets/prepared/wire-tailed-swallow-5-4d880b6ee1ecbc6f.webp",
+      "bytes": 51976,
+      "sha256": "4d880b6ee1ecbc6f7a0dae69fc6f0f80771c62a5bfcd2151b8502496911e0214"
+    },
+    {
+      "path": "assets/prepared/wire-tailed-swallow-6-a997222e04653a57.webp",
+      "bytes": 43416,
+      "sha256": "a997222e04653a5755440c9bf7f660659419dd98b5a42039a8bbd12585444f31"
+    },
+    {
+      "path": "assets/prepared/wire-tailed-swallow-7-e46fca6b6b9a47d5.webp",
+      "bytes": 54746,
+      "sha256": "e46fca6b6b9a47d591259aab289de9524782bf70f85f16afcc4a869e1147e394"
+    },
+    {
+      "path": "src/ambient-audio.mjs",
+      "bytes": 12039,
+      "sha256": "ba5febf52639c876093cde495c59cbbad2facd3f0d06937d7eff2f377211d645"
+    },
+    {
+      "path": "src/ambient-mix.mjs",
+      "bytes": 2462,
+      "sha256": "d18c8e0a463e3bcf491c5c8d1248ee9cdc56c2867b97510f8a7785cd31d0b8c5"
+    },
+    {
+      "path": "src/art-sources.mjs",
+      "bytes": 679,
+      "sha256": "36d85271cc5268c56f47e31b0e98775c52b41af9bee87c6e8044befc09e34861"
+    },
+    {
+      "path": "src/asset-loader.mjs",
+      "bytes": 2403,
+      "sha256": "639492c7954e20cfbb685e2a10fab433c100cde33d8e9a8261853660b2531260"
+    },
+    {
+      "path": "src/bengaluru-climate-data.json",
+      "bytes": 1509,
+      "sha256": "425111f01997b46b650c9b3998807cf2f0e4fe0dde15e2ddee3cf7740bb9a6e5"
+    },
+    {
+      "path": "src/birds.mjs",
+      "bytes": 3911,
+      "sha256": "3d789ba02fafbb7395c5489060d105d6e5f4b8a18a01f512ccfafef289f75a07"
+    },
+    {
+      "path": "src/canvas-viewport.mjs",
+      "bytes": 656,
+      "sha256": "fda3f4e18954087432edc1566cae51184d9fe4e46e5d86923a1917fd6c7dfe30"
+    },
+    {
+      "path": "src/chennai-climate-data.json",
+      "bytes": 1533,
+      "sha256": "5c0b4d02e0c689d0c8e5a19f49127a929edd564c35ead07847b44c4f5510e457"
+    },
+    {
+      "path": "src/choice-carousel.mjs",
+      "bytes": 2963,
+      "sha256": "16519077fde72fab1cbd5bc6c558a7dd1365d15b88ecdf27128efebef91c00d6"
+    },
+    {
+      "path": "src/city-cards.mjs",
+      "bytes": 2019,
+      "sha256": "61a20b1892888f9edb6a11d586b2b4be7848e3c3d1a0ed40f4bcda1cd287c595"
+    },
+    {
+      "path": "src/city-climate.mjs",
+      "bytes": 525,
+      "sha256": "cb97b5e2a021058fd35d72271c295b125d3e8eb517dd5e559234c03907ef2869"
+    },
+    {
+      "path": "src/city-routes.mjs",
+      "bytes": 3496,
+      "sha256": "e2262a18fd81575ac19c5a0bd7fdf2b7eb920d49a4f531d2cec0c445974bf450"
+    },
+    {
+      "path": "src/climate-cities.mjs",
+      "bytes": 1910,
+      "sha256": "d232dc76ede87f7d80b3cc131fbafd3fd9e5bcce01ebd6e0807f0355dd14e4cd"
+    },
+    {
+      "path": "src/delhi-climate-data.json",
+      "bytes": 1530,
+      "sha256": "446357ed6a6165d486e9cbadf5bf0190a315a1ded1768747b0da9900ef5b0339"
+    },
+    {
+      "path": "src/flight-choices.mjs",
+      "bytes": 23913,
+      "sha256": "732bd9219f84171f964fd0f17b9290969133a6ae0f9abe789d2ec91b71811c0a"
+    },
+    {
+      "path": "src/flight-controls.mjs",
+      "bytes": 9940,
+      "sha256": "ccb43fb42af05f926d22a754f6d0831d3f00c7424a113c93c93e79ac93935dfc"
+    },
+    {
+      "path": "src/flight-difficulty.mjs",
+      "bytes": 3821,
+      "sha256": "93670d1c72edc2cc9cd4e3490cbe7f30142fccd4d437a73a0c64ac24ab1dc68c"
+    },
+    {
+      "path": "src/flight-focus.mjs",
+      "bytes": 608,
+      "sha256": "1147c65382fc507978c39af26215ba07154de88285551a023d2cb98b5cff6d34"
+    },
+    {
+      "path": "src/flight-hints.mjs",
+      "bytes": 957,
+      "sha256": "533091665b0c9d8808eba6c201bb7cfe68546227317285d2cce58e5aa4e6def9"
+    },
+    {
+      "path": "src/flight-motion.mjs",
+      "bytes": 3000,
+      "sha256": "c7567e07deb5bff7b73de4f1a23467962cfcc99ed99c0199d08352db52a247d8"
+    },
+    {
+      "path": "src/flight-previews.mjs",
+      "bytes": 3322,
+      "sha256": "b32c76c3873dae45164afddb37f1fdc6ecdab6590b572503806ff75231d997aa"
+    },
+    {
+      "path": "src/flight-progress.mjs",
+      "bytes": 2588,
+      "sha256": "9c83486c196aa0b36e7b3e0cda27c67530665d4dc2fa51b429f5ef5d8763ad09"
+    },
+    {
+      "path": "src/flight-settings.mjs",
+      "bytes": 7748,
+      "sha256": "d15ae0d484d5a2ce0a36e949db6e959fc37000c6223ccf7074d10b544498baf5"
+    },
+    {
+      "path": "src/flight-share-card.mjs",
+      "bytes": 3078,
+      "sha256": "9dd564d81e1e8b4d00108e2f4ff77159e4b45f0d691a71be9b0219a50a17d8d0"
+    },
+    {
+      "path": "src/flight-share-config.mjs",
+      "bytes": 3957,
+      "sha256": "1d9b86ed0bcd1bcaf9c85a7de7b66382e792b41ddc2a1d8d87cd7f9ca4b2d568"
+    },
+    {
+      "path": "src/flight-share-panel.mjs",
+      "bytes": 5026,
+      "sha256": "307cd0aade1e61521941f44e883572f29400c6bd5771eb6487a139f305d2c661"
+    },
+    {
+      "path": "src/flight-share.mjs",
+      "bytes": 2623,
+      "sha256": "712f58677d6cd7a1bf70f079eab8ff6d1b00b4e888b4d15d469d9a14f9197784"
+    },
+    {
+      "path": "src/flight-tuning.mjs",
+      "bytes": 1960,
+      "sha256": "08f5f1a12851739eebe015d2c99d1bff44309303d60aff81a6d569545711bf65"
+    },
+    {
+      "path": "src/game-utilities.mjs",
+      "bytes": 2522,
+      "sha256": "edbf300ec54fb62dd21d7b02e58c48ddfc44cb3d0e6c49abaf23f3430770b3ef"
+    },
+    {
+      "path": "src/game.js",
+      "bytes": 20956,
+      "sha256": "241261e13ab148edac9d8353bf3f6e2f877e0502fc66a660528cf07857100c04"
+    },
+    {
+      "path": "src/gauge-labels.mjs",
+      "bytes": 485,
+      "sha256": "647b765b33242531f5c2c38dc3bcc4695a62f710e6be316b03153b64bfe8a37e"
+    },
+    {
+      "path": "src/hidden-flock.mjs",
+      "bytes": 2096,
+      "sha256": "52fb04e8e56799c0b455fea26cb0e953b9ac71d75df9aae6e281ea8894cf8bbe"
+    },
+    {
+      "path": "src/inland-scenery.mjs",
+      "bytes": 6427,
+      "sha256": "7e5e204baf4feeee5fadaa2f41bf446a2003f5fdc4c84c63b5dcce95a86ded34"
+    },
+    {
+      "path": "src/kolkata-climate-data.json",
+      "bytes": 1524,
+      "sha256": "adb4a98e61421df3cd52c05b7492330459d1ff13e0b80c372a4d684f6164123a"
+    },
+    {
+      "path": "src/loading-progress.mjs",
+      "bytes": 1343,
+      "sha256": "5519093bd7639308abbd8ff2fff2197d9f612d4e95f77b726be62f44ac85798e"
+    },
+    {
+      "path": "src/opening-scene.mjs",
+      "bytes": 6231,
+      "sha256": "a5368b6530d82dcb0fb9c246eb03722054d34d337246e4662316718f8d5c600a"
+    },
+    {
+      "path": "src/opening-state.mjs",
+      "bytes": 3462,
+      "sha256": "1af94e46a8e0c067741f41de981a8a75c747938db5c8f442017be71d5eedf633"
+    },
+    {
+      "path": "src/opening-timeline.mjs",
+      "bytes": 1114,
+      "sha256": "d8f90110353cbf8d9aa3eb4ab4a964b181973f7745cdf0e7284d4c9469e453f2"
+    },
+    {
+      "path": "src/painted-ink.mjs",
+      "bytes": 3595,
+      "sha256": "5601f70b436da6d1237ae9f7276613b82c5a66337ef99fcc7ba1a73bc3405838"
+    },
+    {
+      "path": "src/paper-gauges.mjs",
+      "bytes": 1859,
+      "sha256": "4f7151fa18b141e6050227a6fc5800b8a2785f26f0eff1c9fbbfad42155dedda"
+    },
+    {
+      "path": "src/paper-scenery.mjs",
+      "bytes": 6701,
+      "sha256": "648c5ba1b04545a1ecc66224da3fd5666d681e512b08e257af1542fb0b53232f"
+    },
+    {
+      "path": "src/paper-weather.mjs",
+      "bytes": 1574,
+      "sha256": "386aeb984950624261c04666a37c7142fe7076d380c81e2c3b300643b678d1d2"
+    },
+    {
+      "path": "src/prepared-art.mjs",
+      "bytes": 10133,
+      "sha256": "6590f40e86703640003b414e4a6d71a26c35d91483eab83868848479f89df912"
+    },
+    {
+      "path": "src/rainfall-chart.mjs",
+      "bytes": 2166,
+      "sha256": "822fe7141c62dc85ba7970d69e0b4208bb8d0c9be7ea1046f541cdd33c140552"
+    },
+    {
+      "path": "src/rainfall-mode.mjs",
+      "bytes": 12714,
+      "sha256": "a7bbda213f826215a0a9b2f9794bb2941c6ad8ff3f6592d4a56e9ad4d2a0a193"
+    },
+    {
+      "path": "src/reading-type.mjs",
+      "bytes": 149,
+      "sha256": "2a64954aaacd31196ce5f48ef64ca4a8ddb2479f5c8bc30211e23ed3894fcfdd"
+    },
+    {
+      "path": "src/result-input-guard.mjs",
+      "bytes": 871,
+      "sha256": "1196bd3f85a9807c861ceedc410c14d861da6731f94451d66fe3e4fb1786dd8b"
+    },
+    {
+      "path": "src/scenery-loader.mjs",
+      "bytes": 3921,
+      "sha256": "84a093d85f56488557ede5cdd9de0f34c9b590a8a776a0f79ddb4bebaebabe1a"
+    },
+    {
+      "path": "src/sky-continuation.mjs",
+      "bytes": 1413,
+      "sha256": "5868f5583d5ba37e273b1fb305aa10d0a4e2924bd24c7eb00a8aec6d21f37570"
+    },
+    {
+      "path": "src/sound-credits.mjs",
+      "bytes": 1040,
+      "sha256": "2c5c1b9de043aba8913a6313f7a1f350e2b3634710c1fea596c73426c9937de4"
+    },
+    {
+      "path": "src/sound-mixer.mjs",
+      "bytes": 5119,
+      "sha256": "9c19669250ecb3d0fe5202b43425841d93ad6ad0f923046946fa56285ca92073"
+    },
+    {
+      "path": "src/sound-settings.mjs",
+      "bytes": 2920,
+      "sha256": "bd364530449fed7c3ef1c96d49d919d0ee6e7a2f8d07894ef12d26b4870977e8"
+    },
+    {
+      "path": "src/styles.css",
+      "bytes": 93848,
+      "sha256": "eaaf3e4b69e2488b01099a4dd58e378dd459e5b9886815b56ba857276d8804d2"
+    },
+    {
+      "path": "src/temperature-chart.mjs",
+      "bytes": 5209,
+      "sha256": "224e0d9f94e3435fd871082ddccf94a239132d0df981cc350c35185d95a67e39"
+    },
+    {
+      "path": "src/temperature-course.mjs",
+      "bytes": 3178,
+      "sha256": "870c389ad8b9d6820b391a645dc6ea926dbee868a4e50814bf52f79a77810568"
+    },
+    {
+      "path": "src/temperature-hoop-controls.mjs",
+      "bytes": 4035,
+      "sha256": "59aeecf611bca57cd86be1d6d4508bd01c91eda422f66d09cb80c31bf360b284"
+    },
+    {
+      "path": "src/temperature-hoop-course.mjs",
+      "bytes": 3865,
+      "sha256": "40cf57e869f1bb120108a86c79db17f42f4919073773c9d4f7fdc4583fb51a29"
+    },
+    {
+      "path": "src/temperature-hoop-mode.mjs",
+      "bytes": 6999,
+      "sha256": "6e5fbe94ab95b6ba234de835d0e0f9d8e7b40bca8d69deff91c1080b0e54919f"
+    },
+    {
+      "path": "src/temperature-hoop-settings.mjs",
+      "bytes": 3424,
+      "sha256": "3b8739f4b2ec34efde23b1cf4dc99fa708b26d2290ce02ad1e63e6c807f9c998"
+    },
+    {
+      "path": "src/temperature-target-course.mjs",
+      "bytes": 2668,
+      "sha256": "f7ef3c15fb7648027258f4a5f40f65d4a46bd8d983e8b716cff6df4e3ac3dd4c"
+    },
+    {
+      "path": "src/temperature-target-mode.mjs",
+      "bytes": 6044,
+      "sha256": "5f5933d42ef463726dc0a69f7dccb84fadadb61c1244cb474b26df4a4dac9f1e"
+    },
+    {
+      "path": "src/tower-study-data.json",
+      "bytes": 842,
+      "sha256": "56a9b5ad0e14107be4d6b187ef30392d2facb17676cdee342134bf03eca1df2e"
+    },
+    {
+      "path": "src/visual-themes.mjs",
+      "bytes": 294,
+      "sha256": "fa0aed4b6e2b8e670b19907f791f43e9616fe957008d406246c60da6f9c3562e"
+    },
+    {
+      "path": "src/weather-state.mjs",
+      "bytes": 2307,
+      "sha256": "b98d0b7554b97d2fb22e9a8e83256e604e3426a796cb121797ad9ccc7f329918"
+    }
+  ]
+}

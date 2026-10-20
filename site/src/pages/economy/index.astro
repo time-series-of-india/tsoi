@@ -1,0 +1,17 @@
+---
+import StoryPage from '../../layouts/StoryPage.astro';
+import PublicationCatalogue from '../../components/editorial/PublicationCatalogue.astro';
+---
+
+<StoryPage title="Economy — Time Series of India" description="Reads, games and tools about prices and payments in India.">
+  <header class="section-intro">
+    <h1>Economy</h1>
+  </header>
+  <PublicationCatalogue showThemes />
+</StoryPage>
+
+<style>
+  .section-intro { border-bottom:2px solid var(--tsoi-color-on-surface); padding-bottom:calc(var(--tsoi-spacing-unit) * 1.5); }
+  h1 { margin:0; font:700 28px/1.2 var(--tsoi-font-headline); }
+  @media(max-width:650px) { h1 { font-size:24px; } }
+</style>

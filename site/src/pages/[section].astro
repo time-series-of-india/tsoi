@@ -7,7 +7,7 @@
 // rather than making them find the nav again.
 // "In the works" rather than "coming soon": the latter is marketing boilerplate
 // and reads as a launch date we haven't got.
-// Static paths for the four planned sections only; static routes like /about,
+// Static paths for the three planned sections only; static routes like /about,
 // /data, /economy take precedence over this dynamic route.
 // Note: getStaticPaths runs before the frontmatter body, so the section data is
 // defined inside it and passed through props (blurb is meta-description only).
@@ -16,10 +16,6 @@ import SectionHeader from '../components/editorial/SectionHeader.astro';
 
 export function getStaticPaths() {
   const SECTIONS = {
-    environment: {
-      label: 'Environment',
-      blurb: 'Air quality, emissions, forest cover, rainfall and water — India’s environment, charted from official monitoring and ministry releases. In the works.',
-    },
     infrastructure: {
       label: 'Infrastructure',
       blurb: 'Power, roads, railways, ports and telecom — the build-out of India, in the numbers the state itself publishes. In the works.',

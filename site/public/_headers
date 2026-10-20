@@ -40,6 +40,11 @@
   ! Cache-Control
   Cache-Control: public, max-age=3600, must-revalidate
 
+# The Weather Wings revision directories are immutable; the entry page revalidates.
+/weather-wings/r-7b9f2b8ce5651fac/*
+  ! Cache-Control
+  Cache-Control: public, max-age=31536000, immutable
+
 # Security headers ride the catch-all so they apply everywhere (rules COMBINE,
 # see note above — the specific cache rules only unset Cache-Control, so these
 # survive on /data/* etc.). CSP notes:
@@ -52,7 +57,8 @@
 /*
   Cache-Control: public, max-age=0, must-revalidate
   X-Content-Type-Options: nosniff
+  Strict-Transport-Security: max-age=31536000
   Referrer-Policy: strict-origin-when-cross-origin
   X-Frame-Options: SAMEORIGIN
   Permissions-Policy: camera=(), microphone=(), geolocation=()
-  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self' https://cloudflareinsights.com https://buttondown.com; form-action 'self' https://buttondown.com; frame-ancestors 'self'; base-uri 'self'; object-src 'none'
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://cloudflareinsights.com https://buttondown.com; form-action 'self' https://buttondown.com; frame-ancestors 'self'; base-uri 'self'; object-src 'none'

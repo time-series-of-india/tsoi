@@ -11,6 +11,8 @@ const RTM = '/economy/explore/rupee-time-machine';
 const FOLDED = ['overview', 'product-view', 'bank-performance', 'upi-ecosystem', 'state-wise', 'mcc'];
 
 export const CONTENT = [
+  { slug: 'weather-wings', title: 'Weather Wings', format: 'play',
+    paths: ['/play/weather-wings/'] },
   read('upi-architecture', 'UPI: Anatomy of a Transaction'),
   read('price-of-nearly-everything', 'Inflation: The Price of Nearly Everything'),
   read('credit-vs-debit', 'The debit card faded as UPI rose, the credit card didn’t', true),

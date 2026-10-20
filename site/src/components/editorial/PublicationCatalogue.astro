@@ -1,0 +1,100 @@
+---
+import PublicationCard from './PublicationCard.astro';
+import { publications, economyPublications } from '../../lib/publications';
+interface Props { showThemes?: boolean; heading?: string; defaultFormat?: 'play' | 'all' }
+const { showThemes = false, heading, defaultFormat = 'all' } = Astro.props;
+const pieces = showThemes ? economyPublications : publications;
+const formatLabels = ['Play', 'Read', 'Explore', 'All'];
+---
+  <section class="catalogue" aria-label="Publications" data-default-format={defaultFormat}>
+    {heading && <h2 class="catalogue-heading">{heading}</h2>}
+    {showThemes && <div class="theme-row"><div class="theme-bar" role="group" aria-label="Choose an Economy theme"><button type="button" data-topic="all" disabled aria-pressed="true">All topics</button><button type="button" data-topic="inflation" disabled aria-pressed="false">Prices</button><button type="button" data-topic="payments" disabled aria-pressed="false">Payments</button></div></div>}
+    <div class="catalogue-controls">
+      <div class="format-row"><span class="control-label">Format</span><div class="format-bar" role="group" aria-label="Filter publications by format">{formatLabels.map(label => <button type="button" data-format={label.toLowerCase()} disabled aria-pressed={label.toLowerCase() === defaultFormat}>{label}</button>)}</div></div>
+    </div>
+    <span class="catalogue-status" role="status" aria-live="polite"></span>
+    <div class="publication-grid" id="publication-grid">{pieces.map(piece => <div class="catalogue-item" hidden={defaultFormat === 'play' && piece.format !== 'Play'}><PublicationCard piece={piece} /></div>)}</div>
+    <p class="empty" hidden>No publications in this format yet.</p>
+  </section>
+<script>
+  const grid = document.querySelector<HTMLElement>('#publication-grid');
+  const formatButtons = [...document.querySelectorAll<HTMLButtonElement>('.format-bar [data-format]')];
+  const themeButtons = [...document.querySelectorAll<HTMLButtonElement>('.theme-bar [data-topic]')];
+  const status = document.querySelector<HTMLElement>('.catalogue-status');
+  if (grid && status) {
+    formatButtons.forEach(button => button.disabled = false);
+    themeButtons.forEach(button => button.disabled = false);
+    const cards = [...grid.querySelectorAll<HTMLElement>('[data-piece-id]')];
+    const defaultFormat = grid.closest<HTMLElement>('.catalogue')?.dataset.defaultFormat ?? 'all';
+    const selection = () => {
+      const params = new URL(location.href).searchParams;
+      const format = params.get('format');
+      const topic = themeButtons.length ? params.get('theme') : null;
+      return {
+        format: format === 'all' || format === 'read' || format === 'play' || format === 'explore' ? format : defaultFormat,
+        topic: topic === 'inflation' || topic === 'payments' ? topic : 'all' };
+    };
+    const apply = () => {
+      const selected = selection();
+      // Retired sort links keep their filters and return to the editorial order.
+      const url = new URL(location.href);
+      if (url.searchParams.has('sort')) {
+        url.searchParams.delete('sort');
+        history.replaceState(null, '', url);
+      }
+      let visible = 0;
+      cards.forEach(card => { const hidden = (selected.format !== 'all' && card.dataset.format !== selected.format) || (selected.topic !== 'all' && card.dataset.topic !== selected.topic); card.parentElement!.hidden = hidden; if (!hidden) visible++; });
+      formatButtons.forEach(button => button.setAttribute('aria-pressed', String(button.dataset.format === selected.format)));
+      themeButtons.forEach(button => button.setAttribute('aria-pressed', String(button.dataset.topic === selected.topic)));
+      const empty = document.querySelector<HTMLElement>('.catalogue .empty');
+      if (empty) empty.hidden = visible !== 0;
+      const formatName = selected.format === 'all' ? 'all formats' : selected.format;
+      const topicName = selected.topic === 'all' ? '' : `, ${selected.topic === 'inflation' ? 'Prices' : 'Payments'}`;
+      status.textContent = `${visible} ${visible === 1 ? 'publication' : 'publications'} in ${formatName}${topicName}.`;
+    };
+    const update = (key: string, value: string | null) => {
+      const url = new URL(location.href);
+      if (value) url.searchParams.set(key, value); else url.searchParams.delete(key);
+      history.pushState(null, '', url);
+      apply();
+    };
+    apply();
+    formatButtons.forEach(button => button.addEventListener('click', () => update('format', button.dataset.format === defaultFormat ? null : button.dataset.format!)));
+    themeButtons.forEach(button => button.addEventListener('click', () => update('theme', button.dataset.topic === 'all' ? null : button.dataset.topic!)));
+    window.addEventListener('popstate', apply);
+  }
+</script>
+<style>
+  .catalogue { margin-top:calc(var(--tsoi-spacing-unit) * 3); }
+  .catalogue-heading { margin:0 0 calc(var(--tsoi-spacing-unit) * 2); font:var(--tsoi-text-headline-lg); }
+  .format-row { display:flex; align-items:center; gap:calc(var(--tsoi-spacing-unit) * 1.5); }
+  .theme-row { margin-bottom:calc(var(--tsoi-spacing-unit) * 2); border-bottom:1px solid var(--tsoi-color-outline); }
+  .theme-bar { display:flex; gap:calc(var(--tsoi-spacing-unit) * 3); }
+  .theme-bar button { min-height:44px; padding:var(--tsoi-spacing-unit) 0; margin-bottom:-1px; border:0; border-bottom:2px solid transparent; background:transparent; color:var(--tsoi-color-on-surface-variant); font:var(--tsoi-text-body); font-size:14px; cursor:pointer; }
+  .theme-bar button[aria-pressed='true'] { border-bottom-color:var(--tsoi-color-primary); color:var(--tsoi-color-primary-text); }
+  .theme-bar button:hover { color:var(--tsoi-color-primary-text); }
+  .control-label { font:var(--tsoi-text-byline); color:var(--tsoi-color-on-surface-variant); }
+  .format-row > .control-label { width:calc(var(--tsoi-spacing-unit) * 6); flex:none; }
+  .catalogue-controls { display:flex; flex-wrap:wrap; justify-content:space-between; gap:var(--tsoi-spacing-unit) calc(var(--tsoi-spacing-unit) * 3); align-items:center; margin-bottom:calc(var(--tsoi-spacing-unit) * 2); }
+  .format-bar { display:inline-flex; border:1px solid var(--tsoi-color-outline); border-radius:2px; }
+  .format-bar button { min-width:44px; min-height:44px; padding:var(--tsoi-spacing-unit) calc(var(--tsoi-spacing-unit) * 2); border:0; background:var(--tsoi-color-background); color:var(--tsoi-color-on-surface-variant); font:var(--tsoi-text-byline); letter-spacing:.06em; text-transform:uppercase; cursor:pointer; }
+  .format-bar button + button { border-left:1px solid var(--tsoi-color-outline); }
+  .format-bar button:hover:not([aria-pressed='true']) { background:var(--tsoi-color-surface-container-high); color:var(--tsoi-color-on-surface); }
+  .format-bar button[aria-pressed='true'] { background:var(--tsoi-color-primary); color:var(--tsoi-color-on-primary); }
+  .theme-bar button:disabled,.format-bar button:disabled { opacity:.5; cursor:default; }
+  .theme-bar button:focus-visible,.format-bar button:focus-visible { outline:2px solid var(--tsoi-color-primary); outline-offset:3px; z-index:1; }
+  .catalogue-status { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
+  .empty { margin:16px 0; font:var(--tsoi-text-body); color:var(--tsoi-color-on-surface-variant); }
+  .publication-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:22px; }
+  .catalogue-item { display:flex; min-width:0; }
+  .catalogue-item[hidden] { display:none; }
+  .catalogue-item > :global(.publication) { width:100%; }
+  @media(max-width:1000px) { .publication-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+  @media(max-width:650px) { .publication-grid { grid-template-columns:1fr; } }
+  @media(max-width:650px) {
+    .catalogue-controls { align-items:start; }
+    .format-row { width:100%; }
+    .format-bar { display:flex; flex:1; }
+    .format-bar button { flex:1; padding-inline:var(--tsoi-spacing-unit); }
+  }
+</style>

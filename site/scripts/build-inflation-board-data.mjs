@@ -1280,8 +1280,9 @@ const out = {
 // Both are gone with mapItems: the file has lost that block's 243 kB, and what
 // is worth gating now is the size a reader actually waits for. A ceiling on the
 // whole file cannot be crept past by adding a block that is individually small.
-// Twenty months through August 2026 produce 1,661,282 bytes uncompressed.
-const PAYLOAD_BUDGET = 1_700_000;
+// Twenty-one months through September 2026 produce 1,822,878 bytes uncompressed.
+// This is loaded on the inflation board; the homepage emits only its small summary.
+const PAYLOAD_BUDGET = 1_900_000;
 {
   const bytes = Buffer.byteLength(JSON.stringify(out));
   gate('S6', `main dataset: ${(bytes / 1000).toFixed(1)} kB against a ${PAYLOAD_BUDGET / 1000} kB ceiling `

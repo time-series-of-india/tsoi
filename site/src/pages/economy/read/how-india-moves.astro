@@ -3,9 +3,8 @@
 // public/data/economy/reads/how-india-moves.json (scripts/build-reads-data.mjs).
 import ReadLayout from '../../../components/read/ReadLayout.astro';
 import { readFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
 
-const data = JSON.parse(readFileSync(fileURLToPath(new URL('../../../../public/data/economy/reads/how-india-moves.json', import.meta.url)), 'utf8'));
+const data = JSON.parse(readFileSync('public/data/economy/reads/how-india-moves.json', 'utf8'));
 const { stats } = data;
 const rtgsLakh = (stats.rtgsTicket / 1e5).toFixed(0);
 const payload = JSON.stringify(data);

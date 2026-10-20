@@ -11,6 +11,8 @@ import rss from '@astrojs/rss';
 import type { APIContext } from 'astro';
 import { READS } from '../lib/reads-index';
 import offByHowMuch from '../data/play/off-by-how-much.json';
+import weatherWings from '../lib/weather-wings-publication.json';
+import { publicationDate } from '../lib/publication-date.mjs';
 
 export function GET(context: APIContext) {
   const readItems = READS.map((read) => ({
@@ -38,7 +40,16 @@ export function GET(context: APIContext) {
   // One item, once: a game is a publication event like a numbered puzzle,
   // even though the game itself keeps no schedule. The date is the dispatch's
   // and moves with it if the release slips (see DISPATCHES['2-inflation']).
+  // Leave an unpublished game out of the feed until its real release day is set.
+  // This recorded date stays fixed on subsequent builds.
+  const weatherWingsDate = publicationDate(weatherWings.published);
   const gameItems = [
+    ...(weatherWingsDate ? [{
+      title: 'Weather Wings',
+      description: 'Fly through India’s seasons. A game by Time Series of India.',
+      link: '/play/weather-wings/',
+      pubDate: weatherWingsDate,
+    }] : []),
     {
       title: 'Inflation Peaks',
       description:

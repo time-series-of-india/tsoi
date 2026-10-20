@@ -1,0 +1,712 @@
+
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden}body{background:#d4e5ee;color:#254e67;font-family:system-ui,-apple-system,sans-serif}button{font:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent;touch-action:manipulation}#app{height:100dvh;min-height:0;width:100%;display:grid;place-items:center;position:relative}#surround{position:absolute;inset:0;background:linear-gradient(120deg,#bbd6e5,#e8eff0,#a9cbdc)}#stage{width:100%;height:100%;position:relative;overflow:hidden}#scene{display:block;width:100%;height:100%;touch-action:none;outline:none}button:focus-visible,#scene:focus-visible{outline:3px solid #ce873c;outline-offset:3px}#loading{position:absolute;inset:0;background:#e7f0f5;display:grid;place-items:center;font:21px Georgia,serif}#loading[hidden]{display:none}
+.rainfall-mode{--flight-ink:#263d50;--flight-paper:#f4f1eb;font-family:Georgia,'Times New Roman',serif}
+.rainfall-mode #app{grid-template-rows:minmax(0,1fr) auto;gap:0;background:var(--flight-paper)}
+.rainfall-mode #stage{min-height:0}
+.rainfall-mode #scene{background:#f4f1eb url('../assets/prepared/ui-paper.webp') center bottom / 1200px auto}
+.rainfall-ui{position:absolute;isolation:isolate;inset:env(safe-area-inset-top,0px) 0 auto;padding:16px 22px;pointer-events:none;color:var(--flight-ink);font-size:13px}
+.rainfall-ui::before{content:"";position:absolute;z-index:-1;left:-55px;top:-55px;width:410px;height:275px;background:#f4f1eb url('../assets/prepared/ui-paper.webp') center bottom / 1200px auto;opacity:.65;mask-image:radial-gradient(ellipse at 38% 38%,#000 15%,#0008 40%,transparent 72%)}
+.rainfall-readout{font-size:21px;line-height:1.3;margin-right:85px}
+.rainfall-progress{font-size:12px;margin-top:5px;color:#435b70}
+.rainfall-chart{width:280px;max-width:calc(100% - 46px);margin-top:-3px}
+.rainfall-chart svg{display:block;width:100%;height:auto}
+.city-choice{display:flex;align-items:baseline;gap:7px;width:max-content;pointer-events:auto;font:14px/1.5 Georgia,serif;color:var(--flight-ink);margin-bottom:4px}
+.city-choice select{font:inherit;color:inherit;background:transparent;border:0;border-bottom:1px solid #263d5066;border-radius:0;padding:3px 20px 3px 2px;min-height:32px;cursor:pointer}
+.flight-retry .city-choice{margin:18px auto 0}
+.city-choice select:focus-visible{outline:2px solid #416c87;outline-offset:3px}
+.rainfall-cue{font-size:13px;margin:7px 0 0}
+.rainfall-cue[hidden]{display:none}
+#rain-controls-toggle{pointer-events:auto;position:absolute;right:18px;top:10px;min-height:44px;padding:5px 0;border:0;background:none;color:var(--flight-ink);font:17px Georgia,serif;text-decoration:underline;text-underline-offset:4px;text-decoration-thickness:1px}
+#rain-controls-body{pointer-events:auto;margin-top:14px;padding:14px 16px;max-width:650px;max-height:calc(100dvh - 290px);overflow:auto;border:1px solid #52647185;border-radius:3px 7px 4px 6px;background:#f4f1eb url('../assets/prepared/ui-paper.webp') center bottom / 1200px auto}
+#rain-controls-body[hidden]{display:none}
+.rainfall-actions{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin:0 0 12px}
+.rainfall-actions button,.rainfall-actions select{font:inherit;color:var(--flight-ink);padding:7px 5px;border:0;border-bottom:1px solid #52647185;border-radius:0;background:#f4f1eb77;min-height:36px}
+.rainfall-actions button{cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+.rainfall-actions label{display:flex;gap:7px;align-items:center;flex-wrap:wrap}
+.rainfall-actions input{accent-color:#284970}
+.rainfall-actions a,.rainfall-source a{color:inherit;pointer-events:auto;text-underline-offset:2px}
+.rainfall-help,.theme-note{font-size:12px;line-height:1.5;margin-top:5px;color:#435b70}
+.rainfall-source{font-size:11px;line-height:1.5;margin-top:9px}
+.flight-dock{position:relative;width:100%;height:calc(30px + env(safe-area-inset-bottom));background:#f4f1eb url('../assets/prepared/ui-paper.webp') center bottom / 1200px auto}
+.flight-gutter{display:block;width:100%;height:100%;padding:0;border:0;border-radius:0;background:none;touch-action:none;user-select:none;-webkit-user-select:none;cursor:pointer}
+.flight-gutter:disabled{cursor:default}
+.flight-gutter:focus-visible{outline:1.5px dashed var(--flight-ink);outline-offset:-9px}
+.rainfall-mode button:focus-visible,.rainfall-mode select:focus-visible{outline:2px solid #284970;outline-offset:4px}
+.rainfall-mode .flight-gutter:focus-visible{outline-offset:-9px}
+.flight-retry{width:min(350px,calc(100vw - 40px));padding:32px 25px 25px;border:1.3px solid #263d50b3;border-radius:5px 8px 4px 7px / 8px 4px 7px 5px;background:#f4f1eb url('../assets/prepared/ui-paper.webp') center bottom / 1200px auto;color:var(--flight-ink);text-align:center;overflow:visible}
+.flight-retry::after{content:"";position:absolute;inset:1px -1px -1px 1px;border:1px solid #263d5025;border-radius:8px 4px 7px 3px;pointer-events:none}
+.flight-retry::backdrop{background:#eef1ed66}
+.flight-retry h2{font:normal 30px/1.15 Georgia,serif;letter-spacing:-.025em;margin:0 0 15px}
+.flight-retry p{font:15px/1.55 Georgia,serif;margin:0 0 22px}
+.ink-button{position:relative;isolation:isolate;min-height:48px;padding:6px 24px;color:var(--flight-ink);font:25px/1.2 Georgia,serif;background:none;border:0;text-decoration:underline;text-underline-offset:6px;text-decoration-thickness:1.3px;touch-action:manipulation}
+.ink-button::before{content:"";position:absolute;z-index:-1;inset:1px -5px -1px;background:#719bb849;clip-path:polygon(7% 8%,16% 10%,25% 4%,34% 8%,45% 5%,55% 9%,67% 4%,77% 7%,88% 5%,94% 14%,92% 22%,98% 28%,95% 39%,100% 48%,96% 58%,99% 67%,94% 76%,95% 85%,86% 91%,76% 89%,64% 96%,53% 91%,42% 98%,31% 93%,20% 96%,10% 88%,5% 79%,7% 69%,2% 59%,5% 49%,0 40%,4% 30%,3% 20%)}
+.ink-button:active::before{background:#719bb870}
+.gauge-mock .rainfall-ui,.gauge-mock .flight-dock{display:none}
+@media(max-width:480px){.rainfall-ui{padding:13px 14px}.rainfall-readout{font-size:18px}.rainfall-chart{width:250px}.rainfall-progress{font-size:11px}#rain-controls-toggle{right:14px;font-size:15px}#rain-controls-body{padding:10px 12px}}
+
+@media(orientation:landscape) and (max-height:550px){.flight-dock{height:calc(12px + env(safe-area-inset-bottom))}.rainfall-ui{padding:7px 14px}.rainfall-readout{font-size:17px}.rainfall-progress{font-size:10px;margin-top:2px}.rainfall-chart{width:210px}.rainfall-cue{font-size:11px;margin-top:3px}#rain-controls-body{position:absolute;right:14px;top:40px;width:min(520px,calc(100% - 270px));max-height:calc(100dvh - 120px);margin:0}.flight-retry{padding:22px}}
+@media(orientation:landscape) and (max-height:550px){.rainfall-ui::before{height:240px;width:365px}}
+
+.flight-choice-toggle,.retry-choice{pointer-events:auto;background:none;color:var(--flight-ink);font:14px/1.5 Georgia,serif;border:0;text-decoration:underline;text-underline-offset:4px;min-height:36px;padding:0;cursor:pointer}
+.flight-choice-toggle{display:block;margin-bottom:3px}.retry-choice{display:block;margin:18px auto 0}
+.flight-setup{box-sizing:border-box;width:min(530px,calc(100vw - 28px));max-height:calc(100dvh - 28px);overflow:auto;padding:26px 30px 18px;border:1px solid #52647199;border-radius:5px 8px 4px 7px;background:#f4f1eb url('../assets/prepared/ui-paper.webp') center bottom / 1200px auto;color:var(--flight-ink);text-align:center}
+.flight-setup::backdrop{background:#eef1ed88}.flight-setup h2{font:normal 29px/1.2 Georgia,serif;margin:5px 0 24px}.setup-kicker{font:12px Georgia,serif;letter-spacing:.04em;margin:0}.flight-setup fieldset{border:0;padding:0;margin:0 0 22px;text-align:left}.flight-setup legend{font:15px Georgia,serif;margin-bottom:10px}.city-options{display:flex;flex-wrap:wrap;gap:8px}.city-options label{flex:1 0 26%}.flight-setup label{position:relative;cursor:pointer}.flight-setup input{position:absolute;opacity:0;width:1px;height:1px}.flight-setup label>span{display:block;border:1px solid #52647150;border-radius:3px 6px 4px 5px;padding:10px 8px;font:15px/1.3 Georgia,serif}.city-options span{text-align:center}.flight-setup input:checked+span{background:#719bb824;border-color:#3c5a70}.flight-setup input:focus-visible+span{outline:2px solid #284970;outline-offset:3px}.bird-options{display:grid;grid-template-columns:1fr 1fr;gap:10px}.bird-options label>span{height:100%;box-sizing:border-box;padding:12px}.bird-options strong{display:block;font-weight:normal;margin-bottom:7px}.bird-options small{display:block;font:13px/1.4 Georgia,serif;color:#435b70}.setup-hint{font:14px/1.5 Georgia,serif;margin:0 0 17px}.setup-source{font:11px/1.5 Georgia,serif;margin:17px 0 0;color:#435b70}
+body[data-bird="common-myna"] #rain-progress-dot{fill:#ab782f}
+@media(max-width:480px){.flight-setup{padding:22px 20px 17px}.flight-setup h2{font-size:26px}.bird-options label>span{padding:10px}.flight-choice-toggle{font-size:13px}}
+@media(orientation:landscape) and (max-height:550px){.flight-setup{width:min(720px,calc(100vw - 32px));padding:15px 24px}.flight-setup form{display:grid;grid-template-columns:1fr 1fr;gap:10px 22px;align-items:start}.setup-kicker,.flight-setup h2{grid-column:1/-1}.flight-setup h2{margin:0;font-size:24px}.flight-setup fieldset{margin:0}.setup-hint{margin:0;font-size:12px}.flight-setup .ink-button{justify-self:center}.setup-source{grid-column:1/-1;margin:0}}
+
+.flight-tuning{width:min(480px,calc(100vw - 28px));max-height:calc(100dvh - 24px);overflow:auto;padding:22px 24px;border:1px solid #52647199;border-radius:5px 8px 4px 7px;background:#f4f1eb url('../assets/prepared/ui-paper.webp') center bottom / 1200px auto;color:var(--flight-ink);font:15px/1.4 Georgia,serif}
+.flight-tuning::backdrop{background:#eef1ed99}.flight-tuning h2{font-size:26px;font-weight:normal;margin:0 0 8px}.tuning-mode{margin:0 0 8px}.tuning-note{font-size:12px;color:#435b70}.tuning-field{display:grid;grid-template-columns:1fr auto;gap:2px 12px;margin:12px 0}.tuning-field input{grid-column:1 / -1;width:100%;min-height:32px;margin:0;accent-color:#416c87}.tuning-field output{font-variant-numeric:tabular-nums}.flight-tuning summary{cursor:pointer;padding:7px 0}.tuning-metrics{border-block:1px solid #52647144;padding:9px 0;font-size:13px;font-variant-numeric:tabular-nums}.tuning-actions{display:flex;flex-wrap:wrap;gap:6px 16px}.tuning-actions button{font:inherit;min-height:42px;background:transparent;border:0;border-bottom:1px solid #52647185;color:inherit}.tuning-actions button[type=submit]{width:100%;background:#719bb826}.tuning-link input{display:block;width:100%;margin-top:5px;font:12px Georgia,serif;padding:8px}.tuning-status{font-size:12px}.flight-tuning :focus-visible{outline:2px solid #416c87;outline-offset:2px}.flight-retry .retry-choice{display:block;margin:10px auto 0}
+@media(orientation:landscape) and (max-height:550px){.flight-tuning{width:min(680px,calc(100vw - 40px));padding:14px 22px}.flight-tuning form{display:grid;grid-template-columns:1fr 1fr;gap:0 24px}.flight-tuning h2,.tuning-mode,.tuning-actions,.tuning-status,.tuning-link{grid-column:1 / -1}.tuning-actions button[type=submit]{width:auto}.tuning-field{margin:5px 0}}
+@media(orientation:landscape) and (max-height:550px){
+ .flight-tuning form{grid-template-columns:repeat(3,minmax(0,1fr));gap:0 18px}
+ .flight-tuning h2{grid-column:1;font-size:23px}.tuning-mode{grid-column:2 / -1;font-size:12px;align-self:center}
+ .tuning-note{grid-column:1 / -1;margin:5px 0}.tuning-field{grid-column:auto}.flight-tuning details{grid-column:1;font-size:12px}.tuning-metrics{grid-column:2 / -1;margin:5px 0}
+ .tuning-actions{gap:4px 12px;font-size:13px}.tuning-actions button{min-height:38px}.tuning-status:empty{display:none}
+}
+/* The flight chooser and result cards share the paintings already used in play. */
+.visual-chooser{width:min(920px,calc(100vw - 28px));max-height:calc(100dvh - 28px);padding:0;overflow:auto;border-color:#61758188;text-align:center}
+.visual-chooser form{display:block}.choice-art{height:clamp(190px,34dvh,330px);position:relative;touch-action:pan-y;overflow:hidden}.choice-scenery,.result-scenery{position:absolute;inset:0;overflow:hidden}
+.preview-painting{display:block;width:100%;height:100%;object-fit:cover;transition:opacity .28s ease;opacity:1}.preview-painting.changing{opacity:.4}.preview-caption{position:absolute;bottom:8px;right:14px;margin:0;font:11px/1.4 Georgia,serif;background:#f4f1ebbb;padding:3px 6px;color:#3e5261}.preview-status{position:absolute;inset:50% 16px auto;margin:0;font:13px Georgia,serif;color:#263d50;background:#f4f1ebdd}.preview-status:empty{display:none}
+.choice-art-heading{position:absolute;top:20px;left:24px;right:24px;text-align:left}.visual-chooser h2{font-size:31px;margin:7px 0 0}.choice-bird{position:absolute;left:13%;top:34%;width:200px;height:110px;pointer-events:none}.choice-paper{position:relative;padding:18px 32px 16px;background:#f4f1ebee;border-top:1px solid #52647155}
+.city-carousel{display:grid;grid-template-columns:1fr 1.5fr 1fr;gap:12px;align-items:start;max-width:670px;margin:auto}.city-carousel button{border:0;background:none;color:inherit;font:18px/1.3 Georgia,serif;padding:5px 8px;min-height:58px}.city-carousel button span{display:block;text-decoration:underline;text-underline-offset:5px;text-decoration-thickness:1px}.city-carousel small{display:block;font:11px/1.6 Georgia,serif;color:#506477;margin-bottom:3px}.city-selected{padding:5px 0}.city-selected strong{display:block;font:26px/1.25 Georgia,serif}.city-earned{display:block;font:11px/1.5 Georgia,serif;color:#506477;margin-top:4px}.choice-progress{font:12px/1.4 Georgia,serif;color:#506477;margin:8px 0 15px}
+.visual-chooser .illustrated-birds{margin:0 auto 15px;max-width:570px}.visual-chooser legend{font-size:13px;text-align:center;margin-bottom:7px;width:100%}.visual-chooser .bird-options label>span{padding:2px 12px 10px;text-align:center}.visual-chooser .bird-options canvas{display:block;width:150px;height:64px;max-width:100%;margin:auto}.visual-chooser .bird-options strong{font-size:15px;margin:0 0 4px}.visual-chooser .bird-options small{font-size:12px;line-height:1.35}.choice-bottom{display:flex;gap:28px;align-items:center;justify-content:center}.visual-chooser .setup-hint{max-width:360px;font-size:13px;margin:0;text-align:left}.visual-chooser .ink-button{font-size:22px;white-space:nowrap}.visual-chooser .setup-source{margin:12px 0 0;font-size:11px}.choice-back{margin:5px auto 0;font-size:12px;min-height:30px}.choice-back[hidden]{display:none}
+.result-card{position:relative;width:min(390px,calc(100vw - 28px));max-height:calc(100dvh - 28px);overflow:auto;padding:0;border:1px solid #61758188;border-radius:5px 8px 4px 7px;background:#f4f1eb;color:var(--flight-ink);font-family:Georgia,serif;text-align:center}.result-card::backdrop{background:#eef1ed66}.result-card::after{display:none}.result-scenery{height:145px}.result-card .preview-caption{display:none}.result-bird{position:relative;display:block;width:185px;height:100px;margin:29px auto 16px;pointer-events:none}.result-content{position:relative;padding:20px 24px;background:#f4f1ebf5;border-top:1px solid #52647155}.result-card .result-kicker{font:12px/1.5 Georgia,serif;margin:0 0 9px;color:#506477}.result-card h2{font:normal 29px/1.2 Georgia,serif;margin:0 0 10px}.result-card p{font-size:14px;line-height:1.45;margin:0 0 14px}.result-months{display:grid;grid-template-columns:repeat(6,1fr);gap:5px;margin:15px 0}.result-months span{font:11px Georgia,serif;padding:6px 0;border-bottom:1px solid #52647130;color:#6b7b86}.result-months .cleared{border-color:#355974;background:#719bb81c;color:#263d50}.result-card .result-best{font-size:12px;color:#506477;margin:14px 0}.result-card .ink-button{font-size:23px;min-height:44px}.result-card .retry-choice{margin:9px auto 0;min-height:36px}.result-card .result-footnote{font-size:11px;color:#506477;margin:14px 0 0}
+.flight-achievement{width:min(530px,calc(100vw - 28px))}.achievement-chart{width:280px;max-width:100%;margin:4px auto 9px}.achievement-chart svg{display:block;width:100%;height:auto}.achievement-chart #achievement-progress-dot{display:none}.result-card .achievement-observation{font-size:13px;max-width:360px;margin:0 auto 16px}.completed-cities{display:flex;flex-wrap:wrap;justify-content:center;gap:7px 13px;padding:10px 0;border-block:1px solid #52647133}.completed-cities>span{font-size:12px;color:#687985}.completed-cities small{display:block;font-size:10px;margin-top:3px}.completed-cities .earned{color:#263d50;text-decoration:underline;text-underline-offset:3px}.result-card .achievement-progress{font-size:12px;margin:10px 0 15px}.achievement-actions{display:flex;align-items:center;justify-content:center;gap:14px}.achievement-actions .retry-choice{margin:0}.flight-achievement[open] h2{animation:completion-ink .6s ease both}@keyframes completion-ink{from{opacity:.25;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
+@media(max-width:480px){.visual-chooser{width:calc(100vw - 20px);max-height:calc(100dvh - 20px)}.choice-art{height:205px}.choice-art-heading{top:16px;left:18px}.visual-chooser h2{font-size:26px}.choice-bird{left:6%;top:30%;width:170px;height:95px}.choice-paper{padding:12px 15px}.city-carousel{gap:3px;grid-template-columns:1fr 1.25fr 1fr}.city-carousel button{font-size:15px;padding:4px 1px}.city-selected strong{font-size:23px}.city-carousel small,.city-earned{font-size:10px}.choice-progress{font-size:11px;margin:7px 0 12px}.visual-chooser .bird-options label>span{padding:0 7px 8px}.visual-chooser .bird-options strong{font-size:14px}.visual-chooser .bird-options small{font-size:11px}.choice-bottom{display:block}.visual-chooser .setup-hint{text-align:center;margin:0 auto 12px;font-size:12px}.visual-chooser .setup-source{font-size:10px}.achievement-actions{flex-direction:column;gap:3px}.result-content{padding:18px}.flight-achievement .result-scenery{height:110px}.flight-achievement .result-bird{height:84px;margin:12px auto 14px}.result-card .achievement-observation{font-size:12px}.completed-cities{gap:7px 10px}}
+@media(orientation:landscape) and (max-height:550px){.visual-chooser{width:min(920px,calc(100vw - 24px));max-height:calc(100dvh - 20px)}.visual-chooser form{display:grid;grid-template-columns:40% 60%;gap:0;align-items:stretch}.choice-art{height:auto;min-height:350px}.choice-art-heading{top:18px;left:15px;right:12px}.visual-chooser h2{font-size:25px;margin-top:8px}.choice-bird{left:0;top:37%;width:185px}.choice-paper{padding:10px 15px;border-top:0;border-left:1px solid #52647155}.city-carousel button{font-size:15px;min-height:48px}.city-selected strong{font-size:22px}.city-earned{font-size:10px}.choice-progress{font-size:10px;margin:3px 0 8px}.visual-chooser .illustrated-birds{margin-bottom:10px}.visual-chooser legend{margin-bottom:3px;font-size:12px}.visual-chooser .bird-options canvas{height:45px;width:108px}.visual-chooser .bird-options strong{font-size:13px}.visual-chooser .bird-options small{font-size:11px}.visual-chooser .bird-options label>span{padding:0 7px 6px}.choice-bottom{gap:12px}.visual-chooser .setup-hint{font-size:11px;max-width:245px}.visual-chooser .ink-button{font-size:18px;padding-inline:12px;min-height:40px}.visual-chooser .setup-source{font-size:10px;margin-top:7px}.choice-back{font-size:11px;min-height:24px;margin-top:1px}.result-card{width:min(690px,calc(100vw - 32px));min-height:290px;padding-left:34%;overflow:auto}.result-scenery{height:100%;right:66%}.result-bird{position:absolute;left:1%;top:50%;width:30%;height:100px;transform:translateY(-50%);margin:0}.result-content{padding:16px 20px;border-top:0;border-left:1px solid #52647155}.result-card h2{font-size:25px}.result-card p{font-size:13px;margin-bottom:9px}.result-card .result-kicker{font-size:11px;margin-bottom:6px}.result-months{margin:9px 0}.flight-achievement{padding-left:28%;}.flight-achievement .result-scenery{right:72%}.flight-achievement .result-bird{width:26%}.flight-achievement .result-content{padding:12px 18px}.achievement-chart{width:220px;margin:0 auto 4px}.result-card .achievement-observation{font-size:11px;margin-bottom:6px}.completed-cities{padding:6px 0;gap:8px}.completed-cities>span{font-size:10px}.completed-cities small{font-size:9px}.result-card .achievement-progress{font-size:10px;margin:6px 0 8px}.result-card .result-footnote{font-size:10px;margin-top:8px}.result-card .ink-button{font-size:20px}.achievement-actions{gap:10px}.achievement-actions .retry-choice{font-size:12px}}
+@media(prefers-reduced-motion:reduce){.preview-painting{transition:none}.flight-achievement[open] h2{animation:none}}
+@media(orientation:landscape) and (max-height:550px){.result-card{--result-art:min(210px,27vw);padding-left:var(--result-art)}.result-card .result-scenery{left:0;right:auto;width:var(--result-art)}.result-card .result-bird{left:0;width:var(--result-art)}.flight-achievement{--result-art:min(165px,21vw)}}
+/* City navigation separates position, completion and rainfall. */
+.visual-chooser .city-carousel{align-items:start;max-width:530px}.visual-chooser .city-carousel>button{font-size:14px;min-height:44px;text-decoration:underline;text-underline-offset:4px;padding:5px 10px}.visual-chooser .city-selected{padding:0}.visual-chooser .city-earned{min-height:16px;margin-top:2px;line-height:16px}
+.city-dots{display:flex;justify-content:center;gap:2px;margin:0 auto 3px}.city-dots button{display:grid;place-items:center;width:32px;height:28px;padding:0;border:0;background:none;color:var(--flight-ink)}.city-dots button span{display:block;width:6px;height:6px;border:1px solid #52647199;border-radius:50%;background:transparent}.city-dots button[aria-pressed=true] span{background:#416c87;border-color:#416c87}.city-dots button:focus-visible{outline:2px solid #416c87;outline-offset:-3px}
+.choice-climate{width:140px;max-width:100%;margin:0 auto 6px}.choice-chart{min-height:35px;font:11px Georgia,serif}.choice-chart svg{width:100%;height:auto;display:block}
+.visual-chooser .choice-bottom{display:block;text-align:center}.choice-controls{display:flex;flex-wrap:wrap;justify-content:center;gap:5px 16px;font:11px/1.5 Georgia,serif;color:#435b70;margin:12px 0 0}.choice-controls>div{display:flex;gap:5px}.choice-controls dt{font-weight:600}.choice-controls dd{margin:0}.choice-controls kbd{font:inherit}.visual-chooser .setup-source{margin-top:8px}
+.flight-achievement .achievement-actions{display:grid;grid-template-columns:1fr 1fr;align-items:stretch;gap:16px}.flight-achievement .achievement-actions .ink-button{font-size:19px;line-height:1.3;padding:9px 10px;min-height:52px;width:100%;margin:0}
+.flight-pause-toggle{position:absolute;right:18px;top:53px;pointer-events:auto;border:0;background:none;color:var(--flight-ink);font:14px Georgia,serif;text-decoration:underline;text-underline-offset:4px;min-width:52px;min-height:40px;padding:5px 0}.flight-pause-toggle[hidden]{display:none}
+@media(max-width:480px){.visual-chooser .choice-art{height:185px}.visual-chooser .choice-paper{padding-top:10px}.choice-climate{margin-bottom:6px}.visual-chooser .illustrated-birds{margin-bottom:12px}.choice-controls{gap:3px 12px;margin-top:10px;font-size:10px}.flight-achievement .achievement-actions{grid-template-columns:1fr;gap:12px}.flight-pause-toggle{right:14px}}
+@media(orientation:landscape) and (max-height:550px){.visual-chooser .choice-paper{padding-top:8px}.visual-chooser .city-carousel>button{min-height:32px;font-size:13px}.visual-chooser .city-selected strong{font-size:21px}.city-dots{margin-top:-2px;margin-bottom:0}.city-dots button{height:22px}.choice-climate{width:120px;margin-bottom:4px}.choice-chart{min-height:30px}.visual-chooser .illustrated-birds{margin-bottom:6px}.visual-chooser .bird-options canvas{height:38px;width:90px}.visual-chooser .bird-options small{font-size:10px}.visual-chooser .choice-controls{margin-top:7px;font-size:10px;gap:2px 10px}.visual-chooser .setup-source{margin-top:5px}.flight-achievement .achievement-actions .ink-button{font-size:17px;min-height:46px}.flight-pause-toggle{top:43px;right:14px;font-size:13px;min-height:34px}}
+/* Shared menu and result destinations. */
+body:not(.flight-debug) #rain-controls-toggle,body:not(.flight-debug) #rain-controls-body{display:none}
+body:not(.flight-debug) .flight-pause-toggle{top:15px}
+body:has(.flight-setup[open]) .result-card[open]{visibility:hidden}
+.choice-settings{max-width:570px;margin:0 auto 16px;text-align:left}.menu-settings{border-top:1px solid #52647135;border-bottom:1px solid #52647135;padding:9px 0;font:13px/1.5 Georgia,serif}.menu-settings summary{cursor:pointer;text-align:center;text-decoration:underline;text-underline-offset:4px}.menu-settings p{font-size:11px;text-align:center;margin:8px 0 12px}.menu-setting{display:block;margin:12px auto;max-width:380px}.menu-setting>span:first-child{display:block}.menu-setting input[type=range]{position:static;opacity:1;width:100%;height:22px;margin:3px 0;accent-color:#416c87;cursor:pointer}.setting-ends{display:flex;justify-content:space-between;font-size:11px;color:#506477}.settings-defaults{display:block;margin:8px auto 0;background:none;border:0;color:inherit;font:12px Georgia,serif;text-decoration:underline;min-height:32px}
+.flight-achievement{width:min(680px,calc(100vw - 28px))}.flight-achievement .result-scenery{height:118px}.flight-achievement .result-bird{height:88px;margin:14px auto 16px}.flight-achievement h2{font-size:27px;margin-bottom:6px}.result-card .achievement-summary{font-size:14px;margin-bottom:6px}.flight-achievement .achievement-chart{width:240px;margin:0 auto 8px}.result-card .achievement-observation{font-size:14px;margin-bottom:4px}.result-card .achievement-source{font-size:11px;line-height:1.5;color:#506477;margin:0 0 16px}.destination-heading{font:normal 17px Georgia,serif;margin:12px 0 8px}.destination-cities{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:7px}.destination-cities button{min-width:0;border:1px solid #52647145;border-radius:3px 6px 4px 5px;background:none;color:inherit;padding:6px 3px 9px;font:13px/1.4 Georgia,serif;cursor:pointer}.destination-cities button[aria-pressed=true]{background:#719bb824;border-color:#3c5a70}.destination-cities button:focus-visible{outline:2px solid #284970;outline-offset:2px}.destination-signature{display:block;margin:0 auto 4px;width:90px;max-width:100%;min-height:23px;font-size:9px}.destination-signature svg{display:block;width:100%;height:auto}.destination-name{display:block}.destination-cities small{display:block;font:10px/1.5 Georgia,serif;color:#506477;margin-top:3px}.result-card .achievement-progress{font-size:11px;margin:10px 0 14px}.result-card .destination-hint{font-size:12px;margin:0 0 12px}.result-card .result-change{font-size:13px;margin:12px auto 0;min-height:32px}.ink-button:disabled{opacity:.45;cursor:default}.ink-button:disabled::before{background:#719bb820}.retry-signature{width:190px;margin:0 auto 20px}.retry-signature svg{display:block;width:100%;height:auto}.result-card .result-kicker:empty{display:none}.flight-retry h2{font-size:27px}.flight-retry .result-scenery{height:118px}.flight-retry .result-bird{height:88px;margin:14px auto 16px}
+@media(max-width:480px){.destination-cities{grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}.flight-achievement .result-content{padding:14px 16px}.flight-achievement .result-scenery{height:90px}.flight-achievement .result-bird{height:66px;margin:10px auto 14px}.flight-achievement h2{font-size:24px}.flight-achievement .achievement-chart{width:210px;margin-bottom:6px}.result-card .achievement-observation{font-size:12px}.result-card .achievement-source{font-size:10px;margin-bottom:10px}.destination-heading{font-size:15px;margin:8px 0}.destination-cities button{padding:3px 3px 5px;font-size:12px}.destination-signature{width:78px;min-height:20px;margin-bottom:2px}.result-card .achievement-progress{font-size:10px;margin:8px 0 10px}.flight-achievement .achievement-actions{gap:7px}.flight-achievement .achievement-actions .ink-button{font-size:18px;min-height:43px;padding:6px}.result-card .result-footnote{font-size:10px;margin:8px 0 0}.result-card .result-change{margin-top:6px}.choice-settings{margin-bottom:12px}}
+@media(orientation:landscape) and (max-height:550px){body:not(.flight-debug) .flight-pause-toggle{top:5px}.choice-settings{margin:0 auto 7px}.menu-settings{font-size:11px;padding:5px 0}.flight-achievement{width:min(790px,calc(100vw - 24px))}.flight-achievement .result-scenery,.flight-retry .result-scenery{height:100%}.flight-achievement .result-bird,.flight-retry .result-bird{height:85px;margin:0}.flight-achievement .result-content{padding:12px 16px}.flight-achievement h2{font-size:23px}.flight-achievement .achievement-chart{width:180px;margin-bottom:3px}.result-card .achievement-summary{font-size:12px}.result-card .achievement-observation{font-size:11px}.result-card .achievement-source{font-size:10px;margin-bottom:7px}.destination-heading{font-size:14px;margin:7px 0}.destination-cities{gap:5px}.destination-cities button{font-size:11px;padding:3px}.destination-cities small{font-size:9px}.destination-signature{width:68px;min-height:17px}.result-card .achievement-progress{margin:7px 0;font-size:10px}.flight-achievement .achievement-actions .ink-button{font-size:16px;min-height:40px}.result-card .result-change{font-size:11px;min-height:25px;margin-top:4px}.result-card .result-footnote{margin-top:6px}.retry-signature{width:150px;margin-bottom:14px}}
+.visual-chooser .menu-setting>span{border:0;border-radius:0;padding:0;background:none;height:auto;font:13px/1.5 Georgia,serif}.visual-chooser .menu-setting>.setting-ends{display:flex;justify-content:space-between;font-size:11px}.visual-chooser .menu-setting{margin:12px auto}
+@media(orientation:landscape) and (max-height:550px){.flight-achievement .result-content{padding:8px 16px}.flight-achievement .achievement-chart{width:150px;margin:0 auto 2px}.flight-achievement h2{margin-bottom:4px}.result-card .achievement-source{margin-bottom:4px}.destination-heading{margin:5px 0}.result-card .achievement-progress{margin:5px 0}.flight-achievement .achievement-actions .ink-button{min-height:36px;padding:6px}.result-card .result-footnote{margin-top:4px}}
+@media(orientation:landscape) and (max-height:550px){.flight-achievement .result-footnote{display:none}.result-card .destination-hint{font-size:10px;line-height:1.3;margin-bottom:6px}.flight-achievement .result-change{margin-top:3px;min-height:23px}}
+.visual-chooser .difficulty-options{display:flex;justify-content:center;gap:10px;margin:0 0 7px;text-align:center}.visual-chooser .difficulty-options legend{float:none;width:100%;text-align:center;font-size:14px;margin:0 0 7px}.visual-chooser .difficulty-options label{width:125px}.visual-chooser .difficulty-options label>span{padding:7px 12px;text-align:center;font-size:14px}.difficulty-note{font:11px/1.5 Georgia,serif;color:#506477;text-align:center;margin:5px 0 9px}.menu-settings[hidden]{display:none}.calibration-readout{font:11px/1.5 Georgia,serif;margin:8px 0;overflow-wrap:anywhere}.visual-chooser .choice-settings{margin-bottom:12px}
+@media(orientation:landscape) and (max-height:550px){.visual-chooser .difficulty-options legend{font-size:11px;margin-bottom:3px}.visual-chooser .difficulty-options label>span{font-size:12px;padding:4px 10px}.difficulty-note{font-size:10px;margin:3px 0 5px}.visual-chooser .choice-settings{margin-bottom:6px}.visual-chooser .difficulty-options{margin-bottom:3px}}
+.visual-chooser .difficulty-options{gap:8px}.visual-chooser .difficulty-options label{width:120px;min-width:0}.visual-chooser .difficulty-options label>span{padding-inline:8px}
+@media(max-width:480px){.visual-chooser .difficulty-options{gap:5px}.visual-chooser .difficulty-options label{flex:1;width:auto}.visual-chooser .difficulty-options label>span{font-size:12px;padding:7px 3px}}
+@media(orientation:landscape) and (max-height:550px){.visual-chooser .difficulty-options{gap:6px}.visual-chooser .difficulty-options label{flex:1;width:auto}.visual-chooser .difficulty-options label>span{padding:5px 4px}}
+.preview-image-slot{width:100%;height:100%}.choice-loading{font:13px/1.5 Georgia,serif;color:#506477;margin:10px 0}.choice-loading[hidden]{display:none}
+
+/* Weather Wings chooser: selectors scroll while the launch footer keeps its own space. */
+.compact-chooser{width:min(700px,calc(100vw - 24px));max-height:calc(100dvh - 24px);overflow:hidden;background:#f3f1e8}
+.compact-chooser form{display:flex;flex-direction:column;max-height:calc(100dvh - 26px)}
+.compact-chooser .choice-art{height:180px;min-height:140px;flex:0 0 180px;touch-action:pan-y}
+.compact-chooser .choice-art-heading{top:16px;left:22px;text-align:left}
+.compact-chooser .choice-art-heading h2{font:normal 30px/1.1 Georgia,serif;margin:0 0 5px}
+.compact-chooser .setup-kicker{font:14px/1.4 Georgia,serif;margin:0;text-transform:none;letter-spacing:.02em}
+.compact-chooser .choice-bird{left:12%;top:44%;width:170px;height:90px}
+.compact-chooser .preview-caption{font-size:10px;right:12px;bottom:6px;max-width:65%}
+.compact-chooser .choice-paper{padding:0;display:flex;flex-direction:column;min-height:0;overflow:hidden;background:#f3f1e8}
+.compact-chooser .choice-scroll{overflow:auto;overscroll-behavior:contain;padding:10px 24px 4px;min-height:0;scrollbar-width:thin}
+.compact-chooser .choice-climate{width:115px;margin:0 auto 2px}
+.compact-chooser .choice-chart{min-height:29px}
+.compact-chooser .city-carousel,.compact-chooser .bird-carousel{display:grid;grid-template-columns:44px minmax(0,1fr) 44px;align-items:center;gap:6px;max-width:400px;margin:0 auto;text-align:center}
+.compact-chooser .carousel-arrow{width:44px;min-width:44px;height:44px;padding:10px;border:0;background:none;color:inherit;cursor:pointer;text-decoration:none;display:grid;place-items:center}
+.compact-chooser .carousel-arrow svg{width:19px;height:22px;fill:none;stroke:currentColor;stroke-width:1.4;stroke-linecap:round;stroke-linejoin:round}
+.compact-chooser .carousel-arrow:hover{background:#719bb818;border-radius:42% 48% 44% 46%}
+.compact-chooser button:focus-visible,.compact-chooser summary:focus-visible,.compact-chooser a:focus-visible{outline:2px solid #42697e;outline-offset:2px}
+.compact-chooser .city-selected strong{font:normal 27px/1.1 Georgia,serif}
+.compact-chooser .city-earned{font-size:11px;min-height:0;margin-top:3px}
+.compact-chooser .city-earned:empty{display:none}
+.compact-chooser .city-dots{margin:0 auto;gap:0}
+.compact-chooser .city-dots button{width:32px;height:28px}
+.compact-chooser .bird-selector{margin:3px 0 8px;touch-action:pan-y}
+.compact-chooser .selector-label{font:13px/1.3 Georgia,serif;text-align:center;margin:0}
+.compact-chooser .bird-carousel{margin-top:-2px}
+.compact-chooser .bird-name{font:normal 19px/1.2 Georgia,serif}
+.compact-chooser .bird-fact{font:12px/1.4 Georgia,serif;color:#506477;text-align:center;max-width:340px;margin:0 auto;min-height:17px}
+.compact-chooser .bird-dots{margin-top:0}
+.compact-chooser .difficulty-options{margin:0 0 8px;gap:7px}
+.compact-chooser .difficulty-options legend{font-size:13px;margin-bottom:6px}
+.compact-chooser .difficulty-options label{flex:1;width:auto}
+.compact-chooser .difficulty-options label>span{padding:9px 4px;font-size:14px}
+.compact-chooser .choice-settings{margin:0}
+.compact-chooser .menu-settings{padding:0;border-bottom:0;margin:0}
+.compact-chooser summary{cursor:pointer;min-height:36px;align-content:center;text-align:center;text-underline-offset:3px}
+.compact-chooser .menu-settings summary{font-size:13px}
+.compact-chooser .choice-help,.compact-chooser .choice-source{font:12px/1.5 Georgia,serif;color:#506477;text-align:left}
+.compact-chooser .choice-help summary{font-size:12px;text-decoration:underline}
+.compact-chooser .choice-help p,.compact-chooser .choice-source p{margin:6px 0 12px}
+.compact-chooser .choice-source summary{font-size:11px}
+.compact-chooser .choice-source a{color:inherit;text-underline-offset:2px;overflow-wrap:anywhere}
+.compact-chooser .choice-controls{font-size:12px;display:block;margin:0 0 12px}
+.compact-chooser .choice-controls>div{display:flex;gap:8px;padding:3px 0}
+.compact-chooser .choice-controls dt{min-width:55px}
+.compact-chooser .choice-controls dd{margin:0}
+.compact-chooser .choice-bottom{flex:none;display:block;border-top:1px solid #52647130;padding:8px 20px 10px;text-align:center;background:#f3f1e8}
+.compact-chooser .choice-bottom .ink-button{font-size:25px;min-height:48px;padding:6px 32px}
+.compact-chooser .choice-hint{font:11px/1.4 Georgia,serif;color:#506477;margin:2px 0 0}
+.compact-chooser .touch-hint{display:none}
+.compact-chooser .choice-back{margin:4px auto 0;min-height:32px;font-size:12px}
+.compact-chooser .choice-loading{font-size:12px;margin:0 0 5px}
+@media(max-width:480px){
+ .compact-chooser{width:calc(100vw - 18px);max-height:calc(100dvh - 18px)}
+ .compact-chooser form{max-height:calc(100dvh - 20px)}
+ .compact-chooser .choice-art{height:145px;min-height:110px;flex-basis:145px}
+ .compact-chooser .choice-art-heading{top:12px;left:16px}
+ .compact-chooser .choice-art-heading h2{font-size:26px}
+ .compact-chooser .setup-kicker{font-size:12px}
+ .compact-chooser .choice-bird{width:145px;height:77px;top:43%;left:10%}
+ .compact-chooser .choice-scroll{padding:8px 15px 2px}
+ .compact-chooser .bird-fact{max-width:270px}
+ .compact-chooser .choice-bottom{padding:6px 15px 8px}
+ .compact-chooser .keyboard-hint{display:none}.compact-chooser .touch-hint{display:inline}
+}
+@media(pointer:coarse){.compact-chooser .keyboard-hint{display:none}.compact-chooser .touch-hint{display:inline}}
+@media(orientation:landscape) and (max-height:550px){
+ .compact-chooser{width:min(850px,calc(100vw - 20px));height:calc(100dvh - 20px)}
+ .compact-chooser form{display:grid;grid-template-columns:38% 62%;height:100%;max-height:100%}
+ .compact-chooser .choice-art{height:100%;min-height:0}
+ .compact-chooser .choice-art-heading{top:14px;left:16px}
+ .compact-chooser .choice-art-heading h2{font-size:26px}
+ .compact-chooser .choice-bird{width:155px;height:83px;left:10%;top:46%}
+ .compact-chooser .choice-paper{border-top:0;border-left:1px solid #52647130;height:100%}
+ .compact-chooser .choice-scroll{padding:7px 16px 3px;flex:1}
+ .compact-chooser .choice-bottom{padding:4px 12px 6px}
+ .compact-chooser .choice-bottom .ink-button{font-size:22px;min-height:40px;padding-block:4px}
+ .compact-chooser .choice-back{min-height:26px;margin-top:0}
+ .compact-chooser .choice-hint{font-size:10px}
+}
+@media(orientation:landscape) and (max-height:550px){
+ .compact-chooser .choice-scroll{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);column-gap:12px;align-content:start}
+ .compact-chooser .choice-city{align-self:center}
+ .compact-chooser .bird-selector{margin:0;align-self:center}
+ .compact-chooser .bird-carousel,.compact-chooser .city-carousel{grid-template-columns:32px minmax(0,1fr) 32px;gap:0}
+ .compact-chooser .carousel-arrow{width:32px;min-width:32px;padding:7px}
+ .compact-chooser .bird-name{font-size:16px}
+ .compact-chooser .bird-fact{font-size:11px;line-height:1.3;max-width:200px}
+ .compact-chooser .city-selected strong{font-size:23px}
+ .compact-chooser .choice-settings,.compact-chooser .choice-help,.compact-chooser .choice-source{grid-column:1/-1}
+ .compact-chooser .choice-settings{margin-top:7px}
+ .compact-chooser .difficulty-options legend{font-size:12px;margin-bottom:4px}
+ .compact-chooser .difficulty-options label>span{padding:7px 4px;font-size:13px}
+}
+.compact-chooser .choice-settings{width:100%;margin-inline:auto}
+
+/* Illustrated bird selection and centered titles within the larger scenery. */
+.compact-chooser .choice-title{position:absolute;inset:0 0 auto;padding:16px 20px 14px;text-align:center;background:none;border:0;pointer-events:none}
+.compact-chooser .choice-title h2{font:normal 36px/1.1 Georgia,serif;margin:0 0 5px}
+.compact-chooser .choice-title .setup-kicker{font-size:13px}
+.compact-chooser .choice-art{height:195px;min-height:195px;flex-basis:195px}
+.compact-chooser .choice-bird{width:100px;height:54px;left:17%;top:48%}
+.compact-chooser .bird-selector{margin:0 0 6px;text-align:center}
+.compact-chooser .bird-carousel{max-width:320px;margin:0 auto}
+.compact-chooser .carousel-bird{display:block;width:180px;height:75px;max-width:100%;margin:auto}
+.compact-chooser .bird-name{display:block;font-size:18px;line-height:1.25;margin:0}
+.compact-chooser .bird-local-name{display:block;margin:3px auto 0;max-width:100%;font:normal 13px/1.4 Georgia,serif;color:#52646b;text-wrap:balance}
+.compact-chooser .bird-local-name span{font-family:Georgia,"Noto Serif Devanagari","Noto Serif Kannada","Noto Serif Bengali","Noto Serif Tamil",serif}
+.compact-chooser .choice-attribution{display:block;max-width:100%;margin:4px auto 0;padding:5px 3px;min-height:28px;border:0;background:none;color:#506477;font:11px/1.4 Georgia,serif;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+.flight-source-panel{box-sizing:border-box;width:min(510px,calc(100vw - 32px));max-height:calc(100dvh - 32px);overflow:auto;padding:24px;border:1px solid #52647180;border-radius:5px 8px 6px 7px;background:#f3f1e8;color:#304957;font:14px/1.6 Georgia,serif}
+.flight-source-panel::backdrop{background:#e9e8dfb8}
+.flight-source-panel h2{font:normal 26px/1.2 Georgia,serif;margin:0 0 18px;text-align:center}
+.flight-source-panel p{margin:0 0 16px}
+.flight-source-panel .source-station{font-size:13px;color:#506477}
+.flight-source-panel a{color:inherit;overflow-wrap:anywhere;text-underline-offset:3px}
+.flight-source-panel .source-close{display:block;margin:6px auto 0;min-height:44px;font:15px Georgia,serif}
+.flight-source-panel :focus-visible{outline:2px solid #42697e;outline-offset:2px}
+@media(max-width:480px){
+ .compact-chooser .choice-title{padding:12px 15px}
+ .compact-chooser .choice-title h2{font-size:32px}
+ .compact-chooser .choice-title .setup-kicker{font-size:12px}
+ .compact-chooser .choice-art{height:clamp(185px,25dvh,210px);min-height:185px;flex-basis:clamp(185px,25dvh,210px)}
+ .compact-chooser .choice-bird{width:85px;height:45px;left:16%;top:48%}
+ .compact-chooser .bird-name{font-size:17px}
+ .compact-chooser .carousel-bird{width:160px;height:67px}
+ .compact-chooser .choice-scroll{padding-top:5px}
+ .compact-chooser .choice-attribution{font-size:10px}
+ .compact-chooser .difficulty-options label>span{font-size:13px}
+}
+@media(orientation:landscape) and (max-height:550px){
+ .compact-chooser form{grid-template-rows:minmax(0,1fr)}
+ .compact-chooser .choice-title{padding:10px 8px}
+ .compact-chooser .choice-title h2{font-size:29px}
+ .compact-chooser .choice-title .setup-kicker{font-size:11px}
+ .compact-chooser .choice-art{grid-column:1;grid-row:1;height:100%;min-height:0}
+ .compact-chooser .choice-paper{grid-column:2;grid-row:1}
+ .compact-chooser .choice-bird{width:85px;height:45px;left:16%;top:38%}
+ .compact-chooser .carousel-bird{width:132px;height:55px}
+ .compact-chooser .bird-name{font-size:15px}
+ .compact-chooser .choice-attribution{font-size:10px;margin-top:1px;min-height:24px;padding:3px}
+ .compact-chooser .choice-bottom{padding-bottom:3px}
+ .compact-chooser .choice-settings{margin-top:2px}
+}
+@media(orientation:landscape) and (max-height:550px){
+ .compact-chooser .choice-climate{width:100px;margin-bottom:0}
+ .compact-chooser .choice-chart{min-height:25px}
+ .compact-chooser .city-dots button{height:24px}
+ .compact-chooser .difficulty-options{margin-bottom:4px}
+ .compact-chooser .difficulty-options legend{margin-bottom:3px}
+ .compact-chooser .difficulty-options label>span{padding-block:5px}
+ .compact-chooser summary{min-height:30px}
+}
+
+/* The immediate flap hint and fuller controls share one quiet footer line. */
+.compact-chooser .choice-more-controls{display:inline-block;border:0;background:none;color:inherit;font:inherit;padding:5px 1px;min-height:28px;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+.flight-help-panel .choice-controls{display:block;font:14px/1.6 Georgia,serif;margin:18px 0}
+.flight-help-panel .choice-controls>div{display:flex;gap:12px;padding:5px 0}
+.flight-help-panel .choice-controls dt{min-width:60px;font-weight:bold}
+.flight-help-panel .choice-controls dd{margin:0}
+.flight-help-panel kbd{font:inherit}
+
+/* The model switch stays inside the existing expandable flight settings. */
+.visual-chooser .motion-options{display:flex;justify-content:center;gap:12px;border:0;margin:12px 0 6px;padding:0}
+.visual-chooser .motion-options legend{width:100%;text-align:center;font:13px Georgia,serif;margin-bottom:7px}
+.visual-chooser .motion-options label{width:110px}
+.visual-chooser .motion-options label>span{text-align:center;font-size:14px;padding:9px 12px}
+.visual-chooser .motion-hint{font:12px/1.5 Georgia,serif;text-align:center;max-width:370px;margin:6px auto 16px;color:#435b70}
+
+/* The first flight keeps the same paper, coastline scale and painted bird. */
+.opening-scene{position:fixed;inset:0;width:100vw;height:100dvh;max-width:none;max-height:none;margin:0;padding:0;border:0;overflow:hidden;color:var(--flight-ink);background:#f4f1eb url('../assets/prepared/ui-paper.webp') center/cover;font-family:Georgia,'Times New Roman',serif}
+.opening-scene::backdrop{background:#f4f1eb}
+.opening-canvas{position:absolute;inset:0;width:100%;height:100%;outline:none}
+.opening-heading{position:absolute;top:17%;left:20px;right:20px;text-align:center;pointer-events:none;transition:opacity .8s,transform .8s}
+.opening-credit{font:10px/1.5 Georgia,serif;letter-spacing:.22em;margin:0 0 23px;color:#506477}
+.opening-heading h1{font:normal clamp(38px,5vw,68px)/1.1 Georgia,serif;margin:0 0 12px}
+.opening-subtitle{font-size:clamp(15px,1.6vw,20px);margin:0;color:#435b70}
+.opening-heading.departed{opacity:0;transform:translateY(-8px)}
+.opening-actions{position:absolute;top:55%;left:20px;right:20px;text-align:center;pointer-events:none}
+.opening-actions button{pointer-events:auto}
+.opening-actions .ink-button{display:block;margin:0 auto;font-size:26px;min-height:48px}
+.opening-actions .ink-button[hidden]{display:none}
+.opening-skip,.opening-pause{border:0;background:none;color:#435b70;font:13px/1.4 Georgia,serif;text-decoration:underline;text-underline-offset:4px;min-height:44px;padding:10px 12px}
+.opening-skip{display:block;margin:8px auto 0}
+.opening-pause{position:absolute;top:max(12px,env(safe-area-inset-top));right:max(12px,env(safe-area-inset-right))}
+.opening-location{position:absolute;bottom:max(16px,env(safe-area-inset-bottom));left:20px;right:20px;text-align:center;font:12px/1.4 Georgia,serif;color:#435b70;pointer-events:none}
+.opening-instruction{position:absolute;left:20px;right:20px;top:20%;text-align:center;pointer-events:none}
+.opening-cue{font-size:clamp(25px,3vw,36px);line-height:1.25;margin:0 0 12px}
+.opening-detail{font:14px/1.5 Georgia,serif;margin:0;color:#506477}
+.opening-loading{font:13px/1.5 Georgia,serif;margin:0 0 12px}
+.opening-loading:empty{display:none}
+.opening-scene:not([data-phase=title]) .opening-actions{top:auto;bottom:45px}
+.opening-scene[data-phase=finish] .opening-pause{visibility:hidden}
+body.opening-active .rainfall-ui,body.opening-active .flight-dock{visibility:hidden}
+body.first-flight .choice-climate,body.first-flight .rainfall-chart{display:none}
+.selection-label{font:11px/1.4 Georgia,serif;color:#506477;text-align:center;margin:3px 0 4px}
+.motion-options[hidden]{display:none!important}
+.replay-introduction{display:block;margin:14px auto}
+.result-card .result-discovery{font-size:13px;line-height:1.5;margin:10px auto 14px;max-width:30em}
+.intro-arrival{animation:chooser-arrival .6s ease-out}
+@keyframes chooser-arrival{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+@media(orientation:landscape) and (max-height:550px){.opening-heading{top:9%}.opening-credit{margin-bottom:10px}.opening-heading h1{font-size:36px;margin-bottom:5px}.opening-subtitle{font-size:14px}.opening-actions{top:53%}.opening-actions .ink-button{font-size:23px;min-height:38px}.opening-skip{margin-top:0}.opening-instruction{top:14%}.opening-cue{font-size:26px;margin-bottom:5px}.opening-location{bottom:6px}.opening-scene:not([data-phase=title]) .opening-actions{bottom:24px}.selection-label{font-size:10px;margin:0}}
+@media(prefers-reduced-motion:reduce){.opening-heading{transition:none}.intro-arrival{animation:none}}
+
+body:has(.flight-setup[open]) .rainfall-ui{visibility:hidden}
+.opening-instruction{opacity:0;transition:opacity .5s .65s}
+.opening-scene:not([data-phase=title]) .opening-instruction{opacity:1}
+@media(prefers-reduced-motion:reduce){.opening-instruction{transition:none}}
+
+/* One landscape holds the opening, optional choices and first departure. */
+.flight-home{position:fixed;inset:0;width:100vw;height:100dvh;max-width:none;max-height:none;margin:0;padding:0;border:0;border-radius:0;overflow:hidden;background:#f4f1eb url('../assets/prepared/ui-paper.webp') center/cover;color:var(--flight-ink);font-family:Georgia,'Times New Roman',serif}
+.flight-home::backdrop{background:#f4f1eb}.flight-home::after{display:none}.flight-home .opening-canvas{touch-action:none}
+.text-button{border:0;background:none;color:inherit;font:14px/1.4 Georgia,serif;min-height:44px;padding:10px 12px;text-decoration:underline;text-underline-offset:5px;text-decoration-thickness:1px;cursor:pointer}
+.flight-home .home-menu{position:absolute;inset:0;pointer-events:none}.flight-home .home-menu[hidden],.opening-practice[hidden]{display:none}.flight-home .home-menu button{pointer-events:auto}.flight-home .home-menu[inert] button{pointer-events:none}
+.home-title{position:absolute;top:17%;left:20px;right:20px;margin:0;text-align:center;font:normal clamp(36px,4.7vw,64px)/1.15 Georgia,serif;opacity:0;transition:opacity .9s}
+.home-top,.home-launch,.home-selections,.home-credits{opacity:0;visibility:hidden;transition:opacity .65s,visibility .65s}
+.home-revealed .home-title{opacity:1;animation:none}.home-revealed .home-top,.home-revealed .home-launch,.home-revealed .home-selections,.home-revealed .home-credits{opacity:1;visibility:visible}
+.home-top{position:absolute;top:var(--flight-controls-top);left:max(22px,env(safe-area-inset-left));right:max(22px,env(safe-area-inset-right));display:flex;align-items:start;justify-content:space-between;gap:16px}
+.home-launch{position:absolute;top:54%;left:20px;right:20px;text-align:center}.flight-home .home-play{display:block;width:190px;min-height:68px;margin:auto;padding:10px 25px;font:normal 34px/1.3 Georgia,serif}.flight-home .home-play:disabled{font-size:25px}
+.home-launch .home-resume{display:block;margin:9px auto 0}.home-launch .home-resume[hidden]{display:none}
+.home-selections{position:absolute;bottom:max(72px,calc(40px + env(safe-area-inset-bottom)));left:max(28px,env(safe-area-inset-left));right:max(28px,env(safe-area-inset-right));display:flex;justify-content:space-between;gap:20px}
+.home-selections button{max-width:42%;text-align:left;text-decoration:none;padding:8px 12px;min-height:65px}.home-selections button:last-child{text-align:right}
+.home-selections span{display:block;font:12px/1.5 Georgia,serif;margin-bottom:4px;color:#435b70}.home-selections strong{display:block;font:normal 21px/1.3 Georgia,serif;text-decoration:underline;text-underline-offset:6px;text-decoration-thickness:1px;text-wrap:balance}
+.home-credits{position:absolute;bottom:max(10px,env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);font-size:11px;white-space:nowrap}
+.home-panel{padding:26px;width:min(460px,calc(100vw - 32px));max-height:calc(100dvh - 32px);border:1px solid #52647160;border-radius:4px 7px 5px 6px;background:#f4f1eb}.home-panel::backdrop{background:#edf0eb55}.home-panel .text-button{color:#304957}.home-panel .source-close{margin:18px auto 0;font-size:16px;min-width:100px}
+.city-list{display:grid;gap:8px}.city-list button{display:flex;align-items:center;justify-content:space-between;min-height:52px;padding:10px 14px;border:1px solid #52647140;background:transparent;color:inherit;font:18px Georgia,serif;text-align:left;border-radius:3px}.city-list button[aria-pressed=true]{border-color:#42697e;background:#719bb81c}.city-list small{font-size:11px}
+.home-panel .bird-carousel{display:grid;grid-template-columns:70px minmax(0,1fr) 70px;align-items:center}.home-panel .carousel-bird{display:block;width:100%;height:auto;max-height:130px;object-fit:contain}.home-panel .bird-carousel button{font-size:12px;padding:10px 4px}.home-panel .bird-name{text-align:center;font-size:23px;margin:12px 0 4px}.home-panel .bird-local-name{text-align:center;font-size:14px;margin:0 0 10px}.home-panel .bird-count{text-align:center;font-size:12px}
+.home-panel .choice-settings{margin:0}.home-panel .difficulty-options,.home-panel .motion-options{display:flex;flex-wrap:wrap;gap:7px;border:0;padding:0;margin:0 0 20px}.home-panel fieldset legend{width:100%;text-align:center;font-size:14px;margin-bottom:12px}.home-panel fieldset label{position:relative;flex:1;min-width:0;cursor:pointer}.home-panel fieldset input{position:absolute;opacity:0;width:1px;height:1px}.home-panel fieldset label>span{display:block;text-align:center;padding:12px 4px;border:1px solid #52647155;border-radius:3px;font:14px Georgia,serif}.home-panel fieldset input:checked+span{background:#719bb81c;border-color:#42697e}.home-panel fieldset input:focus-visible+span{outline:2px solid #284970;outline-offset:3px}.home-panel .motion-options[hidden]{display:none}
+.home-panel .menu-settings{padding:12px 0}.home-panel .menu-settings summary{min-height:44px;align-content:center;font-size:15px}.home-panel .menu-settings p{font-size:12px;line-height:1.5}.home-panel .menu-setting{margin:18px 0}.home-panel .menu-setting>span:first-child{font-size:14px}.home-panel .menu-setting input[type=range]{height:34px}.home-panel .settings-defaults{min-height:44px;font-size:13px}
+.opening-practice .opening-cue{position:absolute;top:20%;left:22px;right:22px;text-align:center;pointer-events:none}.opening-practice .opening-skip{position:absolute;bottom:max(22px,env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);white-space:nowrap}.flight-home[data-phase=finish] .opening-pause,.flight-home[data-phase=finish] .opening-skip{visibility:hidden}
+.paused-flight-settings{display:none;pointer-events:auto;border:0;background:none;color:var(--flight-ink);font:14px Georgia,serif;min-height:44px;padding:8px 0;text-decoration:underline;text-underline-offset:4px}.rainfall-ui[data-status=paused] .paused-flight-settings{display:block}
+@media(max-width:600px){.home-title{top:20%;font-size:40px}.home-top{top:var(--flight-controls-top);left:10px;right:10px;gap:8px}.home-top button{font-size:12px;padding:10px 6px}.home-launch{top:52%}.flight-home .home-play{font-size:32px;width:170px;min-height:64px}.home-selections{left:12px;right:12px;bottom:max(77px,calc(52px + env(safe-area-inset-bottom)));gap:12px}.home-selections button{max-width:49%;padding:8px 6px}.home-selections strong{font-size:18px}.home-selections span{font-size:11px}.home-panel{padding:20px}}
+@media(orientation:landscape) and (max-height:550px){.home-title{top:17%;font-size:36px}.home-top{top:var(--flight-controls-top);left:16px;right:16px}.home-top button{font-size:12px}.home-launch{top:48%}.flight-home .home-play{font-size:28px;min-height:52px}.home-selections{bottom:34px;left:20px;right:20px}.home-selections button{min-height:50px}.home-selections strong{font-size:17px}.home-credits{bottom:0;min-height:32px}.home-launch .home-resume{margin-top:0;font-size:12px;min-height:36px}.opening-practice .opening-cue{top:23%;font-size:25px}.opening-practice .opening-skip{bottom:6px}}
+@media(prefers-reduced-motion:reduce){.home-title,.home-top,.home-launch,.home-selections,.home-credits{transition:none;animation:none!important}}
+.flight-home>.choice-loading{position:absolute;top:calc(54% - 14px);left:24px;right:24px;transform:translateY(-100%);margin:0;text-align:center;font:13px/1.5 Georgia,serif;pointer-events:none}
+
+.settings-panel[open]{display:flex;flex-direction:column;overflow:hidden}
+.settings-panel>.choice-settings{overflow:auto;min-height:0;flex:1 1 auto;padding:3px 5px;overscroll-behavior:contain}
+.settings-panel>h2,.settings-panel>.source-close{flex:none}
+.settings-panel>.source-close{width:100%;margin-top:12px;border-top:1px solid #52647125;padding-top:14px}
+.home-panel fieldset label>span{min-height:44px;align-content:center}
+
+/* Arrival uses the scene clock, including pauses for loading and hidden tabs. */
+.flight-home.arrival-playing{background:#0d1722}
+.flight-home .home-title{opacity:var(--arrival-title,0);animation:none;transition:none}
+.flight-home .home-launch{opacity:var(--arrival-play,0);transition:none}
+.flight-home .home-top,.flight-home .home-selections,.flight-home .home-credits{opacity:var(--arrival-controls,0);transition:none}
+.flight-home.arrival-playing .home-launch,.flight-home.arrival-playing .home-top,.flight-home.arrival-playing .home-selections,.flight-home.arrival-playing .home-credits{visibility:visible}
+.arrival-lettering{position:absolute;inset:0;pointer-events:none;text-align:center}
+.arrival-wordmark{position:absolute;top:37%;left:20px;right:20px;font:normal clamp(30px,4vw,52px)/1.2 Georgia,serif;color:#e8e9e3;opacity:var(--arrival-wordmark,0);margin:0}
+.flight-home.arrival-playing>.choice-loading{color:color-mix(in srgb,#e8e9e3 calc(100% * (1 - var(--arrival-title,0))),#506477)}
+.city-panel[open]{display:flex;flex-direction:column;overflow:hidden;width:min(680px,calc(100vw - 32px));box-sizing:border-box}
+.city-panel>h2{flex:none;margin-bottom:10px}
+.city-panel>.source-close{flex:none;width:100%;border-top:1px solid #52647125;margin-top:12px;padding-top:12px}
+.city-card-key,.result-card .city-card-key{font:11px/1.45 Georgia,serif;color:#506477;text-align:center;margin:0 0 14px}
+.city-list{grid-template-columns:repeat(2,minmax(0,1fr));grid-auto-rows:max-content;align-content:start;overflow:auto;min-height:0;padding:3px;overscroll-behavior:contain}
+.city-list .city-card,.destination-cities .city-card{display:grid;grid-template-columns:1fr;align-items:stretch;min-width:0;padding:0;overflow:hidden;border:1px solid #52647155;border-radius:3px;background:transparent;color:inherit;text-align:left;cursor:pointer}
+.city-list .city-card[aria-pressed=true],.destination-cities .city-card[aria-pressed=true]{border-color:#42697e;background:#719bb81c}
+.city-card:focus-visible{outline:2px solid #284970;outline-offset:2px}
+.city-card-painting{display:block;width:100%;height:72px;overflow:hidden;background:#e1e8e8;font:11px Georgia,serif}
+.city-card-painting img{display:block;width:100%;height:100%;object-fit:cover}
+.city-card-body{display:block;padding:8px 12px;min-width:0}
+.city-card-name{display:block;font:18px/1.3 Georgia,serif}
+.city-card-signature{display:block;width:100%;max-width:180px;min-height:28px;font:10px/1.4 Georgia,serif}
+.city-card-signature svg{display:block;width:100%;height:auto}
+.city-list .city-card small:empty{display:none}
+.city-card small{display:block;min-height:14px;font:10px/1.4 Georgia,serif;color:#506477}
+.destination-cities .city-card-painting{height:65px}
+.destination-cities .city-card-body{padding:6px}
+.destination-cities .city-card-name{font-size:14px}
+.destination-cities .city-card small{font-size:10px;margin-top:0}
+.result-navigation{display:flex;justify-content:center;flex-wrap:wrap;gap:0 6px;margin-top:14px;border-top:1px solid #52647125;padding-top:6px}
+.result-navigation .text-button{font-size:12px;padding:10px 7px}
+.pause-actions{display:flex;flex-direction:column;gap:8px;align-items:stretch}
+.pause-actions .ink-button{margin:4px 0 12px}
+.flight-achievement .result-footnote{display:block}
+@media(max-width:600px){
+ .city-list{grid-template-columns:1fr;gap:7px}
+ .city-list .city-card{grid-template-columns:105px minmax(0,1fr);min-height:78px}
+ .city-list .city-card-painting{position:relative;height:100%;min-height:78px}
+ .city-list .city-card-painting img{position:absolute;inset:0;height:240%;transform:translateY(-55%)}
+ .city-list .city-card-body{padding:6px 10px}
+ .city-list .city-card-name{font-size:17px}
+ .city-list .city-card-signature{max-width:140px}
+ .city-list .city-card small:empty{display:none}
+ .city-panel{padding:16px}
+ .city-panel>.source-close{margin-top:8px;padding-top:8px}
+ .city-card-key{font-size:10px;margin-bottom:10px}
+ .destination-cities .city-card-painting{height:48px}
+ .destination-cities .city-card-name{font-size:12px}
+ .destination-cities .city-card-body{padding:5px}
+ .result-navigation{margin-top:10px;gap:0}
+}
+@media(orientation:landscape) and (max-height:550px){
+ .city-panel[open]{width:min(800px,calc(100vw - 32px));padding:14px 20px}
+ .city-list{grid-template-columns:repeat(5,minmax(0,1fr))}
+ .city-list .city-card-painting{height:58px}
+ .city-list .city-card-body{padding:6px}
+ .city-list .city-card-name{font-size:14px}
+ .city-panel>h2{font-size:23px;margin-bottom:6px}
+ .city-panel .city-card-key{margin-bottom:6px}
+ .city-panel>.source-close{margin-top:6px;padding:6px;min-height:44px}
+ .destination-cities .city-card-painting{height:48px}
+ .result-navigation{margin-top:8px}
+}
+
+#loading{position:fixed;z-index:1;background:#0d1722;color:#e8e9e3;text-align:center;padding:24px;align-content:center;gap:28px}
+body:has(#loading:not([hidden])) .rainfall-ui,body:has(#loading:not([hidden])) .flight-dock{visibility:hidden}
+.boot-wordmark{font:normal clamp(30px,4vw,52px)/1.2 Georgia,serif}.boot-status{font:13px/1.5 Georgia,serif}
+
+.city-card-painting{position:relative}
+.city-card-painting img{position:absolute;inset:0;height:240%;transform:translateY(-55%)}
+.flight-achievement[open]{display:flex;flex-direction:column;overflow:hidden;box-sizing:border-box;height:min(800px,calc(100dvh - 28px))}
+.flight-achievement .result-bird{flex:none}
+.flight-achievement .result-content{flex:1;min-height:0;overflow:auto;overscroll-behavior:contain}
+.completion-footer{position:relative;flex:none;padding:14px 24px 8px;background:#f4f1eb;border-top:1px solid #52647135}
+.completion-footer .result-navigation{margin-top:8px}
+.result-card .completion-footer .result-footnote{margin:8px 0 0}
+.settings-application{font:12px/1.5 Georgia,serif;text-align:center;color:#506477;flex:none}
+@media(max-width:600px){.completion-footer{padding:10px 16px 4px}.flight-achievement .achievement-actions{grid-template-columns:1fr 1fr;gap:10px}.completion-footer .result-navigation{margin-top:4px}}
+@media(orientation:landscape) and (max-height:550px){
+ .flight-achievement[open]{padding:0;min-height:0;display:grid;grid-template-columns:120px minmax(0,1fr);grid-template-rows:minmax(0,1fr) auto;height:calc(100dvh - 28px)}
+ .flight-achievement .result-bird{position:relative;left:auto;top:auto;transform:none;margin:0;grid-column:1;grid-row:1 / 3;width:120px;align-self:center}
+ .flight-achievement .result-scenery{width:120px}
+ .flight-achievement .result-content{grid-column:2;grid-row:1;height:auto;box-sizing:border-box;border-top:0}
+ .completion-footer{grid-column:2;grid-row:2;padding:6px 16px 2px}
+ .completion-footer .result-navigation{padding-top:0;margin-top:4px}
+ .completion-footer .result-navigation .text-button{min-height:36px;padding:7px}
+ .result-card .completion-footer .result-footnote{font-size:10px;margin-top:3px}
+}
+
+@media(orientation:landscape) and (max-height:550px){.flight-retry{min-height:0}.pause-panel{padding:14px 24px}.pause-panel h2{margin-bottom:10px}.pause-actions{gap:0}.pause-actions .ink-button{margin:0 0 4px}}
+
+.boot-wordmark{position:absolute;top:37%;left:20px;right:20px}.boot-progress{position:absolute;top:calc(54% - 14px);left:24px;right:24px;transform:translateY(-100%)}
+
+/* Match the flight viewport so the lesson hands over without resizing the world. */
+.flight-home .opening-canvas{height:calc(100% - 30px - env(safe-area-inset-bottom))}
+.opening-instructions{position:absolute;top:15%;left:22px;right:22px;text-align:center;pointer-events:none}
+.opening-practice .opening-instructions .opening-cue{position:static;font-size:clamp(23px,3vw,34px);margin:0 0 10px}
+.opening-instructions .opening-detail{max-width:480px;margin:0 auto;text-wrap:balance}
+.flight-home[data-phase=finish] .opening-pause,.flight-home[data-phase=finish] .opening-skip{visibility:visible}
+@media(orientation:landscape) and (max-height:550px){
+ .flight-home .opening-canvas{height:calc(100% - 12px - env(safe-area-inset-bottom))}
+ .opening-instructions{top:16%;left:18%;right:18%}
+ .opening-practice .opening-instructions .opening-cue{font-size:23px;margin-bottom:5px}
+ .opening-instructions .opening-detail{font-size:12px}
+}
+.opening-instructions{isolation:isolate}
+.opening-instructions::before{content:"";position:absolute;z-index:-1;inset:-20px -10px;background:#f4f1eb;opacity:.82;mask-image:radial-gradient(ellipse,#000 25%,#0009 55%,transparent 75%)}
+
+.home-subtitle{display:block;font:normal clamp(16px,1.6vw,21px)/1.4 Georgia,serif;letter-spacing:.04em;margin-top:9px;color:#3e5668}
+@media(orientation:landscape) and (max-height:550px){.home-subtitle{font-size:15px;margin-top:4px}}
+
+/* A slim rainfall-blue gauge, shared by boot and city preparation. */
+.loading-label{display:block}
+.loading-meter{display:block;position:relative;width:min(180px,60vw);height:5px;margin:11px auto 0;overflow:hidden;border:1px solid #52647180;border-radius:2px;background:#f4f1eb99}
+.loading-meter[hidden]{display:none}
+.loading-fill{display:block;width:100%;height:100%;background:#719bb8;transform:scaleX(0);transform-origin:left center;transition:transform .18s ease-out}
+#loading .loading-meter,.arrival-playing .loading-meter{border-color:#9eb5c380;background:#e8e9e31a}
+#loading .loading-fill,.arrival-playing .loading-fill{background:#92b4ca}
+@media(max-width:600px){.flight-home>.choice-loading,.boot-progress{top:calc(52% - 14px)}}
+@media(orientation:landscape) and (max-height:550px){.flight-home>.choice-loading,.boot-progress{top:calc(48% - 10px)}}
+@media(orientation:landscape) and (max-height:360px){
+ .flight-home>.choice-loading:not([hidden]),.boot-progress{top:calc(48% - 4px);display:flex;align-items:center;justify-content:center;gap:10px;font-size:11px;line-height:1.2}
+ .flight-home>.choice-loading .loading-meter,.boot-progress .loading-meter{width:110px;margin:0}
+ .boot-status{font-size:11px;line-height:1.2}
+ .boot-wordmark,.arrival-wordmark{top:25%}
+}
+@media(prefers-reduced-motion:reduce){.loading-fill{transition:none}}
+
+/* Natural sound controls stay available during the title descent and flight. */
+.sound-toggle{min-height:44px;min-width:84px;pointer-events:auto;font:13px/1.4 Georgia,serif;text-decoration:underline;text-underline-offset:4px;padding:8px;border:0;background:none;color:var(--flight-ink,#344d62);cursor:pointer}
+.home-sound{position:absolute;left:max(14px,env(safe-area-inset-left));bottom:max(12px,env(safe-area-inset-bottom));z-index:4}
+.arrival-playing .home-sound{color:#f4f1eb;background:#263d5066;border-radius:3px}
+.flight-sound{position:absolute;right:80px;top:15px}
+.settings-sound,.pause-sound{display:block;margin:8px auto}
+@media(orientation:landscape) and (max-height:550px){.flight-sound{top:5px}.home-sound{bottom:0;font-size:12px}.home-credits{bottom:0}}
+@media(max-width:370px){.home-sound{left:4px;min-width:76px;font-size:11px}.home-credits{left:auto;right:12px;transform:none}}
+
+.sound-mixer-panel{width:min(820px,calc(100vw - 24px));max-height:calc(100dvh - 24px);overflow:auto;text-align:left}
+.sound-mixer{font:14px/1.5 Georgia,serif;color:#344d62}
+.sound-mixer p{font-size:13px;max-width:none}.mix-intro{margin-top:0}
+.mix-toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:6px 16px;padding:8px 0;border-bottom:1px solid #344d6240;position:sticky;top:0;background:#f4f1eb;z-index:2}
+.sound-mixer button,.mixer-open{min-height:40px;padding:6px 8px;color:inherit;font:13px Georgia,serif;cursor:pointer}.mixer-open{display:block;margin:8px auto}
+.sound-mixer fieldset{border:0;padding:4px 0 12px;margin:0}.sound-mixer legend,.sound-mixer summary{font-size:17px;font-weight:normal;padding:12px 0}
+.home-panel .sound-mixer fieldset input{position:static;opacity:1;height:auto}
+.home-panel .sound-mixer fieldset legend{text-align:left;font-size:17px;margin-bottom:0}
+.home-panel .sound-mixer .mix-inputs input[type=range]{width:100%}
+.home-panel .sound-mixer .mix-inputs input[type=number]{width:60px}
+.sound-mixer details{border-top:1px solid #344d6240;padding:0 0 10px}.sound-mixer summary{cursor:pointer}
+.mix-row{display:grid;grid-template-columns:minmax(130px,1fr) minmax(240px,1.4fr);align-items:center;gap:10px;min-height:46px;border-bottom:1px solid #344d6214}
+.mix-inputs{display:grid;grid-template-columns:minmax(70px,1fr) 60px 16px 74px;gap:6px;align-items:center}
+.mix-inputs input[type=range]{width:100%;min-width:0;margin:0;accent-color:#526e86;min-height:36px}
+.mix-inputs input[type=number]{box-sizing:border-box;width:60px;min-height:34px;border:1px solid #344d6260;background:#ffffff40;border-radius:2px;color:inherit;font:13px Georgia,serif;padding:4px}
+.mix-inputs>span{font-size:12px}.mix-status,.mix-message{margin:8px 0}.mix-message:empty{display:none}
+.mix-unavailable{color:#65717b}.mix-city-label{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin:8px 0}.mix-city{font:14px Georgia,serif;color:inherit;background:#ffffff60;border:1px solid #344d6260;min-height:38px;max-width:100%}
+.mix-checkbox{display:flex;gap:10px;align-items:center;padding:12px 0;min-height:44px}
+.mix-json,.mix-import{display:block;box-sizing:border-box;width:100%;height:220px;border:1px solid #344d6260;background:#ffffff50;padding:12px;color:#344d62;font:12px/1.5 monospace;resize:vertical}
+.mix-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
+.sound-mixer-panel>.source-close{display:block;margin:10px auto 0}
+.sound-mixer button:disabled{opacity:.45;cursor:default}
+@media(max-width:550px){.sound-mixer-panel{padding:16px}.mix-row{grid-template-columns:1fr;gap:0;padding:8px 0}.mix-inputs{grid-template-columns:minmax(70px,1fr) 60px 16px 74px}.mix-toolbar{gap:2px 6px}.mix-toolbar button{font-size:12px}.sound-mixer-panel h2{font-size:24px}}
+
+/* Temperature keeps the shared city palette and a fixed data scale. */
+.home-metric{display:flex;justify-content:center;gap:24px;margin:0 0 14px;pointer-events:auto}
+.home-metric .text-button{font:16px Georgia,serif;min-height:40px;text-decoration:none;opacity:.65;padding:6px 2px;border-bottom:1px solid transparent}
+.home-metric .text-button[aria-pressed=true]{opacity:1;border-bottom-color:#a86a39}
+.temperature-allowance{display:flex;align-items:center;gap:8px;font:11px Georgia,serif;color:#435b70;margin-top:8px}
+.temperature-allowance meter{width:85px;height:8px;appearance:none;border:0;background:#52647120;border-radius:0}
+.temperature-allowance meter::-webkit-meter-bar{background:#52647120;border:0;border-radius:0}
+.temperature-allowance meter::-webkit-meter-optimum-value{background:#658079}
+.temperature-allowance meter::-moz-meter-bar{background:#658079}
+.temperature-ui[data-outside=true] .allowance-value,.temperature-ui[data-outside=true] .rainfall-cue{color:#965a35}
+.temperature-ui .rainfall-cue{max-width:280px;font-size:12px}
+.temperature-mode .flight-achievement .achievement-chart{width:340px;max-width:100%}
+.temperature-mode .flight-retry .retry-signature{width:240px;max-width:100%}
+@media(max-width:600px){.home-metric{gap:22px;margin-bottom:10px}.home-metric .text-button{font-size:14px}.temperature-ui .rainfall-readout{font-size:17px}.temperature-allowance{font-size:10px}}
+@media(orientation:landscape) and (max-height:550px){.home-metric{margin-bottom:2px;gap:20px}.home-metric .text-button{font-size:12px;min-height:28px}.temperature-ui .rainfall-progress{font-size:10px}.temperature-allowance{margin-top:3px;font-size:9px}.temperature-ui .rainfall-cue{font-size:10px;margin-top:3px}.temperature-mode .flight-achievement .achievement-chart{width:280px}}
+.target-next{font:14px/1.4 Georgia,serif;margin-top:10px;color:#435b70}
+.target-ui .rainfall-cue{max-width:300px}
+.temperature-target-trial .home-selections{justify-content:space-between}
+.temperature-target-trial [hidden]{display:none!important}
+@media(max-width:600px){.target-next{font-size:13px}.target-ui .rainfall-progress{max-width:250px}}
+@media(orientation:landscape) and (max-height:550px){.target-next{font-size:11px;margin-top:4px}.target-ui .rainfall-cue{font-size:10px}}
+.temperature-target-trial .flight-achievement[open]{height:fit-content;max-height:calc(100dvh - 32px);min-height:0}
+.temperature-target-trial .flight-achievement .result-content{flex:0 1 auto}
+.temperature-target-trial .achievement-actions{display:flex;justify-content:center}
+
+body.first-flight .target-ui .rainfall-chart{display:block}
+.collection-control-toggle{position:absolute;right:22px;top:43px;pointer-events:auto;font:12px Georgia,serif}
+.collection-controls{width:min(440px,calc(100vw - 28px));box-sizing:border-box;max-height:calc(100dvh - 28px);overflow:auto;padding:22px 24px;text-align:left}
+.collection-controls h2{font-size:25px;margin:0 0 8px}.collection-controls>p{font-size:12px;line-height:1.5}
+.collection-field{display:grid;grid-template-columns:1fr auto;gap:5px 12px;margin:16px 0;font:14px Georgia,serif}.collection-field output{font-size:12px;font-variant-numeric:tabular-nums}.collection-field input,.collection-field small{grid-column:1/-1}.collection-field input{width:100%;margin:0;accent-color:#416c87;min-height:26px}.collection-field small{font-size:11px;color:#526471;line-height:1.4}
+.collection-controls summary{cursor:pointer;font-size:13px;padding:7px 0}.collection-actions{display:flex;gap:18px;align-items:center;justify-content:space-between}.collection-actions button{font-size:13px}.collection-actions .ink-button{font-size:17px}.collection-copy textarea{box-sizing:border-box;width:100%;font:11px/1.5 Georgia,serif;color:#344d62;background:#f4f1eb;border:1px solid #52647166;padding:8px}.collection-status{min-height:18px;margin:8px 0}
+@media(orientation:landscape) and (max-height:550px){.collection-controls{width:560px}.collection-field{margin:9px 0}.collection-control-toggle{top:34px;font-size:11px}}
+
+/* Shared menu rhythm and a fixed, usable footer across play and dialogs. */
+.rainfall-mode{--utility-height:calc(48px + env(safe-area-inset-bottom))}
+.rainfall-mode .flight-dock{height:var(--utility-height)}
+.game-utilities{position:fixed;z-index:20;inset:auto 0 0;height:var(--utility-height);padding:0 max(10px,env(safe-area-inset-right)) env(safe-area-inset-bottom) max(10px,env(safe-area-inset-left));display:grid;grid-template-columns:1fr 1fr 1fr;align-items:center;background:#f4f1eb url('../assets/prepared/ui-paper.webp') center bottom/1200px auto;border-top:1px solid #52647125;pointer-events:auto;color:#344d62}
+.game-utilities .text-button{position:static;transform:none;margin:0;padding:8px 5px;min-height:44px;min-width:0;font:12px/1.4 Georgia,serif;white-space:nowrap}
+.game-utilities .text-button:first-child{text-align:left;justify-self:start}.game-utilities .text-button:last-child{text-align:right;justify-self:end}.game-utilities button:disabled{opacity:.55;cursor:default}
+.flight-home{height:calc(100dvh - var(--utility-height));overflow:visible}
+.flight-home .opening-canvas{height:100%}
+.flight-home .home-title{top:18%}
+.flight-home .home-launch{top:43%;left:50%;right:auto;transform:translateX(-50%);width:min(540px,calc(100% - 36px))}
+.home-metric{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:0 0 18px}
+.home-metric .text-button{opacity:1;border:1px solid #52647155;border-radius:4px;padding:12px 10px;min-height:74px;color:#344d62;background:#f4f1eb70;text-decoration:none}
+.home-metric .text-button[aria-pressed=true]{border-color:#a86a39;background:#f4f1ebc4}
+.home-metric strong{display:block;font:normal 18px/1.3 Georgia,serif}.home-metric small{display:block;font:11px/1.4 Georgia,serif;margin-top:6px;color:#526471}
+.flight-home .home-selections{bottom:26px}
+.home-panel,.collection-controls,.flight-tuning{max-height:calc(100dvh - var(--utility-height) - 48px);margin-top:auto;margin-bottom:calc(var(--utility-height) + 24px);overscroll-behavior:contain}
+.home-panel:not([open]),.collection-controls:not([open]){display:none}
+.home-panel h2{margin-bottom:16px}.home-panel .source-close{margin-top:14px}
+.home-panel .difficulty-options{margin-bottom:12px}.home-panel .menu-settings{padding:4px 0;border:0}.home-panel .menu-settings[hidden]{display:none}
+.panel-actions{display:flex;align-items:center;justify-content:space-between;gap:24px;margin-top:18px}.panel-actions .ink-button{font-size:19px}.panel-actions .text-button{font-size:14px}
+.pause-panel{width:min(420px,calc(100vw - 32px))}
+.pause-actions{display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:stretch}
+.pause-actions .pause-resume{grid-column:1/-1;margin:0 0 8px}.pause-actions .pause-restart,.pause-actions .pause-settings{min-height:58px;border:1px solid #52647155;border-radius:3px;text-decoration:none;font-size:15px}.pause-actions .pause-menu{grid-column:1/-1;margin:0}
+.flight-achievement[open]{height:min(760px,calc(100dvh - var(--utility-height) - 48px));margin-bottom:calc(var(--utility-height) + 24px)}
+.flight-retry{max-height:calc(100dvh - var(--utility-height) - 48px);overflow:auto;margin-bottom:calc(var(--utility-height) + 24px)}
+.sound-mixer-panel{width:min(480px,calc(100vw - 32px))}
+.simple-mixer>p{font-size:13px;margin-bottom:12px}.simple-mixer .mix-city-label{display:grid;grid-template-columns:auto 1fr;gap:18px;font-size:14px}.simple-mixer .mix-city{width:100%;min-height:44px;padding:7px}
+.simple-mix-row{display:grid;grid-template-columns:1fr auto;gap:6px 12px;margin:14px 0;font:14px Georgia,serif}.simple-mix-row[hidden]{display:none}.simple-mix-row output{font-size:12px;font-variant-numeric:tabular-nums}.simple-mix-row input{grid-column:1/-1;width:100%;min-height:32px;accent-color:#416c87;margin:0}
+.simple-presets{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:16px 0}.simple-presets button{border:1px solid #52647155;border-radius:3px;text-decoration:none;min-height:44px}.simple-presets button[aria-pressed=true]{border-color:#42697e;background:#719bb81c}.simple-mix-levels[hidden]{display:none}
+.simple-mixer .mix-weather-note,.simple-mixer .mix-status{font-size:12px;line-height:1.5}.simple-mixer .mix-json{height:130px}.simple-mixer .mix-export summary{font-size:13px;min-height:44px}.simple-mixer .mix-copy{display:block;margin:0 auto}
+@media(max-width:600px){.flight-home .home-title{top:17%;font-size:37px}.flight-home .home-launch{top:41%;width:calc(100% - 32px)}.home-metric{gap:10px}.home-metric strong{font-size:16px}.home-metric .text-button{padding:10px 7px;min-height:82px}.home-metric small{font-size:11px}.flight-home .home-selections{bottom:24px}.home-panel,.collection-controls{padding:20px}.panel-actions{gap:14px}.panel-actions .ink-button{font-size:18px}}
+@media(max-height:680px) and (orientation:portrait){.flight-home .home-title{top:15%;font-size:32px}.flight-home .home-launch{top:37%}.home-metric{margin-bottom:12px}.home-metric .text-button{min-height:74px}.flight-home .home-play{min-height:52px;font-size:29px}.flight-home .home-selections{bottom:12px}.home-selections strong{font-size:16px}.home-selections button{min-height:50px}}
+@media(orientation:landscape) and (max-height:550px){.flight-home .home-title{left:4%;right:auto;width:36%;top:26%;font-size:34px}.flight-home .home-launch{top:22%;left:auto;right:4%;transform:none;width:50%}.home-metric{gap:10px;margin-bottom:8px}.home-metric strong{font-size:15px}.home-metric small{font-size:10px}.home-metric .text-button{min-height:65px;padding:8px}.flight-home .home-play{font-size:25px;min-height:44px}.flight-home .home-selections{bottom:4px;left:22px;right:22px}.home-selections strong{font-size:15px}.home-panel,.collection-controls{width:min(580px,calc(100vw - 32px));max-height:calc(100dvh - var(--utility-height) - 24px);margin-bottom:calc(var(--utility-height) + 12px);padding:16px 22px}.pause-panel{width:400px}.pause-panel h2{font-size:23px;margin-bottom:10px}.pause-actions{gap:8px}.pause-actions .pause-resume{margin-bottom:0;min-height:44px;font-size:23px}.pause-actions .pause-restart,.pause-actions .pause-settings{min-height:44px}.pause-actions .pause-menu{min-height:36px}.flight-achievement[open]{height:calc(100dvh - var(--utility-height) - 24px);margin-bottom:calc(var(--utility-height) + 12px)}.flight-retry{max-height:calc(100dvh - var(--utility-height) - 24px);margin-bottom:calc(var(--utility-height) + 12px)}.sound-mixer-panel{width:520px}}
+.home-panel,.collection-controls,.flight-tuning,.flight-retry,.flight-achievement[open]{position:fixed;top:0;bottom:var(--utility-height);margin:auto}
+.credits-data{border-top:1px solid #52647135;margin:16px 0}.credits-data summary{cursor:pointer;min-height:44px;padding:10px 0;font-size:14px}.credits-data p{font-size:12px;line-height:1.65}.flight-default-note{font-size:13px;line-height:1.5;text-align:center;color:#526471}
+@media(orientation:landscape) and (max-height:550px){.bird-panel h2{font-size:23px;margin-bottom:6px}.bird-panel .carousel-bird{max-height:88px}.bird-panel .bird-name{font-size:20px;margin:6px 0 2px}.bird-panel .bird-local-name{font-size:12px;margin:0 0 4px}.bird-panel .bird-count{font-size:11px;margin:0 0 4px}.bird-panel .source-close{margin-top:4px;min-height:40px}}
+/* Auto-sized dialogs need the controls' natural height before applying the viewport cap. */
+.sound-mixer-panel[open],.settings-panel[open],.collection-controls[open]{display:flex;flex-direction:column;height:fit-content;overflow:hidden}
+.sound-mixer-content,.settings-panel .choice-settings,.hoop-settings-scroll{min-height:0;overflow:auto;overscroll-behavior:contain;flex:0 1 auto;padding-right:4px}
+.sound-mixer-panel>h2,.sound-mixer-panel>.source-close,.settings-panel>h2,.settings-panel>.panel-actions,.collection-controls>h2,.collection-controls>p,.collection-controls>.collection-actions{flex:none}
+.sound-mixer-panel>.source-close{margin:8px auto 0}.settings-panel>.panel-actions,.collection-controls>.collection-actions{padding-top:8px;border-top:1px solid #52647125}
+.home-metric .text-button,.home-metric .text-button[aria-pressed=true]{background:#f4f1ebeb}
+
+/* Help, Settings and the site exit share a safe-area-aware top edge. */
+.rainfall-mode{--flight-controls-top:max(10px,env(safe-area-inset-top))}
+.game-utilities{display:flex;justify-content:flex-end}
+.game-settings-toggle{position:fixed;z-index:24;top:var(--flight-controls-top);right:max(14px,env(safe-area-inset-right));min-height:44px;padding:8px 10px;pointer-events:auto;font:14px Georgia,serif;color:#344d62;background:#f4f1ebd9;border-radius:3px}
+.game-settings-toggle[hidden]{display:none}
+body:not(.flight-debug) .flight-pause-toggle{right:110px;top:12px}
+.home-top{right:110px}
+.game-settings-panel{width:min(440px,calc(100vw - 32px))}
+.settings-sections{text-align:left;display:grid;gap:16px}
+.settings-sections>.settings-flight{padding:16px;border:1px solid #52647155;border-radius:3px;text-align:left;text-decoration:none;font-size:18px}
+.settings-sound-section{border-top:1px solid #52647135;padding-top:12px;display:grid;grid-template-columns:1fr 1fr;gap:8px;align-items:center}
+.settings-sound-section h3{grid-column:1/-1;font:18px Georgia,serif;margin:0 0 4px}
+.settings-sound-section .sound-toggle{margin:0;text-align:left}
+.settings-sound-section .settings-mixer{font-size:14px}
+.mixer-sound-switch{flex:none;text-align:left;border-bottom:1px solid #52647125;margin-bottom:8px}
+.mode-preview{display:block;height:56px;margin-top:5px;pointer-events:none}
+.mode-preview svg{display:block;width:100%;height:100%}
+.flight-home .home-launch{top:39%}
+.home-metric .text-button{display:flex;flex-direction:column;justify-content:flex-start}
+.home-metric .mode-preview{align-self:stretch}
+.home-metric small{min-height:30px}
+@media(max-width:600px){.mode-preview{height:44px}.flight-home .home-launch{top:36%}.home-metric strong{font-size:15px}.home-metric small{font-size:10px}.game-settings-toggle{font-size:12px;right:max(10px,env(safe-area-inset-right))}}
+@media(max-height:680px) and (orientation:portrait){.flight-home .home-title{top:14%}.flight-home .home-launch{top:33%}.mode-preview{height:38px}.home-metric .text-button{padding:8px 6px}.home-metric small{min-height:28px}}
+@media(orientation:landscape) and (max-height:550px){.rainfall-mode{--flight-controls-top:max(4px,env(safe-area-inset-top))}.game-settings-toggle{font-size:12px}.flight-home .home-launch{top:18%}.mode-preview{height:32px;margin-top:0}.home-metric small{min-height:0;margin-top:3px}.home-metric .text-button{padding:6px}.home-metric{margin-bottom:4px}body:not(.flight-debug) .flight-pause-toggle{top:4px;right:100px}}
+
+/* Compact flight gutter with stable controls at either edge. */
+.rainfall-mode{--utility-height:calc(36px + env(safe-area-inset-bottom))}
+.game-utilities{justify-content:space-between;gap:12px;padding-left:max(12px,env(safe-area-inset-left));padding-right:max(12px,env(safe-area-inset-right))}
+.game-utilities .text-button,.game-utilities .sound-toggle,.game-utilities .flight-choice-toggle,.game-utilities .flight-pause-toggle{position:static;transform:none;margin:0;padding:3px 4px;min-height:32px;min-width:0;font:12px/1.4 Georgia,serif;white-space:nowrap;background:none;border:0}
+.utility-flight{display:flex;gap:16px;align-items:center}.utility-flight[hidden]{display:none}
+.game-settings-toggle{background:none;border-radius:0}
+.settings-credits{border-top:1px solid #52647135;padding-top:14px;text-align:left;font-size:14px}
+.rainfall-readout{font-family:'Avenir Next','Segoe UI',sans-serif;font-size:22px}
+.temperature-ui .rainfall-readout{font-size:19px}
+@media(max-width:600px){.rainfall-readout{font-size:19px}.temperature-ui .rainfall-readout{font-size:16px}}
+@media(orientation:landscape) and (max-height:550px){.rainfall-mode{--utility-height:calc(32px + env(safe-area-inset-bottom))}.rainfall-readout{font-size:18px}.temperature-ui .rainfall-readout{font-size:16px}.game-utilities .text-button,.game-utilities .sound-toggle,.game-utilities .flight-choice-toggle,.game-utilities .flight-pause-toggle{min-height:30px}}
+.result-card h2:focus{outline:none}
+
+/* Sharing stays in menus and results; the playing gutter keeps its two actions. */
+.home-top{display:flex;gap:16px;align-items:center}
+.home-top .text-button{font-size:13px}
+.pause-actions .pause-menu{grid-column:auto}
+.flight-share-panel{width:min(560px,calc(100vw - 28px));text-align:left}
+.flight-share-panel h2{text-align:center}
+.share-card-image{display:block;width:100%;height:auto;border:1px solid #a9b6b6}
+.share-status{font-size:13px;line-height:1.4}
+.share-actions{display:flex;flex-wrap:wrap;gap:8px 18px;align-items:center;justify-content:center;margin-top:12px}
+.share-actions .ink-button{font-size:20px;min-width:120px;margin:0}
+.share-actions .text-button{font-size:15px;min-height:44px;padding:10px 4px}
+.result-navigation{flex-wrap:wrap}
+@media(max-width:600px){.home-top{gap:12px;left:16px;right:100px}.home-top .text-button{font-size:12px}.flight-share-panel{padding:18px}.share-actions{gap:4px 16px}}
+
+
+.share-status:empty{display:none}
+
+/* Shared chooser: one focus card with every destination visible below it. */
+.choice-carousel-panel{width:min(560px,calc(100vw - 24px));box-sizing:border-box;overflow:auto!important;display:block!important}
+.choice-carousel-panel:not([open]){display:none!important}
+.choice-carousel-panel .choice-rail{position:relative;display:flex;gap:12px;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;scrollbar-width:thin;padding:5px 12%;min-height:0;overscroll-behavior-x:contain;align-items:stretch;touch-action:pan-x}
+.choice-rail::after{content:'';flex:0 0 1px}
+.choice-carousel-panel .choice-rail>button{flex:0 0 100%;scroll-snap-align:center;display:flex;flex-direction:column;justify-content:flex-start;align-items:stretch;padding:0;border:1px solid #52647155;border-radius:3px;background:none;color:inherit;font:16px Georgia;text-align:left;min-width:0;overflow:hidden}
+.choice-carousel-panel .choice-rail>button[aria-pressed=true]{border-color:#416c87;background:#719bb80c}
+.choice-carousel-panel .city-card-painting{height:135px;min-height:135px}
+.choice-carousel-panel .city-card-body{padding:12px 16px}
+.choice-carousel-panel .city-card-name{font-size:23px}
+.choice-carousel-panel .city-card-signature{max-width:none}
+.choice-carousel-panel .bird-card canvas{width:100%;height:auto;max-height:180px;object-fit:contain}
+.choice-carousel-panel .bird-card strong{font:22px/1.3 Georgia;padding:4px 16px;text-align:center}
+.choice-carousel-panel .bird-card>span{font:14px/1.6 Georgia;padding:8px 16px 20px;text-align:center}
+.choice-strip{display:flex;gap:5px;margin:14px 0 0}
+.choice-thumbnail{flex:1;min-width:0;padding:5px 2px;border:1px solid transparent;background:none;color:inherit;font:10px Georgia;cursor:pointer;border-radius:3px}
+.choice-thumbnail[aria-pressed=true]{border-color:#416c87;background:#719bb80c}
+.choice-thumbnail img{display:block;width:100%;height:34px;object-fit:contain;margin-bottom:5px}
+.city-panel .choice-thumbnail img{object-fit:cover}
+.choice-thumbnail span{display:block;overflow-wrap:anywhere}
+.choice-navigation{display:flex;align-items:center;justify-content:space-between;font:12px Georgia;margin-top:5px}
+.choice-carousel-panel .source-close{display:block;margin:4px auto 0}
+.settings-sections{gap:10px}
+.settings-sections>.text-button{display:block;width:100%;padding:16px;border:1px solid #52647155;border-radius:3px;text-align:left;text-decoration:none;font:18px Georgia;min-height:58px}
+.advanced-flight{margin:12px 0;border-top:1px solid #52647135;border-bottom:1px solid #52647135;padding:6px 0}
+.advanced-flight summary,.credits-recordings summary{cursor:pointer;min-height:44px;align-content:center;font:15px Georgia}
+.recording-credits{font:13px/1.6 Georgia;overflow-wrap:anywhere}
+.recording-credits ul{padding-left:18px}.recording-credits li{margin:18px 0}
+.result-choices{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:16px auto 0;max-width:460px}
+.result-choices .text-button{border:1px solid #52647145;border-radius:3px;text-decoration:none;padding:12px 8px;text-align:left;font-size:14px;min-width:0}
+.result-choices span{display:block;font:11px Georgia;margin-bottom:5px;color:#53656b}
+.result-choices strong{display:block;font:15px/1.35 Georgia}
+.result-share{display:block;margin:8px auto;min-width:140px;border:1px solid #52647155;border-radius:3px;text-decoration:none}
+.result-navigation{border-top:0;margin-top:6px;gap:14px}
+.flight-achievement .achievement-actions{display:flex;justify-content:center}
+.flight-achievement .achievement-actions [hidden]{display:none}
+.share-preview{position:relative;aspect-ratio:4/3;width:100%;background:#e3e8e440;border:1px solid #a9b6b6;display:grid;place-items:center}
+.share-preview .share-card-image{border:0;width:100%;height:100%;position:absolute;inset:0}
+.share-placeholder{font:15px Georgia;color:#53656b}
+.share-context{text-align:center;font:13px/1.5 Georgia!important;margin:12px 0!important}
+@media(orientation:landscape) and (max-height:550px){.choice-carousel-panel .city-card-painting{height:75px;min-height:75px}.choice-carousel-panel .bird-card canvas{height:90px}.choice-carousel-panel .city-card-signature{max-width:200px;margin:auto}.choice-thumbnail img{height:24px}}
+
+.bird-panel .choice-thumbnail{font-size:9px}
+.result-card [hidden]{display:none!important}
+@media(min-height:551px){.flight-achievement[open]{height:fit-content;max-height:calc(100dvh - var(--utility-height) - 32px)}.flight-achievement .result-content{flex:0 1 auto}}
+
+/* Keep lesson actions in one row, including the longer Resume lesson label. */
+.opening-controls{position:fixed;z-index:24;top:max(10px,env(safe-area-inset-top));right:max(14px,env(safe-area-inset-right));display:flex;align-items:center;gap:8px}
+.opening-controls .opening-pause,.opening-controls .game-settings-toggle{position:static;white-space:nowrap}
+@media(max-width:600px){.opening-controls{right:max(10px,env(safe-area-inset-right))}}
+@media(orientation:landscape) and (max-height:550px){.opening-controls{top:max(3px,env(safe-area-inset-top))}}
+
+.flight-first-hint{position:absolute;top:28%;left:20px;right:20px;text-align:center;pointer-events:none;color:#263d50;font:18px/1.5 Georgia,serif;text-shadow:0 1px 5px #f4f1eb,0 0 12px #f4f1eb}.flight-first-hint[hidden]{display:none}
+
+/* Keep touch controls inside rounded corners, including browsers with zero insets. */
+@media (pointer:coarse),(max-width:600px),(orientation:landscape) and (max-height:550px){
+ .rainfall-mode{--utility-bottom:max(12px,env(safe-area-inset-bottom));--utility-height:calc(40px + var(--utility-bottom))}
+ .game-utilities{padding:0 max(24px,calc(12px + env(safe-area-inset-right))) var(--utility-bottom) max(24px,calc(12px + env(safe-area-inset-left)))}
+}
+
+/* Completion offers the next city and another circuit at the same weight. */
+.flight-achievement .completion-footer{padding-bottom:12px}
+.flight-achievement .achievement-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.flight-achievement .achievement-actions .ink-button{font-size:18px;line-height:1.25;min-height:52px;padding:8px 10px}
+.flight-achievement .completion-footer .result-share{border:0;min-width:0;min-height:44px;padding:10px 12px;margin:2px auto;text-decoration:underline}
+.flight-achievement .completion-footer .result-navigation{margin:0}
+.flight-achievement .result-content .achievement-source{margin-bottom:4px}
+@media(max-width:600px){.flight-achievement .achievement-actions{grid-template-columns:1fr;gap:8px}}
+@media(orientation:landscape) and (max-height:550px){
+ .rainfall-mode{--utility-bottom:max(4px,env(safe-area-inset-bottom));--utility-height:calc(32px + var(--utility-bottom))}
+ .flight-achievement .achievement-actions{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .flight-achievement .achievement-actions .ink-button{font-size:16px;min-height:40px;padding:5px 8px}
+}

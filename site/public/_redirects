@@ -3,7 +3,7 @@
 # the trailing slash to match the canonical URLs (avoids an extra hop).
 # Format rename (Jul 2026): beats → play, reads → read, dashboards → explore.
 # Splats carry deep links (old shared article/deck/dashboard URLs) across.
-# /economy points straight at the read shelf — never chain through /reads.
+# /economy has its own all-format section page.
 # Retired formats send old URLs to a LISTED page, not to the unlisted survivor
 # (revised Jul 2026): /economy/beats was the site's most-indexed URL, and
 # pointing it at the retired payments deck walked every search visitor onto a
@@ -66,5 +66,3 @@
 /economy/dashboards/*   /economy/explore/:splat  301
 /economy/dashboards     /economy/explore/        301
 /economy/dashboards/    /economy/explore/        301
-/economy                /economy/read/           301
-/economy/               /economy/read/           301

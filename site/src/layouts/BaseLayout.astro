@@ -128,6 +128,7 @@ const beaconToken = import.meta.env.CF_BEACON_TOKEN || process.env.CF_BEACON_TOK
       });
     </script>
     <slot name="ld-json" />
+    <slot name="head" />
     {beaconToken && (
       <script
         is:inline
