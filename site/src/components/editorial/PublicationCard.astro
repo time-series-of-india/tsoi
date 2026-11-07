@@ -21,7 +21,7 @@ const date = piece.published && new Date(`${piece.published}T00:00:00Z`).toLocal
   <a href={piece.href}>
     <div class="meta"><span>{piece.format}</span>{piece.theme && <span>{piece.theme === 'inflation' ? 'Prices' : 'Payments'}</span>}</div>
     <div class="art" aria-hidden="true">
-      {piece.thumb?.endsWith('.jpg') ? <img src={piece.thumb} alt="" loading="lazy" decoding="async" /> : piece.thumb && <>
+      {/\.(jpg|webp)$/.test(piece.thumb ?? '') ? <img src={piece.thumb} alt="" loading="lazy" decoding="async" /> : piece.thumb && <>
         <img class="art-light" src={`${piece.thumb}.png`} alt="" loading="lazy" decoding="async" />
         <img class="art-dark" src={`${piece.thumb}-dark.png`} alt="" loading="lazy" decoding="async" />
       </>}
@@ -40,6 +40,7 @@ const date = piece.published && new Date(`${piece.published}T00:00:00Z`).toLocal
   .publication:hover, .publication:focus-within { background: var(--tsoi-color-surface-container-high); }
   .publication a:focus-visible { outline: 2px solid var(--tsoi-color-primary); outline-offset: 3px; }
   .meta, .foot { display: flex; justify-content: space-between; gap: 12px; font: var(--tsoi-text-byline); color: var(--tsoi-color-on-surface-variant); }
+  .meta, .foot { font-size: 11px; }
   .meta { padding: 15px 17px 8px; text-transform: uppercase; letter-spacing: .08em; }
   .meta span:first-child { color: var(--tsoi-color-primary-text); }
   .art { display: grid; place-items: center; height: calc(var(--tsoi-spacing-unit) * 25); padding: var(--tsoi-spacing-unit) calc(var(--tsoi-spacing-unit) * 2); overflow: hidden; }

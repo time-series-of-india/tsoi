@@ -11,6 +11,9 @@ export const BOARDS: BoardSpec[] = [
     section: 'economy',
     theme: 'payments',
     title: 'India Payments',
+    // Rupee values here run to lakh crore, so the Cr|bn toggle sits on the
+    // page bar beside the range rather than in the site masthead.
+    units: true,
     // One Grafana-style time picker for the whole page rather than one per
     // desk. Every desk that carries a 'range' control has it dropped from its
     // own bar and driven from here; state-wise has a month select instead and

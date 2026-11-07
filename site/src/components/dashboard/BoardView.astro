@@ -21,6 +21,7 @@ import type { BoardSpec, Control, PanelSpec } from '../../lib/dashboards/runtime
 import { asOfLabel, optionGroups } from '../../lib/dashboards/runtime';
 import { enrichBoard, enrichBoardGlobals } from '../../lib/dashboards/enrich';
 import ShareMenu from './ShareMenu.astro';
+import UnitsToggle from '../chart/UnitsToggle.astro';
 
 interface Props { board: BoardSpec }
 const { board } = Astro.props;
@@ -67,6 +68,15 @@ const asOfChip = (d: { asOf?: string; asOfGrain?: string }) => asOfLabel(d.asOf!
   {desks.map((d) => <a href={`#${d.anchor}`}>{d.title}</a>)}
 </nav>
 
+{/* Phone only: the sticky strip has no room for Cr|bn beside the range and the
+    share button, so on a phone it sits here at the head of the board instead. */}
+{board.units && (
+  <div class="units-row">
+    <span class="ctl-label">Units</span>
+    <UnitsToggle />
+  </div>
+)}
+
 <div class="page-bar">
   <button type="button" class="page-collapse-btn" aria-expanded="true" aria-label="Collapse all desks">▾</button>
   <span class="page-title">{board.title}</span>
@@ -108,6 +118,12 @@ const asOfChip = (d: { asOf?: string; asOfGrain?: string }) => asOfLabel(d.asOf!
         )}
       </div>
     ))}
+    {board.units && (
+      <div class="ctl ctl-units">
+        <span class="ctl-label">Units</span>
+        <UnitsToggle />
+      </div>
+    )}
     {pageAsOf && (
       <div class="ctl-asof"><span>As of</span><strong>{asOfChip(pageAsOf)}</strong></div>
     )}
@@ -509,6 +525,12 @@ const asOfChip = (d: { asOf?: string; asOfGrain?: string }) => asOfLabel(d.asOf!
   .page-bar .seg button { padding-block: 3px; }
   .page-bar .seg button + button { border-left-color: color-mix(in srgb, var(--tsoi-color-on-pagebar) 45%, transparent); }
   .page-bar .seg button.active { background: var(--tsoi-color-on-pagebar); color: var(--tsoi-color-pagebar); }
+  /* The Cr|bn toggle takes the same inversion as the segmented control above.
+     :global because the toggle is its own component with its own scope. */
+  .page-bar :global(.units-toggle) { border-color: color-mix(in srgb, var(--tsoi-color-on-pagebar) 45%, transparent); }
+  .page-bar :global(.units-toggle button) { padding-block: 3px; color: var(--tsoi-color-on-pagebar); }
+  .page-bar :global(.units-toggle button + button) { border-left-color: color-mix(in srgb, var(--tsoi-color-on-pagebar) 45%, transparent); }
+  .page-bar :global(.units-toggle button[aria-pressed='true']) { background: var(--tsoi-color-on-pagebar); color: var(--tsoi-color-pagebar); }
   /* The board's vintage, where every desk shares one. Outlined in the strip's
      own text colour rather than boxed in surface white: a second white chip up
      here would read as a control, and this is a statement. */
@@ -542,7 +564,12 @@ const asOfChip = (d: { asOf?: string; asOfGrain?: string }) => asOfLabel(d.asOf!
        the whole point is a thin bar, so title left / RANGE right, no wrap. */
     .page-bar { flex-wrap: nowrap; gap: var(--tsoi-spacing-unit); }
     .page-controls { gap: var(--tsoi-spacing-unit); min-width: 0; }
+    /* Cr|bn moves off the strip to .units-row above it. Qualified selectors
+       so these outrank the base .ctl / .units-row rules later in the file. */
+    .page-bar .ctl-units { display: none; }
+    .board .units-row { display: flex; }
   }
+  .units-row { display: none; align-items: center; justify-content: flex-end; gap: var(--tsoi-spacing-unit); margin-bottom: var(--tsoi-spacing-unit); }
 
   /* Desks are flush — no margin between .desk elements — so the JS-driven
      stacking below (see the script block) can compute a clean handoff: bar N-1
