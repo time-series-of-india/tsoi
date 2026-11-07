@@ -1,0 +1,42 @@
+---
+// Front-page puzzle box: the current Numbers Game puzzle in the narrow column
+// beside the lead, the way a paper keeps its puzzle to a corner. Reads the
+// game's own data file, so a new puzzle (bumping `current`) updates the box
+// with no front-page edit.
+import gameData from '../../data/play/off-by-how-much.json';
+
+const puzzle = gameData.puzzles.find((p) => p.n === gameData.current)!;
+const first = puzzle.rounds[0];
+const count = puzzle.rounds.length;
+---
+
+<a class="puzzle" href="/economy/play/off-by-how-much/">
+  <p class="kicker">{gameData.seriesKicker} · No. {puzzle.n}</p>
+  <h2>{gameData.title}</h2>
+  <p class="detail">{count} questions · {puzzle.dataNote}</p>
+  <div class="question" aria-hidden="true">
+    <p class="q-label">Question 1</p>
+    <p class="q">{first.q}</p>
+    <div class="gauge"><span class="ticks"></span><span class="track"></span><i class="guess"></i><i class="actual"></i></div>
+  </div>
+  <span class="cta">Play &rarr;</span>
+</a>
+
+<style>
+  .puzzle { display:flex; flex-direction:column; height:100%; box-sizing:border-box; padding:clamp(18px,1.6vw,22px); border:1px solid var(--tsoi-color-outline); background:var(--tsoi-color-surface-container-low); color:inherit; text-decoration:none; }
+  .puzzle:hover { background:var(--tsoi-color-surface-container-high); }
+  .puzzle:focus-visible { outline:2px solid var(--tsoi-color-primary); outline-offset:3px; }
+  .kicker { margin:0; font:var(--tsoi-text-label-caps); letter-spacing:.1em; text-transform:uppercase; color:var(--tsoi-color-primary-text); }
+  h2 { margin:8px 0 0; font:700 clamp(24px,2vw,28px)/1.12 var(--tsoi-font-headline); }
+  .detail { margin:6px 0 0; font:var(--tsoi-text-byline); color:var(--tsoi-color-on-surface-variant); }
+  .question { margin-top:auto; padding-top:14px; }
+  .q-label { margin:0; font:var(--tsoi-text-byline); letter-spacing:.06em; text-transform:uppercase; color:var(--tsoi-color-on-surface-variant); }
+  .q { margin:6px 0 0; font:700 clamp(17px,1.35vw,19px)/1.3 var(--tsoi-font-headline); text-wrap:balance; }
+  .gauge { position:relative; width:100%; height:40px; margin-top:6px; }
+  .ticks { position:absolute; left:0; right:0; top:4px; height:20px; background:repeating-linear-gradient(90deg,var(--tsoi-color-outline) 0 1px,transparent 1px 10px); mask-image:linear-gradient(90deg,transparent,#000 8% 92%,transparent); }
+  .track { position:absolute; left:0; right:0; top:26px; border-top:2px solid var(--tsoi-color-primary); }
+  .guess,.actual { position:absolute; top:18px; width:2px; height:17px; background:var(--tsoi-color-on-surface); }
+  .guess { left:24%; } .actual { left:68%; }
+  .cta { margin-top:10px; font:var(--tsoi-text-byline); letter-spacing:.06em; text-transform:uppercase; color:var(--tsoi-color-primary-text); }
+  @media(max-width:1000px) { .question { margin-top:0; } }
+</style>

@@ -687,8 +687,9 @@ import SectionHeader from '../components/editorial/SectionHeader.astro';
 
   const nf = new Intl.NumberFormat('en-IN');
   // Compact counts for tiles, axes and leaderboard values. Reads the same
-  // <html data-units> flag as the masthead's Cr|bn toggle, which until now was
-  // visible on this page and drove nothing here (the dashboards' fmt() is not
+  // <html data-units> flag the Cr|bn toggle sets (on the payments board and
+  // crore-scale reads; this page shows none, so it follows the reader's saved
+  // choice or the timezone default). The dashboards' fmt() is not
   // reusable: it expects values already denominated in crore, so it would render
   // 51,680 visits as "5,168 Cr").
   //

@@ -3,9 +3,10 @@
 // centred Playfair 900 wordmark, italic tagline, 3px saffron bottom border.
 // (The former masthead-bottom "Data: RBI · NPCI" bar was removed — sources are
 // theme-specific and live on /data and on the content itself.)
-// The units (cr/bn) and theme toggles live here as global, set-once prefs;
-// the reader text-size control stays in the read header where it's used.
-import UnitsToggle from '../chart/UnitsToggle.astro';
+// The theme toggle lives here as a global, set-once pref. The Cr|bn units
+// toggle sits beside the numbers it changes instead: the payments board's page
+// bar and the header of reads with crore-scale numbers (the first-visit default
+// still comes from the browser timezone, see BaseLayout).
 interface Props {
   /** Homepage renders the wordmark as the page h1; everywhere else it is brand chrome. */
   homeH1?: boolean;
@@ -46,7 +47,6 @@ const editionDate = new Date().toLocaleDateString('en-GB', {
       })();
     </script>
     <div class="meta-actions">
-      <UnitsToggle />
       <button
       type="button"
       class="theme-toggle"
@@ -198,7 +198,7 @@ const editionDate = new Date().toLocaleDateString('en-GB', {
   }
 
   @media (max-width: 767px) {
-    /* drop the URL so the meta row (date + units + theme) stays one line */
+    /* drop the URL so the meta row (date + theme) stays one line */
     .edition-url {
       display: none;
     }

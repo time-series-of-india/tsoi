@@ -67,3 +67,18 @@ export const publications: Publication[] = [
     thumb: '/independence/rack.jpg', initialRank: 0 },
   ...economyPublications.map((piece, index) => ({ ...piece, initialRank: index + 1 })),
 ];
+
+// The lead as an ordinary catalogue card, for section pages.
+export const weatherWingsCard: Publication = { ...lead, published: '2026-10-20', thumb: '/weather-wings/cover.webp' };
+
+// Front-page order: most visited first. Ranked by all-time visits on /meta as
+// of 2026-11-07. Rupee Time Machine is placed by its human (beacon) visits,
+// because most of its edge count is crawler traffic. Revisit with the numbers,
+// not by taste. The lead sits above the catalogue, so it is not repeated
+// here; Off by How Much leaves this list again when the puzzle box returns.
+const POPULARITY = ['upi', 'peaks', 'walk', 'inflation-read', 'payments-explore', 'inflation-explore', 'rupee-time-machine', 'off-by-how-much'];
+export const popularPublications: Publication[] = POPULARITY.map((id, initialRank) => {
+  const piece = publications.find(p => p.id === id);
+  if (!piece) throw new Error(`Unknown publication in popularity order: ${id}`);
+  return { ...piece, initialRank };
+});

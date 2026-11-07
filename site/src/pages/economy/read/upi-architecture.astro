@@ -5,6 +5,7 @@
 // Citations: internal docs, editorial/read-upi-architecture-sources.md
 import StoryPage from '../../../layouts/StoryPage.astro';
 import ReaderControls from '../../../components/chart/ReaderControls.astro';
+import UnitsToggle from '../../../components/chart/UnitsToggle.astro';
 import ScrollProgress from '../../../components/read/ScrollProgress.astro';
 import ShareButtons from '../../../components/editorial/ShareButtons.astro';
 import { readingMinutes } from '../../../lib/reading-time';
@@ -87,7 +88,7 @@ const recoActors = [
       <h1>{title}</h1>
       <p class="deck">{deck}</p>
       <p class="subtext">{subtext}</p>
-      <div class="toolbar"><ReaderControls /><ShareButtons title={title} variant="icon" /></div>
+      <div class="toolbar"><ReaderControls /><UnitsToggle /><ShareButtons title={title} variant="icon" /></div>
     </header>
 
     <div class="prose">

@@ -373,6 +373,8 @@ export interface BoardSpec {
   globals?: Control[]; // controls hoisted to the page bar; a desk carrying a
                        // control of the same id has it dropped from its own bar
                        // and driven from up here instead
+  units?: boolean; // show the Cr|bn units toggle on the page bar, beside the
+                   // hoisted controls; only boards whose numbers are crore-scale
   desks: BoardDesk[];
 }
 

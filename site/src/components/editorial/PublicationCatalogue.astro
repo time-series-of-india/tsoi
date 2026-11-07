@@ -1,30 +1,38 @@
 ---
 import PublicationCard from './PublicationCard.astro';
-import { publications, economyPublications } from '../../lib/publications';
-interface Props { showThemes?: boolean; heading?: string; defaultFormat?: 'play' | 'all' }
-const { showThemes = false, heading, defaultFormat = 'all' } = Astro.props;
-const pieces = showThemes ? economyPublications : publications;
+import { publications, economyPublications, type Publication } from '../../lib/publications';
+interface Props { showThemes?: boolean; heading?: string; defaultFormat?: 'play' | 'all'; pieces?: Publication[]; sortable?: boolean; controls?: boolean; collapsible?: boolean }
+const { showThemes = false, heading, defaultFormat = 'all', pieces: given, sortable = false, controls = true, collapsible = false } = Astro.props;
+const pieces = given ?? (showThemes ? economyPublications : publications);
 const formatLabels = ['Play', 'Read', 'Explore', 'All'];
 ---
-  <section class="catalogue" aria-label="Publications" data-default-format={defaultFormat}>
-    {heading && <h2 class="catalogue-heading">{heading}</h2>}
-    {showThemes && <div class="theme-row"><div class="theme-bar" role="group" aria-label="Choose an Economy theme"><button type="button" data-topic="all" disabled aria-pressed="true">All topics</button><button type="button" data-topic="inflation" disabled aria-pressed="false">Prices</button><button type="button" data-topic="payments" disabled aria-pressed="false">Payments</button></div></div>}
-    <div class="catalogue-controls">
-      <div class="format-row"><span class="control-label">Format</span><div class="format-bar" role="group" aria-label="Filter publications by format">{formatLabels.map(label => <button type="button" data-format={label.toLowerCase()} disabled aria-pressed={label.toLowerCase() === defaultFormat}>{label}</button>)}</div></div>
+  <section class="catalogue" aria-label="Publications" data-default-format={defaultFormat} data-sortable={sortable ? '' : undefined}>
+    <div class:list={['catalogue-top', { sortable }]}>
+      {heading && <h2 class="catalogue-heading">{heading}</h2>}
+      {showThemes && <div class="theme-row"><div class="theme-bar" role="group" aria-label="Choose an Economy theme"><button type="button" data-topic="all" disabled aria-pressed="true">All topics</button><button type="button" data-topic="inflation" disabled aria-pressed="false">Prices</button><button type="button" data-topic="payments" disabled aria-pressed="false">Payments</button></div></div>}
+      {controls && <div class="catalogue-controls">
+        <div class="format-row"><span class="control-label">Format</span><div class="format-bar" role="group" aria-label="Filter publications by format">{formatLabels.map(label => <button type="button" data-format={label.toLowerCase()} disabled aria-pressed={label.toLowerCase() === defaultFormat}>{label}</button>)}</div></div>
+      </div>}
+      {/* After the filter in source order so keyboard focus follows the desktop row. */}
+      {sortable && <div class="sort-bar" role="group" aria-label="Sort publications"><button type="button" data-sort="popular" disabled aria-pressed="true">Popular</button><button type="button" data-sort="newest" disabled aria-pressed="false">Newest</button></div>}
     </div>
     <span class="catalogue-status" role="status" aria-live="polite"></span>
     <div class="publication-grid" id="publication-grid">{pieces.map(piece => <div class="catalogue-item" hidden={defaultFormat === 'play' && piece.format !== 'Play'}><PublicationCard piece={piece} /></div>)}</div>
     <p class="empty" hidden>No publications in this format yet.</p>
+    {collapsible && <div class="more-row" hidden><button type="button" class="show-all" aria-controls="publication-grid">Show more</button></div>}
   </section>
 <script>
   const grid = document.querySelector<HTMLElement>('#publication-grid');
   const formatButtons = [...document.querySelectorAll<HTMLButtonElement>('.format-bar [data-format]')];
   const themeButtons = [...document.querySelectorAll<HTMLButtonElement>('.theme-bar [data-topic]')];
+  const sortButtons = [...document.querySelectorAll<HTMLButtonElement>('.sort-bar [data-sort]')];
   const status = document.querySelector<HTMLElement>('.catalogue-status');
   if (grid && status) {
     formatButtons.forEach(button => button.disabled = false);
     themeButtons.forEach(button => button.disabled = false);
+    sortButtons.forEach(button => button.disabled = false);
     const cards = [...grid.querySelectorAll<HTMLElement>('[data-piece-id]')];
+    const sortable = grid.closest<HTMLElement>('.catalogue')?.hasAttribute('data-sortable') ?? false;
     const defaultFormat = grid.closest<HTMLElement>('.catalogue')?.dataset.defaultFormat ?? 'all';
     const selection = () => {
       const params = new URL(location.href).searchParams;
@@ -32,18 +40,43 @@ const formatLabels = ['Play', 'Read', 'Explore', 'All'];
       const topic = themeButtons.length ? params.get('theme') : null;
       return {
         format: format === 'all' || format === 'read' || format === 'play' || format === 'explore' ? format : defaultFormat,
-        topic: topic === 'inflation' || topic === 'payments' ? topic : 'all' };
+        topic: topic === 'inflation' || topic === 'payments' ? topic : 'all',
+        sort: sortable && params.get('sort') === 'newest' ? 'newest' : 'popular' };
     };
+    // Collapsed view: the first row or two, then "Show all". Any filter or sort
+    // change collapses again; without JS every card stays visible.
+    const moreRow = grid.closest('.catalogue')?.querySelector<HTMLElement>('.more-row') ?? null;
+    const showAll = moreRow?.querySelector<HTMLButtonElement>('.show-all') ?? null;
+    const phone = matchMedia('(max-width:650px)');
+    const tablet = matchMedia('(max-width:1000px)');
+    const limit = () => phone.matches ? 3 : tablet.matches ? 4 : 6;
+    let expanded = false;
+    const rank = (card: HTMLElement) => Number(card.dataset.rank ?? 0);
+    const order = (sort: string) => [...cards].sort((a, b) => sort === 'newest'
+      ? (b.dataset.published ?? '').localeCompare(a.dataset.published ?? '') || rank(a) - rank(b)
+      : rank(a) - rank(b));
     const apply = () => {
       const selected = selection();
-      // Retired sort links keep their filters and return to the editorial order.
+      // Sort links on a page without the sort control keep their filters and
+      // return to the editorial order.
       const url = new URL(location.href);
-      if (url.searchParams.has('sort')) {
+      if (!sortable && url.searchParams.has('sort')) {
         url.searchParams.delete('sort');
         history.replaceState(null, '', url);
       }
+      if (sortable) order(selected.sort).forEach(card => grid.append(card.parentElement!));
+      sortButtons.forEach(button => button.setAttribute('aria-pressed', String(button.dataset.sort === selected.sort)));
       let visible = 0;
-      cards.forEach(card => { const hidden = (selected.format !== 'all' && card.dataset.format !== selected.format) || (selected.topic !== 'all' && card.dataset.topic !== selected.topic); card.parentElement!.hidden = hidden; if (!hidden) visible++; });
+      const max = moreRow && !expanded ? limit() : Infinity;
+      (sortable ? order(selected.sort) : cards).forEach(card => {
+        const hidden = (selected.format !== 'all' && card.dataset.format !== selected.format) || (selected.topic !== 'all' && card.dataset.topic !== selected.topic);
+        if (!hidden) visible++;
+        card.parentElement!.hidden = hidden || visible > max;
+      });
+      if (moreRow && showAll) {
+        moreRow.hidden = visible <= max;
+        showAll.textContent = 'Show more';
+      }
       formatButtons.forEach(button => button.setAttribute('aria-pressed', String(button.dataset.format === selected.format)));
       themeButtons.forEach(button => button.setAttribute('aria-pressed', String(button.dataset.topic === selected.topic)));
       const empty = document.querySelector<HTMLElement>('.catalogue .empty');
@@ -56,17 +89,40 @@ const formatLabels = ['Play', 'Read', 'Explore', 'All'];
       const url = new URL(location.href);
       if (value) url.searchParams.set(key, value); else url.searchParams.delete(key);
       history.pushState(null, '', url);
+      expanded = false;
       apply();
     };
     apply();
+    showAll?.addEventListener('click', () => {
+      const first = limit();
+      expanded = true;
+      apply();
+      // Move focus to the first card the button revealed.
+      grid.querySelectorAll<HTMLElement>('.catalogue-item:not([hidden]) a')[first]?.focus();
+    });
+    [phone, tablet].forEach(query => query.addEventListener('change', apply));
     formatButtons.forEach(button => button.addEventListener('click', () => update('format', button.dataset.format === defaultFormat ? null : button.dataset.format!)));
     themeButtons.forEach(button => button.addEventListener('click', () => update('theme', button.dataset.topic === 'all' ? null : button.dataset.topic!)));
+    sortButtons.forEach(button => button.addEventListener('click', () => update('sort', button.dataset.sort === 'popular' ? null : button.dataset.sort!)));
     window.addEventListener('popstate', apply);
   }
 </script>
 <style>
   .catalogue { margin-top:calc(var(--tsoi-spacing-unit) * 3); }
   .catalogue-heading { margin:0 0 calc(var(--tsoi-spacing-unit) * 2); font:var(--tsoi-text-headline-lg); }
+  /* With a sort: heading on its own line, sort level with the format filter.
+     On phone the sort moves up beside the heading so the filter keeps a row to itself. */
+  .catalogue-top.sortable { display:grid; grid-template-columns:minmax(0,1fr) auto; grid-template-areas:"head head" "controls sort"; align-items:center; gap:calc(var(--tsoi-spacing-unit) * 2) calc(var(--tsoi-spacing-unit) * 3); margin-bottom:calc(var(--tsoi-spacing-unit) * 2); }
+  .catalogue-top.sortable .catalogue-heading { grid-area:head; margin:0; }
+  .catalogue-top.sortable .sort-bar { grid-area:sort; }
+  .catalogue-top.sortable .catalogue-controls { grid-area:controls; margin:0; }
+  /* Sort reads as quiet text tabs, the same treatment as the Economy theme bar. */
+  .sort-bar { display:flex; gap:calc(var(--tsoi-spacing-unit) * 2.5); }
+  .sort-bar button { min-height:44px; padding:var(--tsoi-spacing-unit) 0; border:0; border-bottom:2px solid transparent; background:transparent; color:var(--tsoi-color-on-surface-variant); font:var(--tsoi-text-body); font-size:14px; cursor:pointer; }
+  .sort-bar button[aria-pressed='true'] { border-bottom-color:var(--tsoi-color-primary); color:var(--tsoi-color-primary-text); }
+  .sort-bar button:hover { color:var(--tsoi-color-primary-text); }
+  .sort-bar button:disabled { opacity:.5; cursor:default; }
+  .sort-bar button:focus-visible { outline:2px solid var(--tsoi-color-primary); outline-offset:3px; }
   .format-row { display:flex; align-items:center; gap:calc(var(--tsoi-spacing-unit) * 1.5); }
   .theme-row { margin-bottom:calc(var(--tsoi-spacing-unit) * 2); border-bottom:1px solid var(--tsoi-color-outline); }
   .theme-bar { display:flex; gap:calc(var(--tsoi-spacing-unit) * 3); }
@@ -84,6 +140,13 @@ const formatLabels = ['Play', 'Read', 'Explore', 'All'];
   .theme-bar button:disabled,.format-bar button:disabled { opacity:.5; cursor:default; }
   .theme-bar button:focus-visible,.format-bar button:focus-visible { outline:2px solid var(--tsoi-color-primary); outline-offset:3px; z-index:1; }
   .catalogue-status { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
+  /* The byline token is 9px; the controls people tap read at 11px. */
+  .control-label, .format-bar button, .show-all { font-size:11px; }
+  .more-row { display:flex; justify-content:center; margin-top:calc(var(--tsoi-spacing-unit) * 3); }
+  .more-row[hidden] { display:none; }
+  .show-all { min-height:44px; padding:var(--tsoi-spacing-unit) calc(var(--tsoi-spacing-unit) * 4); border:1px solid var(--tsoi-color-outline); border-radius:2px; background:var(--tsoi-color-background); color:var(--tsoi-color-primary-text); font:var(--tsoi-text-byline); letter-spacing:.06em; text-transform:uppercase; cursor:pointer; }
+  .show-all:hover { background:var(--tsoi-color-surface-container-high); }
+  .show-all:focus-visible { outline:2px solid var(--tsoi-color-primary); outline-offset:3px; }
   .empty { margin:16px 0; font:var(--tsoi-text-body); color:var(--tsoi-color-on-surface-variant); }
   .publication-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:22px; }
   .catalogue-item { display:flex; min-width:0; }
@@ -94,6 +157,10 @@ const formatLabels = ['Play', 'Read', 'Explore', 'All'];
   @media(max-width:650px) {
     .catalogue-controls { align-items:start; }
     .format-row { width:100%; }
+    .catalogue-top.sortable { grid-template-areas:"head sort" "controls controls"; align-items:baseline; }
+  }
+  @media(max-width:360px) {
+    .format-bar button { padding-inline:2px; letter-spacing:.02em; }
     .format-bar { display:flex; flex:1; }
     .format-bar button { flex:1; padding-inline:var(--tsoi-spacing-unit); }
   }

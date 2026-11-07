@@ -1,34 +1,24 @@
 ---
 import StoryPage from '../layouts/StoryPage.astro';
 import PublicationCatalogue from '../components/editorial/PublicationCatalogue.astro';
-import HomeObserved from '../components/editorial/HomeObserved.astro';
 import EmailSignup from '../components/editorial/EmailSignup.astro';
 import WeatherWingsCard from '../components/editorial/WeatherWingsCard.astro';
-
+import { popularPublications } from '../lib/publications';
 ---
 
 <StoryPage homeH1 hideFooterNewsletter og_image="/og/play/weather-wings.png" title="Time Series of India" description="India’s public data through individual reads, games, tools and visual stories.">
-  <div class="opening">
-    <section class="weather-lead" aria-label="Selected publication">
-      <p class="lead-label">Play</p>
-      <WeatherWingsCard />
-    </section>
-    <HomeObserved />
-  </div>
+  <section class="lead" aria-label="Selected publication">
+    <WeatherWingsCard />
+  </section>
+  <PublicationCatalogue heading="More from TSOI" pieces={popularPublications} sortable collapsible />
   <div id="newsletter" class="newsletter-strip">
     <EmailSignup strip heading="Follow India through data" blurb="Get new stories, games and interactive tools from TSOI in your inbox." />
   </div>
-  <PublicationCatalogue heading="More from TSOI" defaultFormat="play" />
 </StoryPage>
 
-
-
 <style>
-  /* Share the picture row so the dateline never changes panel alignment. */
-  .opening { display:grid; grid-template-columns:minmax(0,7fr) minmax(calc(var(--tsoi-spacing-unit) * 42),3fr); grid-template-rows:auto auto; gap:var(--tsoi-spacing-unit) calc(var(--tsoi-spacing-unit) * 3); align-items:stretch; }
-  .weather-lead { min-width:0; display:grid; grid-column:1; grid-row:1 / span 2; grid-template-rows:subgrid; }
-  .opening > :global(.observed) { grid-column:2; grid-row:2; }
-  .lead-label { margin:0; text-align:center; font:var(--tsoi-text-label-caps); letter-spacing:.1em; text-transform:uppercase; color:var(--tsoi-color-primary-text); }
-  .newsletter-strip { margin-top:calc(var(--tsoi-spacing-unit) * 3); scroll-margin-top:calc(var(--tsoi-spacing-unit) * 3); }
-  @media(max-width:1000px) { .opening { display:flex; flex-direction:column; gap:calc(var(--tsoi-spacing-unit) * 3); } .weather-lead { display:flex; flex-direction:column; gap:var(--tsoi-spacing-unit); } }
+  /* Full-width lead for now. The puzzle box (components/editorial/PuzzleBox.astro)
+     returns beside it, 70/30, once a current puzzle is published. */
+  .lead { min-width:0; }
+  .newsletter-strip { margin-top:calc(var(--tsoi-spacing-unit) * 5); scroll-margin-top:calc(var(--tsoi-spacing-unit) * 3); }
 </style>

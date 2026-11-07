@@ -3,10 +3,12 @@
 // headline/deck + a text-size toolbar, then a slot for the read body (chart
 // figures + colour-coded prose). Content styles are emitted :global under .read
 // so slotted page markup is styled consistently across every read.
-// Units (cr/bn) + theme are global, set-once prefs that live in the masthead;
-// only the reader text-size control sits here in the read header.
+// Theme is a global pref in the masthead. Text size, and the Cr|bn units toggle
+// on reads whose numbers run to crore, sit here in the read header beside the
+// prose they change.
 import StoryPage from '../../layouts/StoryPage.astro';
 import ReaderControls from '../chart/ReaderControls.astro';
+import UnitsToggle from '../chart/UnitsToggle.astro';
 import ScrollProgress from './ScrollProgress.astro';
 import ShareButtons from '../editorial/ShareButtons.astro';
 import { READS } from '../../lib/reads-index';
@@ -20,7 +22,7 @@ interface Props {
   crumb?: string;
   asOf?: string;
   description?: string;
-  units?: boolean;          // accepted for back-compat; units now live in the masthead
+  units?: boolean;          // show the Cr|bn toggle in the toolbar
 }
 const props = Astro.props;
 const entry = props.slug ? READS.find((r) => r.slug === props.slug) : undefined;
@@ -51,7 +53,7 @@ const noindex = entry?.kind === 'short';
       <p class="kicker">{kicker}{props.slug ? ` · ${readingMinutes(props.slug)} min read` : ''}{asOf ? ` · data through ${asOf}` : ''}</p>
       <h1>{title}</h1>
       <p class="deck">{deck}</p>
-      <div class="toolbar"><ReaderControls /></div>
+      <div class="toolbar"><ReaderControls />{props.units && <UnitsToggle />}</div>
     </header>
     <slot />
     <ShareButtons title={title} />
